@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wso2/consent-management-api/internal/system/stores"
+	"github.com/wso2/openfgc/internal/system/stores"
 )
 
 func TestInitialize(t *testing.T) {

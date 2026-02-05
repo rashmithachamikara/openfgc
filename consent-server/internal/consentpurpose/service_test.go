@@ -24,8 +24,8 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/wso2/consent-management-api/internal/consentpurpose/model"
-	"github.com/wso2/consent-management-api/internal/system/stores"
+	"github.com/wso2/openfgc/internal/consentpurpose/model"
+	"github.com/wso2/openfgc/internal/system/stores"
 )
 
 // TestValidateCreateRequest tests validation of create requests

@@ -22,11 +22,11 @@ package interfaces
 import (
 	"context"
 
-	authResourceModel "github.com/wso2/consent-management-api/internal/authresource/model"
-	consentModel "github.com/wso2/consent-management-api/internal/consent/model"
-	consentElementModel "github.com/wso2/consent-management-api/internal/consentelement/model"
-	consentConsentPurposeModel "github.com/wso2/consent-management-api/internal/consentpurpose/model"
-	dbmodel "github.com/wso2/consent-management-api/internal/system/database/model"
+	authResourceModel "github.com/wso2/openfgc/internal/authresource/model"
+	consentModel "github.com/wso2/openfgc/internal/consent/model"
+	consentElementModel "github.com/wso2/openfgc/internal/consentelement/model"
+	consentConsentPurposeModel "github.com/wso2/openfgc/internal/consentpurpose/model"
+	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
 )
 
 // ConsentStore defines the interface for consent data operations

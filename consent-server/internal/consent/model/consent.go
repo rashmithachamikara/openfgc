@@ -24,8 +24,8 @@ import (
 	"fmt"
 	"time"
 
-	authmodel "github.com/wso2/consent-management-api/internal/authresource/model"
-	"github.com/wso2/consent-management-api/internal/system/config"
+	authmodel "github.com/wso2/openfgc/internal/authresource/model"
+	"github.com/wso2/openfgc/internal/system/config"
 )
 
 // Consent represents the CONSENT table

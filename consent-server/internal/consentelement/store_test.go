@@ -23,7 +23,7 @@ import (
 
 	"github.com/stretchr/testify/require"
 
-	"github.com/wso2/consent-management-api/internal/consentelement/model"
+	"github.com/wso2/openfgc/internal/consentelement/model"
 )
 
 // TestNewConsentElementStore tests store creation

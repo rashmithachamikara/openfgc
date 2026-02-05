@@ -1,4 +1,4 @@
-module github.com/wso2/consent-management-api
+module github.com/wso2/openfgc
 
 go 1.25.3
 

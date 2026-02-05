@@ -24,10 +24,10 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/wso2/consent-management-api/internal/system/constants"
-	"github.com/wso2/consent-management-api/internal/system/error/apierror"
-	"github.com/wso2/consent-management-api/internal/system/error/serviceerror"
-	"github.com/wso2/consent-management-api/internal/system/log"
+	"github.com/wso2/openfgc/internal/system/constants"
+	"github.com/wso2/openfgc/internal/system/error/apierror"
+	"github.com/wso2/openfgc/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/internal/system/log"
 )
 
 func DecodeJSONBody(r *http.Request, v interface{}) error {

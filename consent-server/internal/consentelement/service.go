@@ -23,13 +23,13 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wso2/consent-management-api/internal/consentelement/model"
-	"github.com/wso2/consent-management-api/internal/consentelement/validators"
-	dbmodel "github.com/wso2/consent-management-api/internal/system/database/model"
-	"github.com/wso2/consent-management-api/internal/system/error/serviceerror"
-	"github.com/wso2/consent-management-api/internal/system/log"
-	"github.com/wso2/consent-management-api/internal/system/stores"
-	"github.com/wso2/consent-management-api/internal/system/utils"
+	"github.com/wso2/openfgc/internal/consentelement/model"
+	"github.com/wso2/openfgc/internal/consentelement/validators"
+	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
+	"github.com/wso2/openfgc/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/internal/system/stores"
+	"github.com/wso2/openfgc/internal/system/utils"
 )
 
 // ConsentElementService defines the exported service interface

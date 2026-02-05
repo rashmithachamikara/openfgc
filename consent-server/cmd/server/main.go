@@ -28,10 +28,10 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/wso2/consent-management-api/internal/system/config"
-	"github.com/wso2/consent-management-api/internal/system/database/provider"
-	"github.com/wso2/consent-management-api/internal/system/log"
-	"github.com/wso2/consent-management-api/internal/system/middleware"
+	"github.com/wso2/openfgc/internal/system/config"
+	"github.com/wso2/openfgc/internal/system/database/provider"
+	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/internal/system/middleware"
 )
 
 func main() {

@@ -28,10 +28,10 @@ import (
 
 	_ "github.com/go-sql-driver/mysql"
 	"github.com/jmoiron/sqlx"
-	"github.com/wso2/consent-management-api/internal/system/config"
-	"github.com/wso2/consent-management-api/internal/system/database/model"
-	"github.com/wso2/consent-management-api/internal/system/database/transaction"
-	"github.com/wso2/consent-management-api/internal/system/log"
+	"github.com/wso2/openfgc/internal/system/config"
+	"github.com/wso2/openfgc/internal/system/database/model"
+	"github.com/wso2/openfgc/internal/system/database/transaction"
+	"github.com/wso2/openfgc/internal/system/log"
 )
 
 // transactionDBWrapper wraps model.DB to implement transaction.DBInterface

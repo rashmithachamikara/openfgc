@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/wso2/consent-management-api/internal/system/constants"
+	"github.com/wso2/openfgc/internal/system/constants"
 )
 
 // Validate orgID and clientID in the request headers.

@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/wso2/consent-management-api/internal/system/log"
+	"github.com/wso2/openfgc/internal/system/log"
 	"gopkg.in/yaml.v3"
 )
 

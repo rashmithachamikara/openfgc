@@ -24,7 +24,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wso2/consent-management-api/internal/consent/model"
+	"github.com/wso2/openfgc/internal/consent/model"
 )
 
 func TestValidateConsentTypeLength(t *testing.T) {

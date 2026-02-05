@@ -22,13 +22,13 @@ package main
 import (
 	"net/http"
 
-	"github.com/wso2/consent-management-api/internal/authresource"
-	"github.com/wso2/consent-management-api/internal/consent"
-	"github.com/wso2/consent-management-api/internal/consentelement"
-	"github.com/wso2/consent-management-api/internal/consentpurpose"
-	"github.com/wso2/consent-management-api/internal/system/healthcheck/handler"
-	"github.com/wso2/consent-management-api/internal/system/log"
-	"github.com/wso2/consent-management-api/internal/system/stores"
+	"github.com/wso2/openfgc/internal/authresource"
+	"github.com/wso2/openfgc/internal/consent"
+	"github.com/wso2/openfgc/internal/consentelement"
+	"github.com/wso2/openfgc/internal/consentpurpose"
+	"github.com/wso2/openfgc/internal/system/healthcheck/handler"
+	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/internal/system/stores"
 )
 
 // registerServices registers all consent management services with the provided HTTP multiplexer.

@@ -24,7 +24,7 @@ import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/wso2/consent-management-api/internal/consentelement/validators"
+	"github.com/wso2/openfgc/internal/consentelement/validators"
 )
 
 // JSONValue represents a JSON value that can be stored in the database

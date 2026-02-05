@@ -23,9 +23,9 @@ import (
 	"strings"
 	"time"
 
-	authvalidator "github.com/wso2/consent-management-api/internal/authresource/validator"
-	"github.com/wso2/consent-management-api/internal/consent/model"
-	"github.com/wso2/consent-management-api/internal/system/config"
+	authvalidator "github.com/wso2/openfgc/internal/authresource/validator"
+	"github.com/wso2/openfgc/internal/consent/model"
+	"github.com/wso2/openfgc/internal/system/config"
 )
 
 // ValidateConsentCreateRequest validates consent creation request

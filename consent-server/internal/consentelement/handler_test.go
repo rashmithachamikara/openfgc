@@ -28,9 +28,9 @@ import (
 	"github.com/stretchr/testify/mock"
 	"github.com/stretchr/testify/require"
 
-	"github.com/wso2/consent-management-api/internal/consentelement/model"
-	"github.com/wso2/consent-management-api/internal/system/constants"
-	"github.com/wso2/consent-management-api/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/internal/consentelement/model"
+	"github.com/wso2/openfgc/internal/system/constants"
+	"github.com/wso2/openfgc/internal/system/error/serviceerror"
 )
 
 const (

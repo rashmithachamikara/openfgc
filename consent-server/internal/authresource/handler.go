@@ -23,10 +23,10 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/wso2/consent-management-api/internal/authresource/model"
-	"github.com/wso2/consent-management-api/internal/system/constants"
-	"github.com/wso2/consent-management-api/internal/system/error/serviceerror"
-	"github.com/wso2/consent-management-api/internal/system/utils"
+	"github.com/wso2/openfgc/internal/authresource/model"
+	"github.com/wso2/openfgc/internal/system/constants"
+	"github.com/wso2/openfgc/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/internal/system/utils"
 )
 
 // authResourceHandler handles HTTP requests for auth resources

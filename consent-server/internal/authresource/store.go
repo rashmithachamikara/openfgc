@@ -22,10 +22,10 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/wso2/consent-management-api/internal/authresource/model"
-	dbmodel "github.com/wso2/consent-management-api/internal/system/database/model"
-	"github.com/wso2/consent-management-api/internal/system/database/provider"
-	"github.com/wso2/consent-management-api/internal/system/stores/interfaces"
+	"github.com/wso2/openfgc/internal/authresource/model"
+	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
+	"github.com/wso2/openfgc/internal/system/database/provider"
+	"github.com/wso2/openfgc/internal/system/stores/interfaces"
 )
 
 // DBQuery objects for all auth resource operations

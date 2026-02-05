@@ -9,15 +9,15 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/wso2/consent-management-api/internal/authresource/model"
-	authvalidator "github.com/wso2/consent-management-api/internal/authresource/validator"
-	consentModel "github.com/wso2/consent-management-api/internal/consent/model"
-	"github.com/wso2/consent-management-api/internal/consent/validator"
-	dbmodel "github.com/wso2/consent-management-api/internal/system/database/model"
-	"github.com/wso2/consent-management-api/internal/system/error/serviceerror"
-	"github.com/wso2/consent-management-api/internal/system/log"
-	"github.com/wso2/consent-management-api/internal/system/stores"
-	"github.com/wso2/consent-management-api/internal/system/utils"
+	"github.com/wso2/openfgc/internal/authresource/model"
+	authvalidator "github.com/wso2/openfgc/internal/authresource/validator"
+	consentModel "github.com/wso2/openfgc/internal/consent/model"
+	"github.com/wso2/openfgc/internal/consent/validator"
+	dbmodel "github.com/wso2/openfgc/internal/system/database/model"
+	"github.com/wso2/openfgc/internal/system/error/serviceerror"
+	"github.com/wso2/openfgc/internal/system/log"
+	"github.com/wso2/openfgc/internal/system/stores"
+	"github.com/wso2/openfgc/internal/system/utils"
 )
 
 // AuthResourceServiceInterface defines the contract for auth resource business operations

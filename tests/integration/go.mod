@@ -1,4 +1,4 @@
-module github.com/wso2/consent-management-api/tests/integration
+module github.com/wso2/openfgc/tests/integration
 
 go 1.21
 

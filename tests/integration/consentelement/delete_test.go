@@ -26,7 +26,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/require"
-	"github.com/wso2/consent-management-api/tests/integration/testutils"
+	"github.com/wso2/openfgc/tests/integration/testutils"
 )
 
 // ========================================

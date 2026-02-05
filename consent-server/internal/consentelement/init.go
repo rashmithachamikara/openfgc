@@ -22,8 +22,8 @@ package consentelement
 import (
 	"net/http"
 
-	"github.com/wso2/consent-management-api/internal/system/constants"
-	"github.com/wso2/consent-management-api/internal/system/stores"
+	"github.com/wso2/openfgc/internal/system/constants"
+	"github.com/wso2/openfgc/internal/system/stores"
 )
 
 // Initialize sets up the consent element module and registers routes
