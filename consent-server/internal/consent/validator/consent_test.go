@@ -49,14 +49,14 @@ func TestValidateConsentCreateRequest_MissingType(t *testing.T) {
 
 func TestValidateConsentCreateRequest_TypeTooLong(t *testing.T) {
 	req := model.ConsentAPIRequest{
-		Type: string(make([]byte, 256)),
+		Type: string(make([]byte, 65)),
 		Authorizations: []model.AuthorizationAPIRequest{
 			{Type: "accounts"},
 		},
 	}
 	err := ValidateConsentCreateRequest(req, "client-1", "org-1")
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "type cannot exceed 255 characters")
+	require.Contains(t, err.Error(), "type must be at most 64 characters")
 }
 
 func TestValidateConsentGetRequest_Success(t *testing.T) {
@@ -156,10 +156,10 @@ func TestValidateConsentUpdateRequest_NoFieldsProvided(t *testing.T) {
 }
 
 func TestValidateConsentUpdateRequest_TypeTooLong(t *testing.T) {
-	req := model.ConsentAPIUpdateRequest{Type: string(make([]byte, 256))}
+	req := model.ConsentAPIUpdateRequest{Type: string(make([]byte, 65))}
 	err := ValidateConsentUpdateRequest(req)
 	require.Error(t, err)
-	require.Contains(t, err.Error(), "type must be at most 255 characters")
+	require.Contains(t, err.Error(), "type must be at most 64 characters")
 }
 
 func TestValidateConsentUpdateRequest_NegativeValidityTime(t *testing.T) {

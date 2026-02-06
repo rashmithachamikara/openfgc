@@ -146,7 +146,6 @@ func ValidateElementType(typeVal string) error {
 
 // ConsentElementProperty represents properties for consent elements
 type ConsentElementProperty struct {
-	ID        string `db:"ID"`
 	ElementID string `db:"ELEMENT_ID"`
 	Key       string `db:"ATT_KEY"`
 	Value     string `db:"ATT_VALUE"`

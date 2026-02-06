@@ -322,18 +322,20 @@ func (service *consentElementService) UpdateElement(ctx context.Context, element
 
 	// Prepare properties if provided
 	var properties []model.ConsentElementProperty
-	if len(req.Properties) > 0 {
-		properties = make([]model.ConsentElementProperty, 0, len(req.Properties))
-		for key, value := range req.Properties {
-			prop := model.ConsentElementProperty{
-				ElementID: elementID,
-				Key:       key,
-				Value:     value,
-				OrgID:     orgID,
-			}
-			properties = append(properties, prop)
-		}
+	if req.Properties != nil {
 		element.Properties = req.Properties
+		if len(req.Properties) > 0 {
+			properties = make([]model.ConsentElementProperty, 0, len(req.Properties))
+			for key, value := range req.Properties {
+				prop := model.ConsentElementProperty{
+					ElementID: elementID,
+					Key:       key,
+					Value:     value,
+					OrgID:     orgID,
+				}
+				properties = append(properties, prop)
+			}
+		}
 	}
 
 	// Execute all updates in a transaction
@@ -342,13 +344,15 @@ func (service *consentElementService) UpdateElement(ctx context.Context, element
 			return elementStore.Update(tx, element)
 		},
 	}
-	if len(properties) > 0 {
+	if req.Properties != nil {
 		queries = append(queries, func(tx dbmodel.TxInterface) error {
 			return elementStore.DeletePropertiesByElementID(tx, elementID, orgID)
 		})
-		queries = append(queries, func(tx dbmodel.TxInterface) error {
-			return elementStore.CreateProperties(tx, properties)
-		})
+		if len(properties) > 0 {
+			queries = append(queries, func(tx dbmodel.TxInterface) error {
+				return elementStore.CreateProperties(tx, properties)
+			})
+		}
 	}
 
 	logger.Debug("Executing transaction for element update",

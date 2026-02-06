@@ -332,7 +332,6 @@ func mapToConsentElementProperty(row map[string]interface{}) *model.ConsentEleme
 	}
 
 	return &model.ConsentElementProperty{
-		ID:        getString(row, "id"),
 		ElementID: getString(row, "element_id"),
 		Key:       getString(row, "att_key"),
 		Value:     getString(row, "att_value"),

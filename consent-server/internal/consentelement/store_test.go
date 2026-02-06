@@ -224,14 +224,12 @@ func TestMapToConsentElementProperty(t *testing.T) {
 		{
 			name: "Complete property",
 			row: map[string]interface{}{
-				"id":         "prop-123",
 				"element_id": "elem-456",
 				"att_key":    "key1",
 				"att_value":  "value1",
 				"org_id":     "org-789",
 			},
 			expected: &model.ConsentElementProperty{
-				ID:        "prop-123",
 				ElementID: "elem-456",
 				Key:       "key1",
 				Value:     "value1",
@@ -241,14 +239,12 @@ func TestMapToConsentElementProperty(t *testing.T) {
 		{
 			name: "Property with byte slice values",
 			row: map[string]interface{}{
-				"id":         []byte("prop-123"),
 				"element_id": []byte("elem-456"),
 				"att_key":    []byte("key1"),
 				"att_value":  []byte("value1"),
 				"org_id":     []byte("org-789"),
 			},
 			expected: &model.ConsentElementProperty{
-				ID:        "prop-123",
 				ElementID: "elem-456",
 				Key:       "key1",
 				Value:     "value1",
@@ -264,7 +260,7 @@ func TestMapToConsentElementProperty(t *testing.T) {
 			name: "Empty row",
 			row:  map[string]interface{}{},
 			expected: &model.ConsentElementProperty{
-				ID:        "",
+
 				ElementID: "",
 				Key:       "",
 				Value:     "",
@@ -278,7 +274,6 @@ func TestMapToConsentElementProperty(t *testing.T) {
 				"att_key":    "key1",
 			},
 			expected: &model.ConsentElementProperty{
-				ID:        "",
 				ElementID: "elem-456",
 				Key:       "key1",
 				Value:     "",
@@ -295,7 +290,6 @@ func TestMapToConsentElementProperty(t *testing.T) {
 				require.Nil(t, result)
 			} else {
 				require.NotNil(t, result)
-				require.Equal(t, tc.expected.ID, result.ID)
 				require.Equal(t, tc.expected.ElementID, result.ElementID)
 				require.Equal(t, tc.expected.Key, result.Key)
 				require.Equal(t, tc.expected.Value, result.Value)
