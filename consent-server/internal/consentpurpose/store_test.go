@@ -186,7 +186,7 @@ func TestBuildListPurposesQuery(t *testing.T) {
 			purposeName:       "Test Purpose",
 			clientIDs:         nil,
 			elementNames:      nil,
-			expectedQueryPart: "AND NAME = ?",
+			expectedQueryPart: "AND NAME LIKE ?",
 			expectedArgsCount: 2,
 		},
 		{
@@ -231,7 +231,7 @@ func TestBuildListPurposesQuery(t *testing.T) {
 			purposeName:       "Test Purpose",
 			clientIDs:         []string{"client-1", "client-2"},
 			elementNames:      []string{"element-1"},
-			expectedQueryPart: "AND NAME = ?",
+			expectedQueryPart: "AND NAME LIKE ?",
 			expectedArgsCount: 5,
 		},
 	}
@@ -258,10 +258,11 @@ func TestBuildListPurposesQuery(t *testing.T) {
 			require.Equal(t, tc.orgID, args[0])
 			require.Equal(t, tc.orgID, countArgs[0])
 
-			// Verify name filter if provided
+			// Verify name filter if provided (with wildcards for LIKE query)
 			if tc.purposeName != "" {
-				require.Contains(t, args, tc.purposeName)
-				require.Contains(t, countArgs, tc.purposeName)
+				expectedPattern := "%" + tc.purposeName + "%"
+				require.Contains(t, args, expectedPattern)
+				require.Contains(t, countArgs, expectedPattern)
 			}
 
 			// Verify client IDs if provided
