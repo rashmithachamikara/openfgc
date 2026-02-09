@@ -20,24 +20,17 @@ OpenFGC provides the Open Fine-Grained Consent API for managing consent elements
 ### 1. Consent Element
 The Consent Element is the most granular unit of data or specific activity being consented to.
 
-- **Definition**: A specific attribute or data point (e.g., an email address) or a specific processing action (e.g., sharing with third parties).
-- **Attributes**: Includes a unique technical name, a user-friendly label, and a description that explains exactly what the data is.
-- **Examples**: primary_phone_number, behavioral_analytics_tracking, third_party_marketing_share.
+- **Definition**: The most granular unit—a specific data point (e.g., email address) or processing action (e.g., sharing with third parties).
 
 ### 2. Consent Purpose
 The Consent Purpose provides the context and legal justification for the collection.
 
-- **Definition**: A logical grouping of Consent Elements organized under a single, transparent objective.
-- **Role**: It answers the “Why.” Instead of overwhelming users with individual data points, you present the overarching reason for the request.
-- **Relationship**: One or more Elements are mapped to a Purpose. A single Element can be part of multiple Purposes if it serves different objectives.
-- **Example**: Purpose: “Service Notifications” — Elements: mobile_number (for SMS) and email_address.
+- **Definition**: A logical grouping of elements under a single objective. Instead of asking users about each data point, you present the reason for the request (e.g., "Marketing Communications" includes email and phone).
 
 ### 3. Consent (The Record)
 The Consent is the immutable evidence of a user’s decision regarding specific Purposes.
 
-- **Definition**: The authoritative record (or “receipt”) of the explicit agreement provided by a user.
-- **Function**: It tracks the “Who, What, When, and How.” It links a unique user identifier to the specific Purposes and Elements they accepted, including the version of the privacy policy at the time of signing.
-- **Status**: It manages the lifecycle of the agreement, tracking whether consent is currently Active, Withdrawn, or Expired.
+- **Definition**: The record of a user's decision. Tracks who approved what, when, and maintains the full status lifecycle (Created → Active → Expired/Revoked) with audit trail.
 
 ## Technology Stack
 

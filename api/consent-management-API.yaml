@@ -7,19 +7,9 @@ info:
 
     **Key Concepts:**
 
-    - **Consent Element**: A specific attribute or data point (e.g., an email address) or a specific processing action (e.g., sharing with third parties).
-      Includes a unique technical name, a user-friendly label, and a description that explains exactly what the data is.
-      Examples: primary_phone_number, behavioral_analytics_tracking, third_party_marketing_share.
-
-    - **Consent Purpose**: A logical grouping of Consent Elements organized under a single, transparent objective.
-      It answers the "Why." Instead of overwhelming users with individual data points, you present the overarching reason for the request.
-      One or more Elements are mapped to a Purpose. A single Element can be part of multiple Purposes if it serves different objectives.
-      Example: Purpose "Service Notifications" — Elements: mobile_number (for SMS) and email_address.
-
-    - **Consent**: The authoritative record (or "receipt") of the explicit agreement provided by a user.
-      It tracks the "Who, What, When, and How." It links a unique user identifier to the specific Purposes and Elements they accepted,
-      including the version of the privacy policy at the time of signing. It manages the lifecycle of the agreement,
-      tracking whether consent is currently Active, Withdrawn, or Expired.
+    - **Consent Element**: The most granular unit—a specific data point (e.g., email address) or processing action (e.g., sharing with third parties).
+    - **Consent Purpose**: A logical grouping of elements under a single objective. Instead of asking users about each data point, you present the reason for the request (e.g., "Marketing Communications" includes email and phone).
+    - **Consent**: The record of a user's decision. Tracks who approved what, when, and maintains the full status lifecycle (Created → Active → Expired/Revoked) with audit trail.
   contact:
     name: WSO2
     url: 'https://wso2.com/solutions/financial-services/'
@@ -38,11 +28,11 @@ servers:
         description: Port number for the Consent Management server.
 tags:
   - name: Consent Elements
-    description: Manage the granular units of consent - specific data attributes or processing actions that users consent to.
-  - name: Consent Purpose
-    description: Manage logical groupings of elements that represent the context and reason for consent collection.
+    description: Manage Consent Elements
+  - name: Consent Purposes
+    description: Manage Consent Purposes
   - name: Consent
-    description: Manage consent records - authoritative receipts of user agreements linking users to approved purposes and elements.
+    description: Manage Consents
 paths:
   /consents:
     post:

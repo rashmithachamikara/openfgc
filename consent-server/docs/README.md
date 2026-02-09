@@ -72,7 +72,7 @@ Cross-Cutting: Middleware, Config, Health Check, Error Handling
 The system manages four core entities:
 
 ### 1. Consent Element
-**What it is**: The smallest unit of consent - a specific piece of data or action
+**What it is**: The most granular unit—a specific data point (e.g., email address) or processing action (e.g., sharing with third parties).
 
 **Purpose**: Represents individual items that users can consent to, such as:
 - Personal data fields (email, phone, address)
@@ -87,7 +87,7 @@ The system manages four core entities:
 **Database**: `CONSENT_ELEMENT` table
 
 ### 2. Consent Purpose
-**What it is**: A logical grouping of consent elements with a specific context
+**What it is**: A logical grouping of elements under a single objective. Instead of asking users about each data point, you present the reason for the request (e.g., "Marketing Communications" includes email and phone).
 
 **Purpose**: Groups related elements together under a meaningful purpose, such as:
 - "Marketing Communications" (email + phone + name)
@@ -102,7 +102,7 @@ The system manages four core entities:
 **Database**: `CONSENT_PURPOSE` + `PURPOSE_ELEMENT_MAPPING` tables
 
 ### 3. Consent
-**What it is**: The authoritative record of a user's consent decision
+**What it is**: The record of a user's decision. Tracks who approved what, when, and maintains the full status lifecycle (Created → Active → Expired/Revoked) with audit trail.
 
 **Purpose**: Tracks the user's agreement or rejection of specific purposes
 
