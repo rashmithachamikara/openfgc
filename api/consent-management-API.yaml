@@ -7,17 +7,9 @@ info:
 
     **Key Concepts:**
 
-    - **Consent Elements**: A single, reference data element for which user consent is requested.
-      Each consent element has a unique name and can be configured with name, description, properties, and a type.
-      Examples: email, mobile
-
-    - **Consent Purpose**: A logical grouping of related consent elements that represents a specific reason for requesting consent.
-      Consent purposes help organize multiple consent elements to enable clear and streamlined consent collection.
-      A consent can be associated with one or more, consent purposes.
-
-    - **Consent**: A Consent represents the explicit approval given by a user for each one or more consent purposes.
-      Each consent purpose contains a set of consent elements that specify exactly what data the user is agreeing to share.
-      A consent serves as the authoritative record of the approved consent purposes and their associated consent elements.
+    - **Consent Element**: The most granular unit—a specific data point (e.g., email address) or processing action (e.g., sharing with third parties).
+    - **Consent Purpose**: A logical grouping of elements under a single objective. Instead of asking users about each data point, you present the reason for the request (e.g., "Marketing Communications" includes email and phone).
+    - **Consent**: The record of a user's decision. Tracks who approved what, when, and maintains the full status lifecycle (Created → Active → Expired/Revoked) with audit trail.
   contact:
     name: WSO2
     url: 'https://wso2.com/solutions/financial-services/'
@@ -36,11 +28,11 @@ servers:
         description: Port number for the Consent Management server.
 tags:
   - name: Consent Elements
-    description: Manage element definitions (reference data for categorizing consents). Elements can be created, retrieved, updated, deleted, and validated.
-  - name: Consent Purpose
-    description: Manage consent purposes. Purposes allow organizing related elements together with mandatory/optional flags for streamlined consent collection.
+    description: Manage Consent Elements
+  - name: Consent Purposes
+    description: Manage Consent Purposes
   - name: Consent
-    description: Provides RESTful endpoints to handle the full lifecycle of consent resources and their associated authorizations. Supports operations such as initiation, retrieval, update, and revocation.
+    description: Manage Consents
 paths:
   /consents:
     post:
@@ -782,11 +774,6 @@ paths:
         - **json-payload**: Requires `validationSchema` property
         - **resource-field**: Requires both `resourcePath` and `jsonPath` properties
 
-        **Transactional Behavior:**
-        Batch creation is atomic - either all elements in the request are created successfully, or none
-        are created. If any validation fails (e.g., duplicate name, invalid type, missing required attribute),
-        the entire batch is rolled back and no elements are persisted to the database.
-
         **Validation Rules:**
         - Name is required and must not exceed 255 characters
         - Name must be unique within the organization (checked against existing elements and within the batch)
@@ -795,7 +782,7 @@ paths:
         - Description is optional but must not exceed 1024 characters if provided
         - At least one element must be provided in the request array
         - Duplicate names within the same batch are not allowed
-      operationId: createConsentPurposes
+      operationId: createConsentElements
       tags:
         - Consent Elements
       parameters:
@@ -815,7 +802,7 @@ paths:
               type: array
               minItems: 1
               items:
-                $ref: "#/components/schemas/ConsentPurposeCreateRequest"
+                $ref: "#/components/schemas/ConsentElementCreateRequest"
             examples:
               stringType:
                 summary: Basic type with optional properties
@@ -882,7 +869,7 @@ paths:
                   data:
                     type: array
                     items:
-                      $ref: "#/components/schemas/ConsentPurposeResponse"
+                      $ref: "#/components/schemas/ConsentElementResponse"
                   message:
                     type: string
                     example: "Consent elements created successfully"
@@ -1042,7 +1029,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ConsentPurposeListResponse"
+                $ref: "#/components/schemas/ConsentElementListResponse"
               example:
                 data:
                   - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
@@ -1229,7 +1216,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ConsentPurposeResponse"
+                $ref: "#/components/schemas/ConsentElementResponse"
               example:
                 id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 name: "first_name"
@@ -1309,7 +1296,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/ConsentPurposeUpdateRequest"
+              $ref: "#/components/schemas/ConsentElementUpdateRequest"
             examples:
               updateToString:
                 summary: Update to basic type (no mandatory properties)
@@ -1350,7 +1337,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ConsentPurposeResponse"
+                $ref: "#/components/schemas/ConsentElementResponse"
               examples:
                 stringType:
                   summary: Updated to basic type
@@ -1518,7 +1505,7 @@ paths:
         The `isMandatory` flag on each element indicates whether that element must be
         approved for the consent to be valid. This provides fine-grained control over
         which elements are essential vs. optional within the purpose.
-      operationId: createPurposeGroup
+      operationId: createPurpose
       tags:
         - Consent Purpose
       parameters:
@@ -1542,7 +1529,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PurposeGroupCreateRequest"
+              $ref: "#/components/schemas/PurposeCreateRequest"
             examples:
               marketingPurpose:
                 summary: Marketing communication preferences purpose
@@ -1574,7 +1561,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PurposeGroupResponse"
+                $ref: "#/components/schemas/PurposeResponse"
               examples:
                 marketingPurpose:
                   summary: Marketing purpose created
@@ -1653,7 +1640,7 @@ paths:
         Retrieves a paginated list of all consent purposes for the specified organization.
 
         **Filtering Options:**
-        - **name**: Filter by exact purpose name match
+        - **name**: Filter by purpose name (partial match, case-insensitive LIKE search)
         - **elementNames**: Comma-separated element names - returns purposes containing ALL specified elements
         - **clientIds**: Filter by client IDs to get purposes bound to specific clients
 
@@ -1663,7 +1650,7 @@ paths:
         satisfy a specific set of consent requirements.
 
         Results are sorted by creation time (newest first) and support pagination via limit/offset.
-      operationId: listPurposeGroups
+      operationId: listPurposes
       tags:
         - Consent Purpose
       parameters:
@@ -1730,7 +1717,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PurposeGroupListResponse"
+                $ref: "#/components/schemas/PurposeListResponse"
               examples:
                 withPurposes:
                   summary: Multiple purposes returned
@@ -1816,7 +1803,7 @@ paths:
 
         Returns complete purpose details including all associated elements with their
         mandatory flags.
-      operationId: getPurposeGroupById
+      operationId: getPurposeById
       tags:
         - Consent Purpose
       parameters:
@@ -1840,7 +1827,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PurposeGroupResponse"
+                $ref: "#/components/schemas/PurposeResponse"
               example:
                 id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 name: "marketing_communication_preferences_purpose"
@@ -1913,7 +1900,7 @@ paths:
 
         **Note:** This operation replaces the entire elements list - any elements not
         included in the update will be removed from the purpose.
-      operationId: updatePurposeGroup
+      operationId: updatePurpose
       tags:
         - Consent Purpose
       parameters:
@@ -1944,7 +1931,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: "#/components/schemas/PurposeGroupUpdateRequest"
+              $ref: "#/components/schemas/PurposeUpdateRequest"
             examples:
               updateDescription:
                 summary: Update purpose description and elements
@@ -1978,7 +1965,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PurposeGroupResponse"
+                $ref: "#/components/schemas/PurposeResponse"
               example:
                 id: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 name: "marketing_communication_preferences_purpose"
@@ -2062,7 +2049,7 @@ paths:
         Deleting a purpose only removes the purpose definition itself. It does NOT delete
         the individual consent elements that were part of the purpose - those remain available
         for use in other purposes or directly in consents.
-      operationId: deletePurposeGroup
+      operationId: deletePurpose
       tags:
         - Consent Purpose
       parameters:
@@ -2456,6 +2443,7 @@ components:
         The API always clears existing element mappings and creates new ones from the request.
       required:
         - purposes
+        - type
       properties:
         type:
           description: The type of consent (e.g., 'accounts', 'payments', 'marketing').
@@ -2958,7 +2946,6 @@ components:
       description: Request payload for validating a consent for a specific action.
       required:
         - consentId
-        - resourceParams
       properties:
         consentId:
           description: The unique identifier of the consent to validate.
@@ -3101,7 +3088,7 @@ components:
             - name: Element identifier
             - value: User-provided value for this element (if any)
             - isUserApproved: Whether the user has approved this element (boolean, default false)
-            - isMandatory: Whether this element is mandatory (boolean, default true)
+            - isMandatory: Whether this element is mandatory (boolean) - indicates if approval is required
             - type: Element type from definition (basic, json-payload, or resource-field)
             - description: Element description from definition
             - properties: Element properties from definition (e.g., validationSchema, resourcePath, jsonPath)
@@ -3120,6 +3107,10 @@ components:
                     - $ref: "#/components/schemas/ConsentElementApprovalItem"
                     - type: object
                       properties:
+                        isMandatory:
+                          type: boolean
+                          description: Whether this element is mandatory for the consent (from purpose definition)
+                          example: true
                         type:
                           type: string
                           enum: [basic, json-payload, resource-field]
@@ -3181,7 +3172,7 @@ components:
         - status
         - createdTime
         - updatedTime
-        - purposeGroups
+        - purposes
     ConsentIdsResponse:
       type: object
       description: Response payload containing consent IDs matching the attribute search criteria.
@@ -3198,12 +3189,11 @@ components:
           example: 3
     ConsentAttributeSearchResponse:
       $ref: "#/components/schemas/ConsentIdsResponse"
-    ConsentPurposeCreateRequest:
+    ConsentElementCreateRequest:
       type: object
       required:
         - name
         - type
-        - properties
       description: |
         Request object for creating a consent element. All fields marked as required must be provided.
 
@@ -3214,9 +3204,9 @@ components:
         - **resource-field**: Requires both `resourcePath` and `jsonPath` properties
 
         **Batch Creation:**
-        When creating multiple purposes in a batch:
-        - Each purpose name must be unique within the batch
-        - Each purpose name must not already exist in the organization
+        When creating multiple elements in a batch:
+        - Each element name must be unique within the batch
+        - Each element name must not already exist in the organization
         - If any validation fails, the entire batch is rolled back (atomic operation)
       properties:
         name:
@@ -3255,12 +3245,11 @@ components:
             - **resource-field**: Must have `resourcePath` and `jsonPath`, optionally `validationSchema`
           example:
             value: "license:read"
-    ConsentPurposeUpdateRequest:
+    ConsentElementUpdateRequest:
       type: object
       required:
         - name
         - type
-        - properties
       properties:
         name:
           type: string
@@ -3296,7 +3285,7 @@ components:
           example:
             value: "license:read:v2"
       description: All fields except description are required - partial updates are not supported
-    ConsentPurposeResponse:
+    ConsentElementResponse:
       type: object
       properties:
         id:
@@ -3338,7 +3327,7 @@ components:
         - id
         - name
         - type
-    ConsentPurposeListResponse:
+    ConsentElementListResponse:
       type: object
       description: The response from a successful consent element list/search query.
       properties:
@@ -3346,17 +3335,17 @@ components:
           type: array
           description: Array of consent elements matching the search criteria
           items:
-            $ref: "#/components/schemas/ConsentPurposeResponse"
+            $ref: "#/components/schemas/ConsentElementResponse"
         metadata:
           $ref: "#/components/schemas/ConsentSearchMetadata"
       required:
         - data
         - metadata
-    PurposeGroupCreateRequest:
+    PurposeCreateRequest:
       type: object
       required:
         - name
-        - purposes
+        - elements
       description: |
         Request object for creating a consent element.
 
@@ -3381,24 +3370,24 @@ components:
           maxLength: 1024
           description: Optional description providing additional context about the purpose
           example: "User preferences related to marketing communications"
-        purposes:
+        elements:
           type: array
           minItems: 1
           description: |
-            Array of purpose references with mandatory flags. Each purpose must already exist
-            in the organization's consent elements. At least one purpose is required.
+            Array of element references with mandatory flags. Each element must already exist
+            in the organization's consent elements. At least one element is required.
           items:
-            $ref: "#/components/schemas/PurposeGroupPurposeItem"
+            $ref: "#/components/schemas/PurposeElementItem"
           example:
-            - purposeName: "user_email"
+            - name: "user_email"
               isMandatory: true
-            - purposeName: "user_phone"
+            - name: "user_phone"
               isMandatory: false
-    PurposeGroupUpdateRequest:
+    PurposeUpdateRequest:
       type: object
       required:
         - name
-        - purposes
+        - elements
       description: |
         Request object for updating a consent element. This is a full replacement
         operation - all required fields must be provided.
@@ -3418,65 +3407,65 @@ components:
           maxLength: 1024
           description: Optional description for the purpose
           example: "Updated preferences for all marketing communications"
-        purposes:
+        elements:
           type: array
           minItems: 1
           description: |
-            Complete array of purpose references with mandatory flags. This replaces
-            all existing purposes in the group. At least one purpose is required.
+            Complete array of element references with mandatory flags. This replaces
+            all existing elements in the purpose. At least one element is required.
           items:
-            $ref: "#/components/schemas/PurposeGroupPurposeItem"
+            $ref: "#/components/schemas/PurposeElementItem"
           example:
-            - purposeName: "user_email"
+            - name: "user_email"
               isMandatory: true
-            - purposeName: "user_phone"
+            - name: "user_phone"
               isMandatory: true
-            - purposeName: "user_sms"
+            - name: "user_sms"
               isMandatory: false
-    PurposeGroupPurposeItem:
+    PurposeElementItem:
       type: object
       required:
-        - purposeName
+        - name
         - isMandatory
       description: |
-        Represents a single purpose within a purpose, including whether it is
+        Represents a single element within a purpose, including whether it is
         mandatory for the consent to be valid.
 
-        **Purpose Name Validation:**
-        The `purposeName` must reference an existing consent element in the organization.
-        If the purpose doesn't exist, the API will return a 400 Bad Request error.
+        **Element Name Validation:**
+        The `name` must reference an existing consent element in the organization.
+        If the element doesn't exist, the API will return a 400 Bad Request error.
       properties:
-        purposeName:
+        name:
           type: string
           description: |
-            The name of an existing consent element to include in this group.
-            Must match the name of a purpose that has been previously created in the organization.
+            The name of an existing consent element to include in this purpose.
+            Must match the name of an element that has been previously created in the organization.
           example: "user_email"
         isMandatory:
           type: boolean
           description: |
-            Indicates whether this purpose must be approved for consents using this group.
+            Indicates whether this element must be approved for consents using this purpose.
 
-            - `true`: This purpose is required - user must approve it
-            - `false`: This purpose is optional - user can choose to approve or decline
+            - `true`: This element is required - user must approve it
+            - `false`: This element is optional - user can choose to approve or decline
 
-            This flag allows fine-grained control over which purposes are essential vs.
-            optional within the logical grouping.
+            This flag allows fine-grained control over which elements are essential vs.
+            optional within the purpose.
           example: true
-    PurposeGroupResponse:
+    PurposeResponse:
       type: object
       required:
         - id
         - name
-        - purposes
+        - elements
         - createdTime
         - updatedTime
       description: Response object containing complete purpose information
       properties:
         id:
           type: string
-          description: Unique identifier for the purpose (UUID with GROUP- prefix)
-          example: "GROUP-a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+          description: Unique identifier for the purpose (UUID)
+          example: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
         name:
           type: string
           description: The name/identifier of the purpose
@@ -3489,17 +3478,17 @@ components:
           type: string
           description: The client ID of the Third-Party Provider (TPP) that created this purpose
           example: "TPP-CLIENT-001"
-        purposes:
+        elements:
           type: array
-          description: Array of purposes included in this group with their mandatory flags
+          description: Array of elements included in this purpose with their mandatory flags
           items:
-            $ref: "#/components/schemas/PurposeGroupPurposeItem"
+            $ref: "#/components/schemas/PurposeElementItem"
           example:
-            - purposeName: "user_email"
+            - name: "user_email"
               isMandatory: true
-            - purposeName: "user_phone"
+            - name: "user_phone"
               isMandatory: false
-            - purposeName: "user_address"
+            - name: "user_address"
               isMandatory: false
         createdTime:
           type: integer
@@ -3511,7 +3500,7 @@ components:
           format: int64
           description: Unix timestamp (seconds) when the purpose was last updated
           example: 1704153600
-    PurposeGroupListResponse:
+    PurposeListResponse:
       type: object
       required:
         - data
@@ -3522,7 +3511,7 @@ components:
           type: array
           description: Array of purposes matching the search criteria
           items:
-            $ref: "#/components/schemas/PurposeGroupResponse"
+            $ref: "#/components/schemas/PurposeResponse"
         metadata:
           $ref: "#/components/schemas/ConsentSearchMetadata"
   securitySchemes:

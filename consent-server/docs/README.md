@@ -1,149 +1,165 @@
 
-# Consent Management API — Project Summary
+# OpenFGC Architecture Documentation
 
-This repository contains the Consent Management service (Go + Gin) and a suite of integration tests that exercise consent create/read/update/delete, authorization status transitions, and validation logic.
+This document provides an overview of the OpenFGC (Open Fine-Grained Consent) architecture for developers.
 
-**Purpose of this doc**: give a concise overview of the project, where to find important pieces, how to run the service/tests locally, and the recent status-transition bug fix summary.
+## Architecture Overview
 
-## Project Overview
-- Language: Go
-- Web framework: Gin
-- Testing: Go `testing` + `testify` (integration tests under `integration-tests/api`)
-- Database: MySQL (DB schema in `dbscripts/db_schema_mysql.sql`)
+OpenFGC follows a **layered architecture** with clear separation of concerns:
 
-## Important Directories
-- `cmd/server` — service entrypoint
-- `internal/handlers` — HTTP handlers for consent APIs
-- `internal/service` — business logic and orchestration
-- `internal/dao` — database access objects
-- `internal/models` — API/DB models and constants
-- `integration-tests/api` — integration tests for different endpoints (consents, purposes, etc.)
-- `dbscripts` — SQL schema and helper scripts
+```text
+┌─────────────────────────────────────────────────────────────────┐
+│                         HTTP Layer                              │
+│                   (Handlers - Routing & Validation)             │
+│                                                                 │
+│    Consent  │  Purpose  │  Element  │  Auth Resource           │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                      Service Layer                               │
+│              (Business Logic & Orchestration)                    │
+│                                                                 │
+│    Consent  │  Purpose  │  Element  │  Auth Resource           │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                       Store Layer                                │
+│                      (Data Access)                               │
+│                                                                 │
+│    Consent  │  Purpose  │  Element  │  Auth Resource           │
+└─────────────────────────────────────────────────────────────────┘
+                              ↓
+┌─────────────────────────────────────────────────────────────────┐
+│                       Database Layer                             │
+│                         MySQL 8.0+                               │
+│                                                                 │
+│  CONSENT  │  CONSENT_PURPOSE  │  CONSENT_ELEMENT  │  AUTH_RESOURCE │
+└─────────────────────────────────────────────────────────────────┘
 
-## Recent Bug Fix (Status Transition)
-Issue: When a consent had a non-ACTIVE status (for example `REVOKED` or `REJECTED`) and its `validityTime` passed, calling GET/PUT/VALIDATE incorrectly transitioned the consent to `EXPIRED`.
-
-Fix: expiry checks now only apply to consents in the `ACTIVE` state. The GET (read), PUT (update), and POST (validate) handlers were updated to use the `IsActiveStatus()` check before applying expiration logic. This preserves terminal states like `REVOKED` and `REJECTED`.
-
-Files changed: handler logic updates in `internal/handlers/consent_handler.go`.
-
-Tests: status transition tests were added/updated and moved into existing test files for clarity (see Test organization below).
-
-## Test Organization (where to find the status tests)
-- `integration-tests/api/consent/consent_revoke_test.go`
-  - `TestRevokedConsentDoesNotBecomeExpired` — creates an ACTIVE consent, revokes it, updates its validity to a past time, and verifies GET does not change the status from `REVOKED` to `EXPIRED`.
-- `integration-tests/api/consent/read_test.go`
-  - `TestRejectedConsentDoesNotBecomeExpired` — verifies `REJECTED` consents remain `REJECTED` on GET even if validity has passed.
-  - `TestActiveConsentStillBecomesExpired` — verifies ACTIVE consents still become `EXPIRED` when validity has passed.
-
-Note: `integration-tests/api/consent/status_transition_test.go` was removed after migrating its tests into the appropriate files.
-
-## Running Locally
-
-Prerequisites
-- Go >= 1.21
-- MySQL database (set up using `dbscripts/db_schema_mysql.sql`)
-
-Environment
-- Set `org-id` and `client-id` headers when making requests in tests; the tests set `TEST_ORG` / `TEST_CLIENT` by default.
-
-### Quick Start
-
-```bash
-# Build the server
-./build.sh build
-
-# Start the server normally
-./start.sh
-
-# Or start in debug mode for development
-./start.sh --debug
+Cross-Cutting: Middleware, Config, Health Check, Error Handling
 ```
 
-### Build & Run Commands
+## Layer Responsibilities
 
-```bash
-# Build for current platform
-./build.sh build
+### 1. Handler Layer
+**What it does**: Handles incoming HTTP requests and returns responses
 
-# Build for specific platform
-./build.sh build linux amd64
+- Receives API calls from clients
+- Extracts request data (headers, parameters, body)
+- Calls the appropriate service method
+- Formats responses and error messages
+- Sets HTTP status codes
 
-# Create distribution package
-./build.sh package
+### 2. Service Layer
+**What it does**: Implements business rules and coordinates operations
 
-# Run tests
-./build.sh test_unit           # Unit tests
-./build.sh test_integration    # Integration tests
-./build.sh test                # All tests
+- Validates business logic constraints
+- Coordinates multiple database operations
+- Manages database transactions
+- Handles status calculations and transitions
+- Returns structured errors
 
-# Clean build artifacts
-./build.sh clean
-```
+### 3. Store Layer
+**What it does**: Interacts directly with the database
 
-### Start Script Options
+- Executes SQL queries or provide queries.
+- Maps database results to application objects
+- Handles filtering and pagination
+- No business logic - pure database access
 
-```bash
-# Normal start
-./start.sh
+## Domain Models
 
-# Debug mode (with Delve remote debugger)
-./start.sh --debug
+The system manages four core entities:
 
-# Custom ports
-./start.sh --port 9090 --debug-port 3456
+### 1. Consent Element
+**What it is**: The most granular unit—a specific data point (e.g., email address) or processing action (e.g., sharing with third parties).
 
-# Help
-./start.sh --help
-```
+**Purpose**: Represents individual items that users can consent to, such as:
+- Personal data fields (email, phone, address)
+- Processing activities (marketing, analytics)
+- Access permissions (account access, transaction history)
 
-Run integration tests (consent-specific)
+**Types**:
+- **basic**: Simple consent items without additional structure
+- **json-payload**: Elements with structured data (requires validation schema)
+- **resource-field**: Elements tied to specific resource paths (requires resource path and JSON path)
 
-```bash
-cd /Users/hasithan/Projects/go/consent-mgt-v1
-# Run consent integration tests (no cache)
-go test -v ./integration-tests/api/consent -count=1
-```
+**Database**: `CONSENT_ELEMENT` table
 
-Run all integration tests
+### 2. Consent Purpose
+**What it is**: A logical grouping of elements under a single objective. Instead of asking users about each data point, you present the reason for the request (e.g., "Marketing Communications" includes email and phone).
 
-```bash
-# Using build script (recommended)
-./build.sh test_integration
+**Purpose**: Groups related elements together under a meaningful purpose, such as:
+- "Marketing Communications" (email + phone + name)
+- "Account Management" (profile access + transaction history)
+- "Analytics" (usage data + location)
 
-# Or directly
-go test -v ./integration-tests/... -count=1
-```
+**Key Features**:
+- Links multiple elements together
+- Each element can be marked as mandatory or optional
+- Scoped to specific clients within an organization
 
-Run unit tests (package-level)
+**Database**: `CONSENT_PURPOSE` + `PURPOSE_ELEMENT_MAPPING` tables
 
-```bash
-# Using build script
-./build.sh test_unit
+### 3. Consent
+**What it is**: The record of a user's decision. Tracks who approved what, when, and maintains the full status lifecycle (Created → Active → Expired/Revoked) with audit trail.
 
-# Or directly
-go test ./... -run TestName -count=1
-```
+**Purpose**: Tracks the user's agreement or rejection of specific purposes
 
-Database setup (quick)
+**Status Lifecycle**:
+- **CREATED**: Consent created, awaiting authorization
+- **ACTIVE**: User has authorized the consent
+- **REJECTED**: User has rejected the consent
+- **REVOKED**: User has withdrawn a previously given consent
+- **EXPIRED**: Active consent has passed its validity period
 
-1. Create a MySQL database (example name `consent_mgt_dev`).
-2. Import schema:
+**Key Features**:
+- Links to one or more purposes
+- Tracks user approvals/rejections for each element
+- Manages validity periods and expiration
+- Supports recurring consent patterns
 
-```bash
-mysql -u root -p consent_mgt_dev < dbscripts/db_schema_mysql.sql
-```
+**Database**: `CONSENT` + `CONSENT_PURPOSE_MAPPING` + `CONSENT_ELEMENT_APPROVAL` tables
 
-Adjust connection settings in `bin/repository/conf/deployment.yaml` or set `CONFIG_PATH` environment variable.
+### 4. Authorization Resource
+**What it is**: Represents a user's authorization decision for consent
 
-## Contributing / Review Notes
-- Place tests in files that reflect the operation under test (create/revoke/read/update).
-- Keep tests focused; if a test spans multiple flows (create→revoke→update→read) put it in the file matching the flow's primary operation — e.g., revoke tests in `consent_revoke_test.go`.
-- Include `defer CleanupTestData(...)` where appropriate to avoid leaking test data.
+**Purpose**: Captures the actual user authorization event and associated resources
 
-## Changelog / Next Steps
-- I can prepare a concise changelog entry and/or a PR description summarizing the handler fix and test reorganization if you'd like.
+**Key Features**:
+- Links to a specific consent
+- Tracks authorization status (CREATED, APPROVED, REJECTED, REVOKED)
+- Stores authorized resources (accounts, transactions, etc.) as flexible JSON
+- Connects user identity to consent
 
-## Contact
-- Ping the maintainer or open an issue/PR in this repository for follow-up work.
+**Status Impact**: The authorization status drives the consent status:
+- Authorization APPROVED → Consent becomes ACTIVE
+- Authorization REJECTED → Consent becomes REJECTED
+- Authorization REVOKED → Consent becomes REVOKED
 
+**Database**: `AUTH_RESOURCE` table
+
+## Key Design Principles
+
+### 1. Status Derivation
+**Why**: Consent status is automatically synchronized with authorization decisions
+
+The system automatically updates consent status based on authorization events:
+- When user authorizes → Consent becomes ACTIVE
+- When user rejects → Consent becomes REJECTED  
+- When user revokes → Consent becomes REVOKED
+- When validity expires (only for ACTIVE) → Consent becomes EXPIRED
+
+**Important**: Terminal statuses (REJECTED, REVOKED) never change to EXPIRED, even if validity passes.
+
+### 2. Type-Specific Validation
+**Why**: Different element types have different requirements
+
+- **basic**: No special requirements
+- **json-payload**: Requires a validation schema to validate structured data
+- **resource-field**: Requires resource path and JSON path to locate data in external resources
+
+### 3. Multi-Tenancy
+**Why**: Isolate data between different organizations and clients
+
+All entities are scoped by organization ID. Additionally, purposes are scoped by client ID to allow different clients within the same organization to define their own consent purposes.

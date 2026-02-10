@@ -10,7 +10,7 @@ database:
     type: mysql
     hostname: localhost
     port: 3306
-    database: A_consent_mgt_integration_test
+    database: consent_mgt_integration_test
     max_open_conns: 25
     max_idle_conns: 5
     conn_max_lifetime: 5m
