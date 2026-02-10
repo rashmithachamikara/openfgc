@@ -125,19 +125,27 @@ Build artifacts are created in `target/server/`:
 Update configuration file at `target/server/repository/conf/deployment.yaml`:
 
 ```yaml
-server:
-  port: 3000
-  host: "0.0.0.0"
+    server:
+      hostname: localhost
+      port: 3000
+      readTimeout: 30s
+      writeTimeout: 30s
+      idleTimeout: 120s
 
-database:
-  host: "localhost"
-  port: 3306
-  username: "root"
-  password: "your_password"
-  database: "consent_mgt"
-  max_open_connections: 25
-  max_idle_connections: 10
-  connection_max_lifetime_minutes: 5
+    database:
+      consent:
+        type: mysql
+        hostname: localhost
+        port: 3306
+        database: consent_mgt
+        max_open_conns: 25
+        max_idle_conns: 5
+        conn_max_lifetime: 5m
+        user: root
+        password: password
+
+    logging:
+      level: info
 ```
 
 

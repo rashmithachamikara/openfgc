@@ -60,8 +60,6 @@ func initializeConfiguration(logger *log.Logger) *config.Config {
 		logger.Fatal("Failed to load configuration", log.Error(err))
 	}
 
-	logger.Info("Configuration loaded successfully", log.String("config_path", configPath))
-
 	// Update log level from configuration
 	if cfg.Logging.Level != "" {
 		if err := log.SetLogLevel(cfg.Logging.Level); err != nil {
@@ -110,12 +108,11 @@ func setupHTTPServer(cfg *config.Config, logger *log.Logger) *http.Server {
 
 // startServer starts the HTTP server in a goroutine
 func startServer(server *http.Server, cfg *config.Config, logger *log.Logger) {
-	go func() {
-		logger.Info("Starting HTTP server...",
-			log.String("hostname", cfg.Server.Hostname),
-			log.Int("port", cfg.Server.Port),
-			log.String("addr", server.Addr))
+	logger.Info("Starting HTTP server...",
+		log.String("hostname", cfg.Server.Hostname),
+		log.Int("port", cfg.Server.Port))
 
+	go func() {
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			logger.Fatal("Failed to start server", log.Error(err))
 		}

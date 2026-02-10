@@ -179,10 +179,11 @@ cleanup() {
     if [ "$DEBUG_MODE" = "true" ]; then
         pkill -f "dlv exec.*$BINARY_NAME" 2>/dev/null || true
     fi
+    exit 0
 }
 
-# Cleanup on Ctrl+C and script exit
-trap cleanup SIGINT SIGTERM EXIT
+# Cleanup on Ctrl+C (EXIT removed to prevent double cleanup)
+trap cleanup SIGINT SIGTERM
 
 # Status
 echo "🚀 Server running (PID: $SERVER_PID)"
