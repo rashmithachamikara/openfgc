@@ -1513,12 +1513,12 @@ func (s *consentService) getResolvedConsentPurposes(
 	return purposes, nil
 }
 
-// validateNoDuplicatePurposesAcrossPurposes ensures no element appears in multiple purposes.
+// validateNoDuplicateElementsAcrossPurposes ensures no element appears in multiple purposes.
 // This validation is called AFTER purpose resolution from database, so it checks the
-// complete set of element (including auto-filled ones), not just what user provided.
-// This prevents a element from being assigned to multiple purposes, which would create
+// complete set of elements (including auto-filled ones), not just what user provided.
+// This prevents an element from being assigned to multiple purposes, which would create
 // ambiguity in consent management.
-func (s *consentService) validateNoDuplicatePurposesAcrossPurposes(
+func (s *consentService) validateNoDuplicateElementsAcrossPurposes(
 	purposes []model.ConsentPurposeCreateRequest,
 ) error {
 	// Track which parent purpose each element belongs to
@@ -1529,7 +1529,7 @@ func (s *consentService) validateNoDuplicatePurposesAcrossPurposes(
 			if existingPurpose, found := elementNamesSeen[element.ElementName]; found {
 				// Found duplicate - same element in multiple purposes
 				return fmt.Errorf(
-					"duplicate purpose '%s' found in purposes '%s' and '%s'",
+					"duplicate element '%s' found in purposes '%s' and '%s'",
 					element.ElementName,
 					existingPurpose,
 					purpose.PurposeName,
@@ -1659,8 +1659,8 @@ func (s *consentService) validatePurposes(
 	// Step 7: Validate no duplicate elements across ALL resolved purposes
 	// This check happens AFTER resolution because we now have the complete picture
 	// of all elements across all purposes (including auto-filled ones)
-	if err := s.validateNoDuplicatePurposesAcrossPurposes(resolvedPurposes); err != nil {
-		logger.Warn("Duplicate purpose validation failed", log.Error(err))
+	if err := s.validateNoDuplicateElementsAcrossPurposes(resolvedPurposes); err != nil {
+		logger.Warn("Duplicate element validation failed", log.Error(err))
 		return nil, err
 	}
 

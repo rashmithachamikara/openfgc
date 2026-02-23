@@ -80,7 +80,8 @@ func ValidateConsentUpdateRequest(req model.ConsentAPIUpdateRequest) error {
 	// Empty arrays are valid - they indicate removal of all items
 	if req.Type == "" && req.Frequency == nil &&
 		req.ValidityTime == nil && req.RecurringIndicator == nil &&
-		req.Attributes == nil && req.Authorizations == nil && req.Purposes == nil {
+		req.Attributes == nil && req.Authorizations == nil && req.Purposes == nil &&
+		req.DataAccessValidityDuration == nil {
 		return fmt.Errorf("at least one field must be provided for update")
 	}
 

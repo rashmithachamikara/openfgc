@@ -19,6 +19,7 @@
 package validator
 
 import (
+	"os"
 	"testing"
 
 	"github.com/stretchr/testify/require"
@@ -26,8 +27,24 @@ import (
 	"github.com/wso2/openfgc/internal/system/config"
 )
 
+// TestMain initializes a minimal configuration required by the validator
+func TestMain(m *testing.M) {
+	cfg := &config.Config{
+		Consent: config.ConsentConfig{
+			AuthStatusMappings: config.AuthStatusMappings{
+				ApprovedState:      "authorized",
+				RejectedState:      "rejected",
+				CreatedState:       "created",
+				SystemExpiredState: "system_expired",
+				SystemRevokedState: "system_revoked",
+			},
+		},
+	}
+	config.SetGlobal(cfg)
+	os.Exit(m.Run())
+}
+
 func TestValidateAuthResourceCreateRequest_Success(t *testing.T) {
-	t.Skip("Skipping - requires config initialization")
 	req := model.ConsentAuthResourceCreateRequest{
 		AuthType:   "accounts",
 		AuthStatus: "authorized",
@@ -91,7 +108,6 @@ func TestValidateAuthStatus_ValidStatus(t *testing.T) {
 }
 
 func TestValidateAuthResourceUpdateRequest_Success(t *testing.T) {
-	t.Skip("Skipping - requires config initialization")
 	status := "revoked"
 	req := model.ConsentAuthResourceUpdateRequest{
 		AuthStatus: status,
@@ -130,7 +146,6 @@ func TestValidateAuthResourceUpdateRequest_EmptyRequest(t *testing.T) {
 }
 
 func TestValidateAuthResourceUpdateRequest_MultipleFields(t *testing.T) {
-	t.Skip("Skipping - requires config initialization")
 	status := "authorized"
 	userID := "user-123"
 	req := model.ConsentAuthResourceUpdateRequest{

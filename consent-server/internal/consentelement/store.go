@@ -385,25 +385,8 @@ func (elementStore *store) GetIDsByNames(ctx context.Context, names []string, or
 	// Note: DBClient normalizes column names to lowercase
 	result := make(map[string]string, len(rows))
 	for _, row := range rows {
-		var id, name string
-
-		// Handle both string and []byte types (MySQL returns []byte for strings)
-		if idVal, ok := row["id"]; ok {
-			if idStr, ok := idVal.(string); ok {
-				id = idStr
-			} else if idBytes, ok := idVal.([]byte); ok {
-				id = string(idBytes)
-			}
-		}
-
-		if nameVal, ok := row["name"]; ok {
-			if nameStr, ok := nameVal.(string); ok {
-				name = nameStr
-			} else if nameBytes, ok := nameVal.([]byte); ok {
-				name = string(nameBytes)
-			}
-		}
-
+		id := getString(row, "id")
+		name := getString(row, "name")
 		if id != "" && name != "" {
 			result[name] = id
 		}
