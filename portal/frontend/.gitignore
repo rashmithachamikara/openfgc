@@ -22,3 +22,6 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Optional symlinks to other projects for ai reference
+.ai-reference
