@@ -23,5 +23,9 @@ dist-ssr
 *.sln
 *.sw?
 
+# Environment files
+.env
+.env.*.local
+
 # Optional symlinks to other projects for ai reference
 .ai-reference
