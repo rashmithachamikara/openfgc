@@ -55,4 +55,10 @@ export default defineConfig([
       'import/no-unresolved': 'off',
     },
   },
+  {
+    files: ['**/*.test.{ts,tsx}', '**/test/**/*.{ts,tsx}'],
+    rules: {
+      'import/no-extraneous-dependencies': 'off',
+    },
+  },
 ])
