@@ -30,9 +30,21 @@ pnpm install
 ```bash
 pnpm dev
 pnpm lint
+pnpm test
+pnpm test:watch
+pnpm test:coverage
 pnpm build
 pnpm preview
 ```
+
+## Testing
+
+Tests are written with [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/react).
+
+- **Test files**: Located in `src/__tests__/` with `.test.tsx` extension
+- **Setup**: Global setup in `vitest.setup.ts` imports jest-dom matchers
+- **Run tests**: `pnpm test` or `pnpm test:watch` for watch mode
+- **Coverage**: `pnpm test:coverage` generates HTML coverage report in `coverage/`
 
 ## CI
 
