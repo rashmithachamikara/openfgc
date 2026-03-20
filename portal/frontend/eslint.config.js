@@ -15,7 +15,7 @@ const compat = new FlatCompat({
 })
 
 export default defineConfig([
-  globalIgnores(['dist', 'eslint.config.js']),
+  globalIgnores(['dist', 'eslint.config.js', 'vitest.setup.ts']),
   ...compat.extends('airbnb', 'airbnb/hooks', 'plugin:prettier/recommended'),
   {
     files: ['**/*.{ts,tsx}'],
@@ -49,14 +49,14 @@ export default defineConfig([
     },
   },
   {
-    files: ['vite.config.ts'],
+    files: ['vite.config.ts', 'vitest.setup.ts'],
     rules: {
       'import/no-extraneous-dependencies': 'off',
       'import/no-unresolved': 'off',
     },
   },
   {
-    files: ['**/*.test.{ts,tsx}', '**/test/**/*.{ts,tsx}'],
+    files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
     rules: {
       'import/no-extraneous-dependencies': 'off',
     },
