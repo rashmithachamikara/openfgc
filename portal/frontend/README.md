@@ -46,6 +46,21 @@ Tests are written with [Vitest](https://vitest.dev/) and [React Testing Library]
 - **Run tests**: `pnpm test` or `pnpm test:watch` for watch mode
 - **Coverage**: `pnpm test:coverage` generates HTML coverage report in `coverage/`
 
+## Project Structure
+
+```
+src/
+├── components/       # Reusable UI components
+├── features/         # Feature-level modules (pages, domains)
+├── hooks/            # Custom React hooks
+├── types/            # TypeScript interfaces and types
+├── utils/            # Utility functions and helpers
+├── __tests__/        # Test files
+├── App.tsx           # Root component
+├── main.tsx          # Entry point
+└── index.css         # Global styles
+```
+
 ## CI
 
 GitHub Actions CI runs pnpm-based install, lint, and build checks on every push and pull request.
