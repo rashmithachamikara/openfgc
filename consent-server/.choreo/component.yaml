@@ -31,3 +31,14 @@ dependencies:
   connectionReferences:
     - name: openfgc_db_connection
       resourceRef: database:healthcare-demo-db/openfgc_db
+      env:
+        - from: HOSTNAME
+          to: OPENFGC_DB_HOSTNAME
+        - from: PORT
+          to: OPENFGC_DB_PORT
+        - from: DATABASENAME
+          to: OPENFGC_DB_NAME
+        - from: USERNAME
+          to: OPENFGC_DB_USER
+        - from: PASSWORD
+          to: OPENFGC_DB_PASSWORD
