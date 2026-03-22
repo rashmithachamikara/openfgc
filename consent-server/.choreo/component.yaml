@@ -28,17 +28,17 @@ endpoints:
     schemaFilePath: ../api/consent-management-API.yaml
 
 dependencies:
-  connectionReferences:
-    - name: openfgc_db_connection
-      resourceRef: database:healthcare-demo-db/openfgc_db
+    serviceReferences:
+    - name: database:openfgc_db
+      connectionConfig: 01f10c8a-01c6-1770-b39b-9c203dacb167
       env:
-        - from: HOSTNAME
-          to: OPENFGC_DB_HOSTNAME
-        - from: PORT
-          to: OPENFGC_DB_PORT
-        - from: DATABASENAME
-          to: OPENFGC_DB_NAME
-        - from: USERNAME
-          to: OPENFGC_DB_USER
-        - from: PASSWORD
-          to: OPENFGC_DB_PASSWORD
+      - from: HostName
+        to: OPENFGC_DB_HOSTNAME
+      - from: Port
+        to: OPENFGC_DB_PORT
+      - from: Username
+        to: OPENFGC_DB_USER
+      - from: Password
+        to: OPENFGC_DB_PASSWORD
+      - from: DatabaseName
+        to: OPENFGC_DB_NAME
