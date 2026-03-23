@@ -64,6 +64,24 @@ src/
 └── index.css         # Global styles
 ```
 
+## AI Instructions
+
+This repository uses VS Code Copilot instruction files to keep AI-generated changes aligned with project and organization standards.
+
+- Canonical cross-agent project rules: `AGENTS.md`
+- Copilot always-on workspace instructions: `.github/copilot-instructions.md`
+- Scoped instructions folder: `.github/instructions/`
+- Oxygen UI generated reference: `.ai/oxygen-ui/AGENTS.md`
+
+Recommended precedence:
+
+1. `AGENTS.md` for shared project standards
+2. `.github/copilot-instructions.md` for Copilot-specific defaults
+3. `.github/instructions/*.instructions.md` for task and file-type specific rules
+4. `.ai/oxygen-ui/AGENTS.md` for Oxygen component catalog/examples
+
+Copilot instruction files are automatically discovered by Copilot Chat and applied based on their `applyTo` patterns.
+
 ## Internationalization
 
 This project uses `i18next` and `react-i18next` for UI translations.

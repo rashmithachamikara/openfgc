@@ -6,6 +6,8 @@ applyTo: "**"
 
 React + TypeScript + Vite project using Oxygen UI.
 
+Also follow `AGENTS.md` for shared project standards. Use `.ai/oxygen-ui/AGENTS.md` for Oxygen UI component-specific reference.
+
 ## Core Rules
 
 - Import UI components only from `@wso2/oxygen-ui` (never `@mui/material`).
