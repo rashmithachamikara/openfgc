@@ -39,10 +39,10 @@
             "type": "go",
             "request": "launch",
             "mode": "exec",
-            "program": "${workspaceFolder}/bin/consent-server",
-            "cwd": "${workspaceFolder}/bin",
+            "program": "${workspaceFolder}/target/server/consent-server",
+            "cwd": "${workspaceFolder}/target/server",
             "env": {
-                "CONFIG_PATH": "${workspaceFolder}/bin/repository/conf/deployment.yaml"
+                "CONFIG_PATH": "${workspaceFolder}/target/server/repository/conf/deployment.yaml"
             },
             "showLog": true
         },
@@ -59,7 +59,7 @@
             "type": "go",
             "request": "launch",
             "mode": "test",
-            "program": "${workspaceFolder}/internal",
+            "program": "${workspaceFolder}/consent-server/internal",
             "args": [
                 "-v"
             ],
@@ -70,7 +70,7 @@
             "type": "go",
             "request": "launch",
             "mode": "test",
-            "program": "${workspaceFolder}/integration-tests",
+            "program": "${workspaceFolder}/tests/integration",
             "args": [
                 "-v"
             ],

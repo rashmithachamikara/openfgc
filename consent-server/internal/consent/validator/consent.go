@@ -80,7 +80,8 @@ func ValidateConsentUpdateRequest(req model.ConsentAPIUpdateRequest) error {
 	// Empty arrays are valid - they indicate removal of all items
 	if req.Type == "" && req.Frequency == nil &&
 		req.ValidityTime == nil && req.RecurringIndicator == nil &&
-		req.Attributes == nil && req.Authorizations == nil && req.Purposes == nil {
+		req.Attributes == nil && req.Authorizations == nil && req.Purposes == nil &&
+		req.DataAccessValidityDuration == nil {
 		return fmt.Errorf("at least one field must be provided for update")
 	}
 
@@ -142,8 +143,11 @@ func ValidateConsentGetRequest(consentID, orgID string) error {
 // This is a helper function for authresource package to avoid import cycles.
 // Uses the same priority logic as EvaluateConsentStatus.
 func EvaluateConsentStatusFromAuthStatuses(authStatuses []string) string {
-	consentConfig := config.Get().Consent
-
+	cfg := config.Get()
+	if cfg == nil {
+		return "created" // safe fallback
+	}
+	consentConfig := cfg.Consent
 	if len(authStatuses) == 0 {
 		// No auth resources - default to created status
 		return string(consentConfig.GetCreatedConsentStatus())
