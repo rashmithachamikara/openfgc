@@ -173,8 +173,8 @@ Update configuration file at `target/server/repository/conf/deployment.yaml`:
 
 ```yaml
     server:
-      hostname: localhost
-      port: 3000
+      hostname: 0.0.0.0
+      port: 8080
       readTimeout: 30s
       writeTimeout: 30s
       idleTimeout: 120s
@@ -182,18 +182,28 @@ Update configuration file at `target/server/repository/conf/deployment.yaml`:
     database:
       consent:
         type: mysql
-        hostname: localhost
-        port: 3306
-        database: consent_mgt
+        hostname: ${OPENFGC_DB_HOSTNAME}
+        port: ${OPENFGC_DB_PORT}
+        database: ${OPENFGC_DB_NAME}
         max_open_conns: 25
         max_idle_conns: 5
         conn_max_lifetime: 5m
-        user: root
-        password: password
+        user: ${OPENFGC_DB_USER}
+        password: ${OPENFGC_DB_PASSWORD}
 
     logging:
       level: info
 ```
+
+Set the following environment variables before starting the server:
+
+| Variable | Description |
+|----------|-------------|
+| `OPENFGC_DB_HOSTNAME` | MySQL database hostname |
+| `OPENFGC_DB_PORT` | MySQL database port (e.g. `3306`) |
+| `OPENFGC_DB_NAME` | Database name (e.g. `consent_mgt`) |
+| `OPENFGC_DB_USER` | Database user |
+| `OPENFGC_DB_PASSWORD` | Database password |
 
 
 ### 4. Run
@@ -210,9 +220,9 @@ cd target/server
 ./start.sh --debug --debug-port 3000
 ```
 
-Server starts at `http://localhost:3000`
+Server starts at `http://localhost:8080`
 
-Health check: `curl http://localhost:3000/health`
+Health check: `curl http://localhost:8080/health`
 
 ## API Endpoints
 
