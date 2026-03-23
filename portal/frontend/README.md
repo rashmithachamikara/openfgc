@@ -1,5 +1,7 @@
 # openfgc-portal
 
+The OpenFGC Portal project is designed to create a comprehensive Consent Management Portal, leveraging the [OpenFGC Consent Management API](https://github.com/wso2/openfgc).
+
 React 19 + TypeScript + Vite app using WSO2 Oxygen UI.
 
 ## Requirements
