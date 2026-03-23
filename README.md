@@ -81,7 +81,7 @@ The Consent is the immutable evidence of a user’s decision regarding specific 
 
 - **Go** 1.25+
 - **Web Framework**: net/http (standard library) with gorilla/mux style routing
-- **Database**: MySQL 8.0+ (**recommended**; SQLite supported for testing only)
+- **Database**: MySQL 8.0+ or PostgreSQL 14+ (**recommended** for production; SQLite supported for development only)
 - **ORM/Data Access**: sqlx
 - **Architecture**: Domain-driven layered architecture
 - **Transaction Management**: Atomic operations
@@ -89,7 +89,7 @@ The Consent is the immutable evidence of a user’s decision regarding specific 
 ## Prerequisites
 
 - Go 1.25 or higher
-- MySQL 8.0 or higher (**recommended** for production)
+- MySQL 8.0+ or PostgreSQL 14+ (**recommended** for production)
 - sqlite3 (optional, if using SQLite)
 - Make (optional, for build commands)
 
@@ -120,6 +120,7 @@ openfgc/
 │   │       └── utils/                      # Utilities
 │   ├── dbscripts/
 │   │   ├── db_schema_mysql.sql             # Consent tables schema (MySQL)
+│   │   ├── db_schema_postgres.sql          # Consent tables schema (PostgreSQL)
 │   │   ├── db_schema_sqlite.sql            # Consent tables schema (SQLite)
 │   │   └── WIP-db_schema_config_mysql.sql  # Config tables schema
 │   └── docs/                               # Internal documentation
@@ -141,12 +142,24 @@ openfgc/
 
 ### 1. Setup Database
 
+**MySQL:**
+
 ```bash
 # Create database
 mysql -u root -p -e "CREATE DATABASE IF NOT EXISTS consent_mgt;"
 
-# Import schemas
+# Import schema
 mysql -u root -p consent_mgt < consent-server/dbscripts/db_schema_mysql.sql
+```
+
+**PostgreSQL:**
+
+```bash
+# Create database
+psql -U postgres -c "CREATE DATABASE consent_mgt;"
+
+# Import schema
+psql -U postgres -d consent_mgt -f consent-server/dbscripts/db_schema_postgres.sql
 ```
 
 ### 2. Build
@@ -195,12 +208,30 @@ Update configuration file at `target/server/repository/conf/deployment.yaml`:
       level: info
 ```
 
+For PostgreSQL, set `type: postgres` and use port `5432`:
+
+```yaml
+    database:
+      consent:
+        type: postgres
+        hostname: ${OPENFGC_DB_HOSTNAME}
+        port: ${OPENFGC_DB_PORT}
+        database: ${OPENFGC_DB_NAME}
+        max_open_conns: 25
+        max_idle_conns: 5
+        conn_max_lifetime: 5m
+        user: ${OPENFGC_DB_USER}
+        password: ${OPENFGC_DB_PASSWORD}
+        sslmode: disable        # use verify-full for production
+        options: ""             # e.g. sslrootcert=/path/to/ca.crt for production TLS
+```
+
 Set the following environment variables before starting the server:
 
 | Variable | Description |
 |----------|-------------|
-| `OPENFGC_DB_HOSTNAME` | MySQL database hostname |
-| `OPENFGC_DB_PORT` | MySQL database port (e.g. `3306`) |
+| `OPENFGC_DB_HOSTNAME` | Database hostname |
+| `OPENFGC_DB_PORT` | Database port (e.g. `3306` for MySQL, `5432` for PostgreSQL) |
 | `OPENFGC_DB_NAME` | Database name (e.g. `consent_mgt`) |
 | `OPENFGC_DB_USER` | Database user |
 | `OPENFGC_DB_PASSWORD` | Database password |
