@@ -186,8 +186,8 @@ Update configuration file at `target/server/repository/conf/deployment.yaml`:
 
 ```yaml
     server:
-      hostname: localhost
-      port: 3000
+      hostname: 0.0.0.0
+      port: 8080
       readTimeout: 30s
       writeTimeout: 30s
       idleTimeout: 120s
@@ -195,14 +195,14 @@ Update configuration file at `target/server/repository/conf/deployment.yaml`:
     database:
       consent:
         type: mysql
-        hostname: localhost
-        port: 3306
-        database: consent_mgt
+        hostname: ${OPENFGC_DB_HOSTNAME}
+        port: ${OPENFGC_DB_PORT}
+        database: ${OPENFGC_DB_NAME}
         max_open_conns: 25
         max_idle_conns: 5
         conn_max_lifetime: 5m
-        user: root
-        password: password
+        user: ${OPENFGC_DB_USER}
+        password: ${OPENFGC_DB_PASSWORD}
 
     logging:
       level: info
@@ -214,17 +214,28 @@ For PostgreSQL, set `type: postgres` and use port `5432`:
     database:
       consent:
         type: postgres
-        hostname: localhost
-        port: 5432
-        database: consent_mgt
+        hostname: ${OPENFGC_DB_HOSTNAME}
+        port: ${OPENFGC_DB_PORT}
+        database: ${OPENFGC_DB_NAME}
         max_open_conns: 25
         max_idle_conns: 5
         conn_max_lifetime: 5m
-        user: postgres
-        password: password
+        user: ${OPENFGC_DB_USER}
+        password: ${OPENFGC_DB_PASSWORD}
         sslmode: disable        # use verify-full for production
         options: ""             # e.g. sslrootcert=/path/to/ca.crt for production TLS
 ```
+
+Set the following environment variables before starting the server:
+
+| Variable | Description |
+|----------|-------------|
+| `OPENFGC_DB_HOSTNAME` | Database hostname |
+| `OPENFGC_DB_PORT` | Database port (e.g. `3306` for MySQL, `5432` for PostgreSQL) |
+| `OPENFGC_DB_NAME` | Database name (e.g. `consent_mgt`) |
+| `OPENFGC_DB_USER` | Database user |
+| `OPENFGC_DB_PASSWORD` | Database password |
+
 
 ### 4. Run
 
@@ -240,9 +251,9 @@ cd target/server
 ./start.sh --debug --debug-port 3000
 ```
 
-Server starts at `http://localhost:3000`
+Server starts at `http://localhost:8080`
 
-Health check: `curl http://localhost:3000/health`
+Health check: `curl http://localhost:8080/health`
 
 ## API Endpoints
 
