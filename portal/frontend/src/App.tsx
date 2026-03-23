@@ -11,8 +11,11 @@ import {
   Divider,
   ColorSchemeToggle,
 } from '@wso2/oxygen-ui'
+import { useTranslation } from 'react-i18next'
 
-function App() {
+function App(): React.JSX.Element {
+  const { t } = useTranslation('common')
+
   return (
     <Box
       sx={{
@@ -26,22 +29,20 @@ function App() {
         py: 6,
       }}
     >
-      {/* Header */}
       <Stack direction="row" alignItems="center" spacing={2}>
         <Typography variant="h3" fontWeight={700}>
-          Oxygen UI
+          {t('app.title')}
         </Typography>
-        <Chip label="Acrylic Orange" color="primary" size="small" />
+        <Chip label={t('app.themeChipLabel')} color="primary" size="small" />
         <ColorSchemeToggle />
       </Stack>
 
       <Typography variant="body1" color="text.secondary">
-        React project powered by WSO2 Oxygen UI with the Acrylic Orange theme.
+        {t('app.description')}
       </Typography>
 
       <Divider sx={{ width: '100%', maxWidth: 600, alignSelf: 'center' }} />
 
-      {/* Demo card */}
       <Card
         sx={{
           width: '100%',
@@ -52,30 +53,29 @@ function App() {
       >
         <CardContent>
           <Typography variant="h5" gutterBottom>
-            Get started
+            {t('app.getStartedTitle')}
           </Typography>
           <Stack spacing={2} mt={1}>
-            <TextField label="Name" fullWidth />
-            <TextField label="Email" type="email" fullWidth />
+            <TextField label={t('forms.nameLabel')} fullWidth />
+            <TextField label={t('forms.emailLabel')} type="email" fullWidth />
           </Stack>
         </CardContent>
         <CardActions sx={{ px: 2, pb: 2 }}>
           <Button variant="contained" fullWidth>
-            Submit
+            {t('buttons.submit')}
           </Button>
         </CardActions>
       </Card>
 
-      {/* Button showcase */}
       <Stack direction="row" spacing={2} flexWrap="wrap" justifyContent="center">
-        <Button variant="contained">Contained</Button>
-        <Button variant="outlined">Outlined</Button>
-        <Button variant="text">Text</Button>
+        <Button variant="contained">{t('buttons.contained')}</Button>
+        <Button variant="outlined">{t('buttons.outlined')}</Button>
+        <Button variant="text">{t('buttons.text')}</Button>
         <Button variant="contained" color="secondary">
-          Secondary
+          {t('buttons.secondary')}
         </Button>
         <Button variant="contained" disabled>
-          Disabled
+          {t('buttons.disabled')}
         </Button>
       </Stack>
     </Box>

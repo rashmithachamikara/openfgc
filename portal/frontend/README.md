@@ -53,12 +53,34 @@ src/
 ├── components/       # Reusable UI components
 ├── features/         # Feature-level modules (pages, domains)
 ├── hooks/            # Custom React hooks
+├── i18n/             # i18n initialization and locale resources
 ├── types/            # TypeScript interfaces and types
 ├── utils/            # Utility functions and helpers
 ├── __tests__/        # Test files
 ├── App.tsx           # Root component
 ├── main.tsx          # Entry point
 └── index.css         # Global styles
+```
+
+## Internationalization
+
+This project uses `i18next` and `react-i18next` for UI translations.
+
+- Add locale resources under `src/i18n/resources/<locale>/`.
+- Keep keys grouped by namespace (for example `common`) and feature intent (`app`, `forms`, `buttons`).
+- In components, use `useTranslation` and keys instead of hardcoded user-facing text.
+- Keep accessibility labels and user-visible messages localized as well.
+
+Example:
+
+```tsx
+import { useTranslation } from 'react-i18next'
+
+function Example(): React.JSX.Element {
+  const { t } = useTranslation('common')
+
+  return <h1>{t('app.title')}</h1>
+}
 ```
 
 ## CI
