@@ -54,14 +54,14 @@ function MainLayout(): React.JSX.Element {
         <AppSidebar collapsed={isSidebarCollapsed} />
       </AppShell.Sidebar>
 
-      <AppShell.Main
-        sx={{
-          width: '100%',
-          maxWidth: 'none',
-          flex: 1,
-        }}
-      >
-        <Box sx={{ width: '100%' }}>
+      <AppShell.Main>
+        <Box
+          sx={{
+            width: '100%',
+            maxWidth: 'none',
+            flex: 1,
+          }}
+        >
           <Outlet />
         </Box>
       </AppShell.Main>
