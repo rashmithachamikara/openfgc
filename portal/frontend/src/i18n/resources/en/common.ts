@@ -26,7 +26,8 @@ const commonEn = {
   layout: {
     menu: 'Menu',
     openNavigation: 'Open navigation menu',
-    breadcrumb: 'Home / {{page}}',
+    home: 'Home',
+    breadcrumbAriaLabel: 'Breadcrumb',
     userAvatarAriaLabel: 'Signed-in user avatar',
   },
   dashboard: {
@@ -34,7 +35,6 @@ const commonEn = {
   },
   consentRegistry: {
     title: 'All Consents',
-    breadcrumb: 'Home / All Consents',
     actions: {
       view: 'View',
       revoke: 'Revoke',

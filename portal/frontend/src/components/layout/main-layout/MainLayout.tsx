@@ -1,13 +1,13 @@
-import { AppShell, Box, ColorSchemeToggle, Header, IconButton, Typography } from '@wso2/oxygen-ui'
+import { AppShell, Box, ColorSchemeToggle, Header, IconButton } from '@wso2/oxygen-ui'
 import { CircleUserRound } from '@wso2/oxygen-ui-icons-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Outlet, useLocation } from 'react-router-dom'
+import { Outlet } from 'react-router-dom'
+import HeaderBreadcrumbs from './HeaderBreadcrumbs'
 import AppSidebar from '../sidebar/AppSidebar'
 
 function MainLayout(): React.JSX.Element {
   const { t } = useTranslation('common')
-  const location = useLocation()
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState<boolean>(false)
 
   return (
@@ -33,13 +33,7 @@ function MainLayout(): React.JSX.Element {
             </Header.BrandLogo>
             <Header.BrandTitle>OpenFGC</Header.BrandTitle>
           </Header.Brand>
-          <Typography variant="body2" color="text.secondary" sx={{ ml: 2 }}>
-            {t('layout.breadcrumb', {
-              page: location.pathname.startsWith('/consents')
-                ? t('sidebar.allConsents')
-                : t('sidebar.dashboard'),
-            })}
-          </Typography>
+          <HeaderBreadcrumbs />
           <Header.Spacer />
           <Header.Actions>
             <ColorSchemeToggle />
