@@ -10,7 +10,13 @@ export default defineConfig({
     css: true,
     server: {
       deps: {
-        inline: ['@wso2/oxygen-ui', '@wso2/oxygen-ui-icons-react'],
+        inline: [
+          '@wso2/oxygen-ui',
+          '@wso2/oxygen-ui-icons-react',
+          '@mui/x-data-grid',
+          '@mui/x-date-pickers',
+          '@mui/x-tree-view',
+        ],
       },
     },
     coverage: {
