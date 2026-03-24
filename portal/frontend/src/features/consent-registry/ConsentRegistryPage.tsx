@@ -1,6 +1,7 @@
 import { Box, Stack, Typography } from '@wso2/oxygen-ui'
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useSearchParams } from 'react-router-dom'
 import ConsentRegistryFilters from './components/ConsentRegistryFilters'
 import ConsentRegistryTable from './components/ConsentRegistryTable'
 import { CONSENT_REGISTRY_MOCK_DATA } from './data/consents'
@@ -14,6 +15,51 @@ const DEFAULT_FILTERS: ConsentRegistryFiltersModel = {
   startDate: '',
   endDate: '',
   consentType: '',
+}
+
+const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
+  'All',
+  'Active',
+  'Pending',
+  'Revoked',
+  'Expired',
+]
+
+function isValidFilterStatus(value: string): value is ConsentRegistryFiltersModel['status'] {
+  return FILTER_STATUS_VALUES.includes(value as ConsentRegistryFiltersModel['status'])
+}
+
+function getFiltersFromSearchParams(searchParams: URLSearchParams): ConsentRegistryFiltersModel {
+  const statusParam = searchParams.get('status')
+
+  return {
+    status: statusParam && isValidFilterStatus(statusParam) ? statusParam : DEFAULT_FILTERS.status,
+    startDate: searchParams.get('startDate') ?? DEFAULT_FILTERS.startDate,
+    endDate: searchParams.get('endDate') ?? DEFAULT_FILTERS.endDate,
+    consentType: searchParams.get('consentType') ?? DEFAULT_FILTERS.consentType,
+  }
+}
+
+function toSearchParams(filters: ConsentRegistryFiltersModel): URLSearchParams {
+  const params = new URLSearchParams()
+
+  if (filters.status !== DEFAULT_FILTERS.status) {
+    params.set('status', filters.status)
+  }
+
+  if (filters.startDate) {
+    params.set('startDate', filters.startDate)
+  }
+
+  if (filters.endDate) {
+    params.set('endDate', filters.endDate)
+  }
+
+  if (filters.consentType.trim()) {
+    params.set('consentType', filters.consentType.trim())
+  }
+
+  return params
 }
 
 function isWithinDateRange(record: ConsentRecord, startDate: string, endDate: string): boolean {
@@ -40,7 +86,9 @@ function isWithinDateRange(record: ConsentRecord, startDate: string, endDate: st
 
 function ConsentRegistryPage(): React.JSX.Element {
   const { t } = useTranslation('common')
-  const [filters, setFilters] = useState<ConsentRegistryFiltersModel>(DEFAULT_FILTERS)
+  const [searchParams, setSearchParams] = useSearchParams()
+
+  const filters = useMemo(() => getFiltersFromSearchParams(searchParams), [searchParams])
 
   const filteredRows = useMemo(() => {
     return CONSENT_REGISTRY_MOCK_DATA.filter((record) => {
@@ -63,9 +111,11 @@ function ConsentRegistryPage(): React.JSX.Element {
 
         <ConsentRegistryFilters
           filters={filters}
-          onFilterChange={setFilters}
+          onFilterChange={(nextFilters) => {
+            setSearchParams(toSearchParams(nextFilters), { replace: true })
+          }}
           onClear={() => {
-            setFilters(DEFAULT_FILTERS)
+            setSearchParams({}, { replace: true })
           }}
         />
 
