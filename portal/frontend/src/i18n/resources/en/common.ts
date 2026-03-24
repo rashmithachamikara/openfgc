@@ -1,31 +1,13 @@
 const commonEn = {
   app: {
     title: 'OpenFGC Portal',
-    themeChipLabel: 'Acrylic Orange',
-    description: 'React project powered by WSO2 Oxygen UI with the Acrylic Orange theme.',
-    getStartedTitle: 'Get started',
-  },
-  forms: {
-    nameLabel: 'Name',
-    emailLabel: 'Email',
-  },
-  buttons: {
-    submit: 'Submit',
-    contained: 'Contained',
-    outlined: 'Outlined',
-    text: 'Text',
-    secondary: 'Secondary',
-    disabled: 'Disabled',
   },
   sidebar: {
     ariaLabel: 'Primary navigation',
     dashboard: 'Dashboard',
     allConsents: 'All Consents',
-    settings: 'Settings',
   },
   layout: {
-    menu: 'Menu',
-    openNavigation: 'Open navigation menu',
     home: 'Home',
     breadcrumbAriaLabel: 'Breadcrumb',
     userAvatarAriaLabel: 'Signed-in user avatar',
@@ -65,11 +47,6 @@ const commonEn = {
         purposes: 'Purposes',
         created: 'Created',
         actions: 'Actions',
-      },
-      footer: {
-        summary: 'Showing {{shown}} of {{total}} consents',
-        rowsPerPage: 'Rows per page',
-        paginationAriaLabel: 'Pagination controls',
       },
     },
   },
