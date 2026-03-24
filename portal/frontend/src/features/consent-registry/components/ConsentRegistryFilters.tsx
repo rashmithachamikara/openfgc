@@ -28,12 +28,16 @@ function ConsentRegistryFilters({
     <Box
       component="section"
       aria-label={t('consentRegistry.filters.sectionAriaLabel')}
-      sx={{
+      sx={(theme) => ({
         p: 2,
-        border: (theme) => `1px solid ${theme.palette.divider}`,
-        borderRadius: 2,
-        bgcolor: 'background.paper',
-      }}
+        borderRadius: 1,
+        ...theme.applyStyles('light', {
+          bgcolor: theme.palette.grey[50],
+        }),
+        ...theme.applyStyles('dark', {
+          bgcolor: 'rgba(255, 255, 255, 0.04)',
+        }),
+      })}
     >
       <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2} alignItems={{ lg: 'center' }}>
         <FormControl size="small" sx={{ minWidth: 180 }}>
