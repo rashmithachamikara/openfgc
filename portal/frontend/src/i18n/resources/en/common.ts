@@ -6,6 +6,7 @@ const commonEn = {
     ariaLabel: 'Primary navigation',
     dashboard: 'Dashboard',
     allConsents: 'All Consents',
+    pendingConsents: 'Pending Consents',
   },
   layout: {
     home: 'Home',

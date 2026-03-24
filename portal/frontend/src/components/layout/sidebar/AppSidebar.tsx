@@ -1,5 +1,5 @@
 import { Sidebar } from '@wso2/oxygen-ui'
-import { House, ShieldCheck } from '@wso2/oxygen-ui-icons-react'
+import { Clock3, House, ShieldCheck } from '@wso2/oxygen-ui-icons-react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -27,14 +27,26 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
     path: '/consents',
     icon: <ShieldCheck size={18} />,
   },
+  {
+    id: 'pending-consents',
+    labelKey: 'sidebar.pendingConsents',
+    path: '/consents?status=Pending',
+    icon: <Clock3 size={18} />,
+  },
 ]
 
-function mapPathToMenuId(pathname: string): string {
+function mapPathToMenuId(pathname: string, search: string): string {
   if (pathname.startsWith('/dashboard')) {
     return 'dashboard'
   }
 
   if (pathname.startsWith('/consents')) {
+    const status = new URLSearchParams(search).get('status')
+
+    if (status === 'Pending') {
+      return 'pending-consents'
+    }
+
     return 'all-consents'
   }
 
@@ -46,7 +58,7 @@ function AppSidebar({ collapsed }: AppSidebarProps): React.JSX.Element {
   const navigate = useNavigate()
   const location = useLocation()
 
-  const activeItem = mapPathToMenuId(location.pathname)
+  const activeItem = mapPathToMenuId(location.pathname, location.search)
 
   return (
     <Sidebar

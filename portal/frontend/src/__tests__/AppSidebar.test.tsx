@@ -9,11 +9,11 @@ import i18n from '../i18n/i18n'
 function LocationProbe(): React.JSX.Element {
   const location = useLocation()
 
-  return <p>{location.pathname}</p>
+  return <p>{`${location.pathname}${location.search}`}</p>
 }
 
 describe('AppSidebar', () => {
-  it('renders navigation items and navigates to dashboard', () => {
+  it('renders navigation items and navigates to dashboard and pending consents', () => {
     render(
       <OxygenUIThemeProvider theme={AcrylicOrangeTheme}>
         <CssBaseline />
@@ -38,6 +38,10 @@ describe('AppSidebar', () => {
     expect(screen.getByRole('complementary')).toBeInTheDocument()
     expect(screen.getByRole('navigation')).toBeInTheDocument()
     expect(screen.getByText('/consents')).toBeInTheDocument()
+
+    fireEvent.click(screen.getByText('Pending Consents'))
+
+    expect(screen.getByText('/consents?status=Pending')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Dashboard'))
 
