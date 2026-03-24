@@ -56,9 +56,6 @@ function ConsentRegistryPage(): React.JSX.Element {
     <Box component="main" sx={{ p: { xs: 2, md: 4 } }}>
       <Stack spacing={3}>
         <Stack spacing={0.5}>
-          <Typography variant="body2" color="text.secondary">
-            {t('consentRegistry.breadcrumb')}
-          </Typography>
           <Typography variant="h4" fontWeight={700}>
             {t('consentRegistry.title')}
           </Typography>
