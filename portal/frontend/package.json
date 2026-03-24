@@ -23,7 +23,8 @@
     "i18next": "^25.10.5",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
-    "react-i18next": "^16.6.2"
+    "react-i18next": "^16.6.2",
+    "react-router-dom": "^7.13.2"
   },
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.5",
