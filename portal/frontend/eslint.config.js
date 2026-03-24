@@ -45,6 +45,7 @@ export default defineConfig([
       'react/jsx-filename-extension': ['error', { extensions: ['.tsx'] }],
       'import/extensions': 'off',
       'import/prefer-default-export': 'off',
+      'import/no-extraneous-dependencies': ['error', { packageDir: [__dirname] }],
       'prettier/prettier': 'error',
     },
   },
