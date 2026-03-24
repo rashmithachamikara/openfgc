@@ -29,7 +29,7 @@ function ConsentRegistryFilters({
       component="section"
       aria-label={t('consentRegistry.filters.sectionAriaLabel')}
       sx={(theme) => ({
-        p: 2,
+        p: { xs: 1.5, sm: 2 },
         borderRadius: 1,
         ...theme.applyStyles('light', {
           bgcolor: theme.palette.grey[50],
@@ -39,8 +39,12 @@ function ConsentRegistryFilters({
         }),
       })}
     >
-      <Stack direction={{ xs: 'column', lg: 'row' }} spacing={2} alignItems={{ lg: 'center' }}>
-        <FormControl size="small" sx={{ minWidth: 180 }}>
+      <Stack
+        direction={{ xs: 'column', lg: 'row' }}
+        spacing={{ xs: 1.5, lg: 2 }}
+        alignItems={{ lg: 'center' }}
+      >
+        <FormControl size="small" sx={{ width: { xs: '100%', lg: 'auto' }, minWidth: { lg: 180 } }}>
           <InputLabel id="consent-status-label">{t('consentRegistry.filters.status')}</InputLabel>
           <Select
             labelId="consent-status-label"
@@ -63,8 +67,8 @@ function ConsentRegistryFilters({
         </FormControl>
 
         <Stack
-          direction={{ xs: 'column', sm: 'row' }}
-          spacing={2}
+          direction={{ xs: 'column', lg: 'row' }}
+          spacing={{ xs: 1.5, lg: 2 }}
           sx={{ width: { xs: '100%', lg: 'auto' } }}
         >
           <TextField
@@ -79,6 +83,7 @@ function ConsentRegistryFilters({
               })
             }}
             InputLabelProps={{ shrink: true }}
+            sx={{ width: { xs: '100%', lg: 'auto' }, minWidth: { lg: 160 } }}
           />
           <TextField
             label={t('consentRegistry.filters.endDate')}
@@ -92,6 +97,7 @@ function ConsentRegistryFilters({
               })
             }}
             InputLabelProps={{ shrink: true }}
+            sx={{ width: { xs: '100%', lg: 'auto' }, minWidth: { lg: 160 } }}
           />
         </Stack>
 
@@ -105,10 +111,17 @@ function ConsentRegistryFilters({
               consentType: event.target.value,
             })
           }}
-          sx={{ flex: 1, minWidth: 180 }}
+          sx={{ width: { xs: '100%', lg: 'auto' }, flex: { lg: 1 }, minWidth: { lg: 180 } }}
         />
 
-        <Button variant="text" onClick={onClear}>
+        <Button
+          variant="text"
+          onClick={onClear}
+          sx={{
+            width: { xs: '100%', lg: 'auto' },
+            justifyContent: { xs: 'center', lg: 'flex-start' },
+          }}
+        >
           {t('consentRegistry.filters.clear')}
         </Button>
       </Stack>
