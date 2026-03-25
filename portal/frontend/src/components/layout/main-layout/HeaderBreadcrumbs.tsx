@@ -50,11 +50,18 @@ function HeaderBreadcrumbs(): React.JSX.Element {
 
   return (
     <Box component="nav" aria-label={t('layout.breadcrumbAriaLabel')} sx={{ ml: 2 }}>
-      <Breadcrumbs separator={<ChevronRight size={14} aria-hidden="true" />}>
+      <Breadcrumbs
+        separator={
+          <Box component="span" sx={{ display: 'inline-flex', transform: 'translateY(1px)' }}>
+            <ChevronRight size={14} aria-hidden="true" />
+          </Box>
+        }
+      >
         {breadcrumbItems.map((item) =>
           item.isCurrent ? (
             <Typography
               key={item.path}
+              component="span"
               variant="body2"
               color="text.primary"
               fontWeight={600}
