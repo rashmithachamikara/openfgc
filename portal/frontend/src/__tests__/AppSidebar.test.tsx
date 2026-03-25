@@ -37,6 +37,7 @@ describe('AppSidebar', () => {
 
     expect(screen.getByRole('complementary')).toBeInTheDocument()
     expect(screen.getByRole('navigation')).toBeInTheDocument()
+    expect(screen.getByText('Consent')).toBeInTheDocument()
     expect(screen.getByText('/consents')).toBeInTheDocument()
 
     fireEvent.click(screen.getByText('Pending Consents'))

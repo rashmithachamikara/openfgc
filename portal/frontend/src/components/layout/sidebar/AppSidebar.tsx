@@ -14,13 +14,16 @@ interface SidebarItem {
   icon: React.JSX.Element
 }
 
-const SIDEBAR_ITEMS: SidebarItem[] = [
+const DASHBOARD_ITEMS: SidebarItem[] = [
   {
     id: 'dashboard',
     labelKey: 'sidebar.dashboard',
     path: '/dashboard',
     icon: <House size={18} />,
   },
+]
+
+const CONSENT_ITEMS: SidebarItem[] = [
   {
     id: 'all-consents',
     labelKey: 'sidebar.allConsents',
@@ -34,6 +37,8 @@ const SIDEBAR_ITEMS: SidebarItem[] = [
     icon: <Clock3 size={18} />,
   },
 ]
+
+const SIDEBAR_ITEMS: SidebarItem[] = [...DASHBOARD_ITEMS, ...CONSENT_ITEMS]
 
 function mapPathToMenuId(pathname: string, search: string): string {
   if (pathname.startsWith('/dashboard')) {
@@ -75,7 +80,17 @@ function AppSidebar({ collapsed }: AppSidebarProps): React.JSX.Element {
     >
       <Sidebar.Nav>
         <Sidebar.Category>
-          {SIDEBAR_ITEMS.map((item) => (
+          {DASHBOARD_ITEMS.map((item) => (
+            <Sidebar.Item key={item.id} id={item.id}>
+              <Sidebar.ItemIcon>{item.icon}</Sidebar.ItemIcon>
+              <Sidebar.ItemLabel>{t(item.labelKey)}</Sidebar.ItemLabel>
+            </Sidebar.Item>
+          ))}
+        </Sidebar.Category>
+
+        <Sidebar.Category>
+          <Sidebar.CategoryLabel>{t('sidebar.consent')}</Sidebar.CategoryLabel>
+          {CONSENT_ITEMS.map((item) => (
             <Sidebar.Item key={item.id} id={item.id}>
               <Sidebar.ItemIcon>{item.icon}</Sidebar.ItemIcon>
               <Sidebar.ItemLabel>{t(item.labelKey)}</Sidebar.ItemLabel>

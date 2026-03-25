@@ -5,6 +5,7 @@ const commonEn = {
   sidebar: {
     ariaLabel: 'Primary navigation',
     dashboard: 'Dashboard',
+    consent: 'Consent',
     allConsents: 'All Consents',
     pendingConsents: 'Pending Consents',
   },
