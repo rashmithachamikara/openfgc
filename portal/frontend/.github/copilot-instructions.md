@@ -37,6 +37,13 @@ Also follow `AGENTS.md` for shared project standards. Use `.ai/oxygen-ui/AGENTS.
 - Use Vitest + React Testing Library.
 - Test happy and error paths; mock network requests.
 
+## i18n
+
+- Externalize all user-facing copy to i18n resource files; avoid hardcoded UI strings.
+- Use stable, descriptive translation keys and keep naming consistent across namespaces.
+- Provide English defaults/fallbacks for new keys, use locale-aware formatting (date, time, number, currency), and preserve graceful missing-key behavior.
+- Add or update tests for translated rendering and fallback behavior when introducing i18n changes.
+
 ## Structure
 
 - Keep code under `src/components`, `src/features`, `src/hooks`, `src/types`, `src/utils`, `src/__tests__`.

@@ -55,6 +55,13 @@ Use this file as the canonical shared policy. Use provider-specific files for to
 - Prefer semantic HTML and keyboard-accessible interactions.
 - Keep contrast and labeling accessible.
 
+## i18n Baseline
+
+- Externalize user-facing strings to i18n resources; avoid hardcoded copy in components.
+- Use stable, descriptive translation keys and keep naming patterns consistent.
+- Ensure English defaults/fallbacks exist for new keys, use locale-aware formatting (date, time, number, currency), and preserve graceful missing-key behavior.
+- Cover i18n updates with tests for translated rendering and fallback paths.
+
 ## Oxygen UI Notes
 
 The generated Oxygen-specific catalog and examples are maintained in:
