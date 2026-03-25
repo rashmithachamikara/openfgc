@@ -2,6 +2,7 @@ import { Box, Stack, Typography } from '@wso2/oxygen-ui'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
+import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
 import ConsentRegistryFilters from './components/ConsentRegistryFilters'
 import ConsentRegistryTable from './components/ConsentRegistryTable'
 import { CONSENT_REGISTRY_MOCK_DATA } from './data/consents'
@@ -103,7 +104,8 @@ function ConsentRegistryPage(): React.JSX.Element {
   return (
     <Box component="main" sx={{ p: { xs: 2, md: 4 } }}>
       <Stack spacing={3}>
-        <Stack spacing={0.5}>
+        <Stack spacing={1}>
+          <HeaderBreadcrumbs />
           <Typography variant="h4" fontWeight={700}>
             {t('consentRegistry.title')}
           </Typography>

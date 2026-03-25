@@ -49,7 +49,7 @@ function HeaderBreadcrumbs(): React.JSX.Element {
   )
 
   return (
-    <Box component="nav" aria-label={t('layout.breadcrumbAriaLabel')} sx={{ ml: 2 }}>
+    <Box component="nav" aria-label={t('layout.breadcrumbAriaLabel')}>
       <Breadcrumbs
         separator={
           <Box component="span" sx={{ display: 'inline-flex', transform: 'translateY(1px)' }}>

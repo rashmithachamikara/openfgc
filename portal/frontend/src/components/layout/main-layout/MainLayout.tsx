@@ -3,7 +3,6 @@ import { CircleUserRound } from '@wso2/oxygen-ui-icons-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet } from 'react-router-dom'
-import HeaderBreadcrumbs from './HeaderBreadcrumbs'
 import AppSidebar from '../sidebar/AppSidebar'
 
 function MainLayout(): React.JSX.Element {
@@ -33,7 +32,6 @@ function MainLayout(): React.JSX.Element {
             </Header.BrandLogo>
             <Header.BrandTitle>OpenFGC</Header.BrandTitle>
           </Header.Brand>
-          <HeaderBreadcrumbs />
           <Header.Spacer />
           <Header.Actions>
             <ColorSchemeToggle />
