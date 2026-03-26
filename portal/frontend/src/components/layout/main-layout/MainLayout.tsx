@@ -35,8 +35,8 @@ function MainLayout(): React.JSX.Element {
           <Header.Spacer />
           <Header.Actions>
             <ColorSchemeToggle />
-            <IconButton size="small" aria-label={t('layout.userAvatarAriaLabel')}>
-              <CircleUserRound size={20} />
+            <IconButton size="medium" aria-label={t('layout.userAvatarAriaLabel')}>
+              <CircleUserRound size={26} />
             </IconButton>
           </Header.Actions>
         </Header>
