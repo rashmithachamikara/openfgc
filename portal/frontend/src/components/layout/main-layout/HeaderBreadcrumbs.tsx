@@ -14,6 +14,28 @@ function buildBreadcrumbItems(
   homeLabel: string,
   consentsLabel: string,
 ): BreadcrumbItem[] {
+  const consentDetailsMatch = pathname.match(/^\/consents\/([^/]+)$/)
+
+  if (consentDetailsMatch) {
+    return [
+      {
+        label: homeLabel,
+        path: '/dashboard',
+        isCurrent: false,
+      },
+      {
+        label: consentsLabel,
+        path: '/consents',
+        isCurrent: false,
+      },
+      {
+        label: consentDetailsMatch[1],
+        path: pathname,
+        isCurrent: true,
+      },
+    ]
+  }
+
   if (pathname.startsWith('/consents')) {
     return [
       {
