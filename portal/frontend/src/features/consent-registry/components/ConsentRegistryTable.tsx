@@ -2,6 +2,7 @@ import { Chip, IconButton, ListingTable, TablePagination } from '@wso2/oxygen-ui
 import { CircleCheckBig, Eye, ShieldX } from '@wso2/oxygen-ui-icons-react'
 import { Fragment, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Link as RouterLink } from 'react-router-dom'
 import type { ConsentRecord } from '../../../types/consent'
 
 interface ConsentRegistryTableProps {
@@ -197,7 +198,12 @@ function ConsentRegistryTable({ rows }: ConsentRegistryTableProps): React.JSX.El
                     <ListingTable.Cell>{formatCreatedAt(row.createdAt)}</ListingTable.Cell>
                     <ListingTable.Cell align="center">
                       <ListingTable.RowActions visibility="always">
-                        <IconButton size="small" aria-label={t('consentRegistry.actions.view')}>
+                        <IconButton
+                          size="small"
+                          component={RouterLink}
+                          to={`/consents/${row.id}`}
+                          aria-label={t('consentRegistry.actions.view')}
+                        >
                           <Eye size={16} />
                         </IconButton>
                         {row.canApprove ? (
