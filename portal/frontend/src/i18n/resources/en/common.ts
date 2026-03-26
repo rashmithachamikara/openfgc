@@ -19,6 +19,17 @@ const commonEn = {
   },
   consentRegistry: {
     title: 'All Consents',
+    details: {
+      title: 'Consent Details',
+      clientName: 'Client Name',
+      consentId: 'Consent ID',
+      status: 'Status',
+      type: 'Consent Type',
+      purposes: 'Purposes',
+      created: 'Created Date',
+      back: 'Back to Registry',
+      notFound: 'Consent record not found',
+    },
     actions: {
       view: 'View',
       revoke: 'Revoke',
