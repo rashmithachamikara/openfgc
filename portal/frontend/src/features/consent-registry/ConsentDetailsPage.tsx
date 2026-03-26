@@ -67,7 +67,12 @@ function ConsentDetailsPage(): React.JSX.Element {
             bottom: { md: 0 },
           }}
         >
-          <Button variant="outlined" color="primary" startIcon={<Download />} size="small">
+          <Button
+            variant="outlined"
+            color="primary"
+            startIcon={<Download size={16} />}
+            size="small"
+          >
             {t('consentRegistry.details.download', 'Download')}
           </Button>
           <Button variant="contained" color="error" size="small">
@@ -249,8 +254,8 @@ function ConsentDetailsPage(): React.JSX.Element {
                         <code>accountNumber</code>
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ color: 'success.main' }}>
-                          <CheckCircle />
+                        <Box sx={{ color: 'success.main', display: 'inline-flex' }}>
+                          <CheckCircle size={16} />
                         </Box>
                       </TableCell>
                       <TableCell>
@@ -264,8 +269,8 @@ function ConsentDetailsPage(): React.JSX.Element {
                         <code>balance</code>
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ color: 'success.main' }}>
-                          <CheckCircle />
+                        <Box sx={{ color: 'success.main', display: 'inline-flex' }}>
+                          <CheckCircle size={16} />
                         </Box>
                       </TableCell>
                       <TableCell>
