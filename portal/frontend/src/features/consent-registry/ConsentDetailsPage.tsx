@@ -219,6 +219,7 @@ function ConsentDetailsPage(): React.JSX.Element {
               border: 1,
               borderColor: 'divider',
               borderRadius: 1,
+              overflow: 'hidden',
               '&:before': { display: 'none' },
               '&.Mui-expanded': { m: 0 },
             }}
@@ -232,11 +233,11 @@ function ConsentDetailsPage(): React.JSX.Element {
               </Typography>
               <Chip label="2/3 approved" color="primary" size="small" sx={{ ml: 1.5 }} />
             </AccordionSummary>
-            <AccordionDetails sx={{ p: 0, bgcolor: 'background.default' }}>
+            <AccordionDetails sx={{ p: 0 }}>
               <TableContainer>
                 <Table size="small" sx={{ '& tbody tr:hover': { bgcolor: 'action.hover' } }}>
                   <TableHead>
-                    <TableRow sx={{ bgcolor: 'action.default' }}>
+                    <TableRow>
                       <TableCell sx={{ fontWeight: 700 }}>
                         {t('consentRegistry.details.table.element', 'Element')}
                       </TableCell>
