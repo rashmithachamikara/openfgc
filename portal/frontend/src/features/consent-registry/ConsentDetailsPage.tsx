@@ -211,11 +211,17 @@ function ConsentDetailsPage(): React.JSX.Element {
           sx={{ pb: 0 }}
         />
         <Divider />
-        <CardContent sx={{ p: 0 }}>
+        <CardContent sx={{ p: 2 }}>
           <Accordion
             disableGutters
             elevation={0}
-            sx={{ '&:before': { display: 'none' }, '&.Mui-expanded': { m: 0 } }}
+            sx={{
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 1,
+              '&:before': { display: 'none' },
+              '&.Mui-expanded': { m: 0 },
+            }}
           >
             <AccordionSummary
               expandIcon={<ChevronRight />}
