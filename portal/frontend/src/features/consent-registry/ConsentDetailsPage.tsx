@@ -228,10 +228,20 @@ function ConsentDetailsPage(): React.JSX.Element {
               expandIcon={<ChevronRight />}
               sx={{ '&:hover': { bgcolor: 'action.hover' } }}
             >
-              <Typography variant="body2" fontWeight={600}>
-                {t('consentRegistry.details.purpose.accountAccess', 'Account Access')}
-              </Typography>
-              <Chip label="2/3 approved" color="primary" size="small" sx={{ ml: 1.5 }} />
+              <Stack direction="row" spacing={1.5} alignItems="center">
+                <Typography variant="body2" fontWeight={600}>
+                  {t('consentRegistry.details.purpose.accountAccess', 'Account Access')}
+                </Typography>
+                <Chip
+                  label="2/3 approved"
+                  color="primary"
+                  size="small"
+                  sx={{
+                    height: 20,
+                    '& .MuiChip-label': { px: 0.75, fontSize: '0.6875rem', fontWeight: 500 },
+                  }}
+                />
+              </Stack>
             </AccordionSummary>
             <AccordionDetails sx={{ p: 0 }}>
               <TableContainer>
