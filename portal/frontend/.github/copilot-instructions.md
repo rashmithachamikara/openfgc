@@ -1,5 +1,5 @@
 ---
-applyTo: "**"
+applyTo: '**'
 ---
 
 # OpenFGC Portal Essential Instructions

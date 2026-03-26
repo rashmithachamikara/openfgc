@@ -1,7 +1,7 @@
 ---
 name: API and Data Layer Rules
 description: API client, caching, and server-state conventions.
-applyTo: "src/**/*.{ts,tsx}"
+applyTo: 'src/**/*.{ts,tsx}'
 ---
 
 # API and Data Layer Rules

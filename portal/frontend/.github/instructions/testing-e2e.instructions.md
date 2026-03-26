@@ -1,7 +1,7 @@
 ---
 name: Testing and E2E Rules
 description: Unit/integration testing and end-to-end testing standards.
-applyTo: "**/*.{test,spec}.{ts,tsx}"
+applyTo: '**/*.{test,spec}.{ts,tsx}'
 ---
 
 # Testing and E2E Rules

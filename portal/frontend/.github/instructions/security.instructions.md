@@ -1,7 +1,7 @@
 ---
 name: Security Rules
 description: Frontend security and safe rendering practices.
-applyTo: "src/**/*.{ts,tsx}"
+applyTo: 'src/**/*.{ts,tsx}'
 ---
 
 # Security Rules

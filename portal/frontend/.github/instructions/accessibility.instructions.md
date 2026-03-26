@@ -1,7 +1,7 @@
 ---
 name: Accessibility Rules
 description: WCAG-focused accessibility rules for UI components.
-applyTo: "src/**/*.{tsx,ts}"
+applyTo: 'src/**/*.{tsx,ts}'
 ---
 
 # Accessibility Rules

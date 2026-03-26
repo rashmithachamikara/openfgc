@@ -1,7 +1,7 @@
 ---
 name: Docs and Review Process
 description: Documentation standards and code review checklist.
-applyTo: "**/*.{md,ts,tsx}"
+applyTo: '**/*.{md,ts,tsx}'
 ---
 
 # Docs and Review Process

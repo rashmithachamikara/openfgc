@@ -1,7 +1,7 @@
 ---
 name: Forms and Validation Rules
 description: Standards for forms, schemas, and user input validation.
-applyTo: "src/**/*.{ts,tsx}"
+applyTo: 'src/**/*.{ts,tsx}'
 ---
 
 # Forms and Validation Rules
