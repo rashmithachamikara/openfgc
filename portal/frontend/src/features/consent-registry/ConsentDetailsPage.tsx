@@ -19,7 +19,7 @@ import {
   Typography,
   Avatar,
 } from '@wso2/oxygen-ui'
-import { ChevronRight, Download, CheckCircle } from '@wso2/oxygen-ui-icons-react'
+import { ChevronRight, Download, CheckCircle, XCircle } from '@wso2/oxygen-ui-icons-react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
@@ -291,7 +291,13 @@ function ConsentDetailsPage(): React.JSX.Element {
                         <code>transactionHistory</code>
                       </TableCell>
                       <TableCell>
-                        <Box sx={{ color: 'error.main' }}>✕</Box>
+                        <Box
+                          role="img"
+                          aria-label={t('consentRegistry.details.notApproved', 'Not approved')}
+                          sx={{ color: 'error.main', display: 'inline-flex' }}
+                        >
+                          <XCircle size={16} />
+                        </Box>
                       </TableCell>
                       <TableCell>
                         <Chip label="Optional" size="small" variant="outlined" />
