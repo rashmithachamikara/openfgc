@@ -86,8 +86,8 @@ function ConsentDetailsPage(): React.JSX.Element {
         <CardHeader
           title={
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="subtitle1" fontWeight={600}>
-                {t('consentRegistry.details.section.details', 'Consent Details')}
+              <Typography variant="body2" fontWeight={600}>
+                {t('consentRegistry.details.consentId', 'Consent ID')}: {id}
               </Typography>
             </Stack>
           }
@@ -100,10 +100,10 @@ function ConsentDetailsPage(): React.JSX.Element {
                 variant="filled"
               />
               <Chip
-                label={t('consentRegistry.status.authorized', 'AUTHORIZED')}
-                color="info"
+                label={t('consentRegistry.details.consentType', 'Account Access')}
                 size="small"
                 variant="filled"
+                sx={{ bgcolor: 'warning.main', color: 'warning.contrastText' }}
               />
             </Stack>
           }
@@ -371,7 +371,7 @@ function ConsentDetailsPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell>authorisation</TableCell>
                 <TableCell>
-                  <Chip label="APPROVED" color="success" size="small" variant="filled" />
+                  <Chip label="Approved" color="success" size="small" variant="filled" />
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">02/03/2026, 15:29:57</Typography>
