@@ -1,0 +1,22 @@
+openapi: 3.0.3
+info:
+  title: OpenFGC Portal BFF API
+  version: 0.1.0
+  description: >-
+    Phase 1 placeholder contract for BFF endpoints. Expand this spec before
+    implementing auth and proxy route behavior.
+paths:
+  /health:
+    get:
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service healthy
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  status:
+                    type: string
+                    example: ok
