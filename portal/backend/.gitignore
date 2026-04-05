@@ -1,0 +1,29 @@
+# Go build outputs
+bin/
+*.exe
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+
+# Coverage outputs
+coverage.out
+coverage.txt
+*.cov
+
+# Local environment/config files
+.env
+.env.local
+BFF_CONFIG_FILE
+local.yaml
+local.yml
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+
+# OS files
+.DS_Store
+Thumbs.db
