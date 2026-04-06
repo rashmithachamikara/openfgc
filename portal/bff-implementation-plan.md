@@ -350,39 +350,58 @@ Provider-compatibility note: if an IdP requires `id_token_hint` for complete RP-
 | `/auth/logout` | POST | Validates same-origin (`Origin`/`Referer`), clears cookies, calls IdP end-session endpoint when available | Same-origin check (auth_token not required) |
 | `/auth/refresh` | POST | Decrypts session_token, refreshes via IdP token endpoint, reissues cookies | Session + CSRF + signed auth_token (expiry allowed only in short grace window) |
 
-### 5.2 Proxy Endpoints
+### 5.2 User Endpoints (BFF-defined, portal-facing)
+
+These endpoints are purpose-built for data owners (end users). They are not generic passthrough routes.
 
 | Endpoint | Method | Description | Auth Required |
 |----------|--------|-------------|---------------|
-| `/me/consents` | GET | Portal-facing self-consent list. BFF injects user scope. | Yes |
-| `/api/consents` | GET, POST | List / create consents | Yes |
-| `/api/consents/{id}` | GET, PUT | Get / update consent | Yes |
-| `/api/consents/{id}/revoke` | PUT | Revoke consent | Yes |
-| `/api/consents/{id}/authorizations` | GET, POST | List / create authorization resources for a consent | Yes |
-| `/api/consents/{id}/authorizations/{authorizationId}` | GET, PUT | Get / update authorization resource | Yes |
-| `/api/consent-elements` | GET, POST | List / create consent elements | Yes |
-| `/api/consent-elements/{id}` | GET, PUT, DELETE | Get / update / delete consent element | Yes |
-| `/api/consent-elements/validate` | POST | Validate consent element names | Yes |
-| `/api/consent-purposes` | GET, POST | List / create consent purposes | Yes |
-| `/api/consent-purposes/{id}` | GET, PUT, DELETE | Get / update / delete consent purpose | Yes |
-| `/api/{path...}` | * | All other OpenFGC endpoints | Yes |
+| `/me/consents` | GET | Self-consent list endpoint. BFF always enforces user scope. | Yes |
+| `/me/consents/{consentId}` | GET | Retrieve one consent only if owned by authenticated user. | Yes |
+| `/me/consents/{consentId}/approve` | POST | Approve consent for the authenticated user and persist approval decision. | Yes |
+| `/me/consents/{consentId}/revoke` | PUT | Revoke one consent only if owned by authenticated user. | Yes |
 
-Proxy mapping note:
-- Portal-facing routes use `/api/*`
-- consent-server routes use `/api/v1/*`
-- Proxy handler must map `/api/<path>` → `/api/v1/<path>`
+User mapping notes:
+- `GET /me/consents` maps to upstream `GET /api/v1/consents?userIds=<principal-sub>`
+- Any browser-supplied `userIds` is ignored/overwritten for user role requests
+- `POST /me/consents/{consentId}/approve` maps to upstream consent approval operations (`PUT /api/v1/consents/{consentId}` and/or `POST /api/v1/consents/{consentId}/authorizations`) with `status=APPROVED`
+- `GET /me/consents/{consentId}` and `PUT /me/consents/{consentId}/revoke` require ownership validation before proxying
+- `POST /me/consents/{consentId}/approve` requires ownership validation and must ignore any client-supplied `userId` that does not match principal `sub`
 
-User-scope mapping note:
-- Portal-facing `GET /me/consents` maps to upstream `GET /api/v1/consents?userIds=<bff-injected-sub>`
-- BFF must ignore any client-supplied `userIds` for this route
+### 5.3 Admin Endpoints (BFF-defined + controlled 1:1 passthrough)
 
-### 5.3 Authorization Scoping Rules
+These endpoints are for data holder admins. They expose broader search/management capability and may call consent-server routes in a 1:1 pattern after policy checks.
 
-- `GET /me/consents` is the default portal list endpoint and is always user-scoped
-- User scope source is the authenticated BFF principal (`sub`) from validated auth context
-- For non-admin users, BFF must overwrite/ignore browser-supplied `userIds` filters
-- For admin routes (if enabled), broader filters may be accepted only after explicit role checks
-- For object endpoints (for example `/api/consents/{id}`), BFF should enforce ownership checks before returning/forwarding data
+| Endpoint | Method | Description | Auth Required |
+|----------|--------|-------------|---------------|
+| `/admin/consents` | GET, POST | List / create consents with admin scope. | Admin |
+| `/admin/consents/attributes` | GET | Search consents by attribute key/value. | Admin |
+| `/admin/consents/validate` | POST | Validate consent access payloads. | Admin |
+| `/admin/consents/{consentId}` | GET, PUT | Get / update consent by ID. | Admin |
+| `/admin/consents/{consentId}/revoke` | PUT | Revoke consent by ID. | Admin |
+| `/admin/consents/{consentId}/authorizations` | GET, POST | List / create authorization resources. | Admin |
+| `/admin/consents/{consentId}/authorizations/{authorizationId}` | GET, PUT | Get / update authorization resource. | Admin |
+| `/admin/consent-elements` | GET, POST | List / create consent elements. | Admin |
+| `/admin/consent-elements/{elementId}` | GET, PUT, DELETE | Get / update / delete consent element. | Admin |
+| `/admin/consent-elements/validate` | POST | Validate consent element names. | Admin |
+| `/admin/consent-purposes` | GET, POST | List / create consent purposes. | Admin |
+| `/admin/consent-purposes/{purposeId}` | GET, PUT, DELETE | Get / update / delete consent purpose. | Admin |
+
+Admin mapping notes:
+- `/admin/*` routes map to consent-server `/api/v1/*` using explicit method/path allowlist
+- BFF can preserve admin filters (including `userIds`) only after admin-role authorization passes
+- Catch-all passthrough is not exposed to users; deny-by-default outside allowlisted routes
+
+### 5.4 Authorization and Routing Rules
+
+- Two actor types are enforced in BFF: data owner user and data holder admin
+- User endpoints are self-scoped by default and never trust browser-provided scope
+- Admin endpoints allow organization-wide access only after explicit role checks
+- Object-level ownership checks are mandatory for user routes targeting a specific consent ID
+- BFF strips untrusted client headers and re-creates trusted upstream headers (`org-id`, `TPP-client-id`, `X-Correlation-ID`) from validated context
+- Path rewrite contract:
+  - User route group: `/me/*` -> mapped by BFF to selected `/api/v1/*` upstream routes
+  - Admin route group: `/admin/*` -> mapped by BFF to allowlisted `/api/v1/*` upstream routes
 
 ---
 
