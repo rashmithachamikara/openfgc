@@ -68,17 +68,20 @@ src/
 
 This repository uses VS Code Copilot instruction files to keep AI-generated changes aligned with project and organization standards.
 
-- Canonical cross-agent project rules: `AGENTS.md`
-- Copilot always-on workspace instructions: `.github/copilot-instructions.md`
+Paths below are relative to the repository root.
+
+- Frontend standards: `portal/frontend/AGENTS.md`
+- Copilot workspace entrypoint: `.github/copilot-instructions.md`
 - Scoped instructions folder: `.github/instructions/`
-- Oxygen UI generated reference: `.ai/oxygen-ui/AGENTS.md`
+- Frontend scope mapping: `portal/frontend/**` -> `.github/instructions/portal-frontend.instructions.md`
+- Oxygen UI generated reference: `portal/frontend/.ai/oxygen-ui/AGENTS.md`
 
 Recommended precedence:
 
-1. `AGENTS.md` for shared project standards
+1. `portal/frontend/AGENTS.md` for shared frontend standards
 2. `.github/copilot-instructions.md` for Copilot-specific defaults
 3. `.github/instructions/*.instructions.md` for task and file-type specific rules
-4. `.ai/oxygen-ui/AGENTS.md` for Oxygen component catalog/examples
+4. `portal/frontend/.ai/oxygen-ui/AGENTS.md` for Oxygen component catalog/examples
 
 Copilot instruction files are automatically discovered by Copilot Chat and applied based on their `applyTo` patterns.
 

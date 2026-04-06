@@ -1,12 +1,13 @@
 ---
-applyTo: '**'
+description: "Use when editing React TypeScript frontend code under portal/frontend, including Oxygen UI components, hooks, state, and tests."
+applyTo: "portal/frontend/**"
 ---
 
-# OpenFGC Portal Essential Instructions
+# OpenFGC Portal Frontend Instructions
 
 React + TypeScript + Vite project using Oxygen UI.
 
-Also follow `AGENTS.md` for shared project standards. Use `.ai/oxygen-ui/AGENTS.md` for Oxygen UI component-specific reference.
+Also follow `portal/frontend/AGENTS.md` for shared project standards. Use `portal/frontend/.ai/oxygen-ui/AGENTS.md` for Oxygen UI component-specific reference.
 
 ## Core Rules
 

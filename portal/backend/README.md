@@ -25,3 +25,14 @@ Install Task if needed: https://taskfile.dev/installation/
 - `GET /health`
 - `GET /health/liveness`
 - `GET /health/readiness`
+
+## AI Instructions
+
+This repository uses VS Code Copilot instruction files to keep AI-generated changes aligned with project and organization standards.
+
+- Backend standards: `portal/backend/AGENTS.md`
+- Copilot workspace entrypoint (repo root): `.github/copilot-instructions.md`
+- Scoped instructions folder (repo root): `.github/instructions/`
+- Backend scope mapping: `portal/backend/**` -> `.github/instructions/portal-backend.instructions.md`
+
+Copilot instructions are discovered automatically and scoped using `applyTo` patterns.
