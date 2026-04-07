@@ -35,3 +35,10 @@ tasks:
     desc: Run the BFF server
     cmds:
       - go run ./cmd/server
+
+  run:env:
+    desc: Run the BFF server with variables loaded from .env
+    dotenv:
+      - .env
+    cmds:
+      - go run ./cmd/server

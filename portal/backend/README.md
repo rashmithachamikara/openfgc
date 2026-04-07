@@ -11,6 +11,7 @@ Stateless backend-for-frontend (BFF) for OpenFGC Portal, responsible for handlin
 - `task test`
 - `task build`
 - `task run`
+- `task run:env` (loads variables from `.env` for local development)
 
 Install Task if needed: https://taskfile.dev/installation/
 
@@ -25,6 +26,47 @@ Install Task if needed: https://taskfile.dev/installation/
 - `GET /health`
 - `GET /health/liveness`
 - `GET /health/readiness`
+
+## API endpoints
+
+Portal-facing user endpoints:
+
+- `GET /me/consents` -> upstream `GET /api/v1/consents` with forced `userIds=<placeholder>`
+- `GET /me/consents/{consentId}` -> upstream `GET /api/v1/consents/{consentId}`
+- `POST /me/consents/{consentId}/approve` -> upstream `POST /api/v1/consents/{consentId}/authorizations`
+- `PUT /me/consents/{consentId}/revoke` -> upstream `PUT /api/v1/consents/{consentId}/revoke`
+
+Proxy hardening:
+
+- Path rewrite `/api/*` -> `/api/v1/*` with query preservation
+- Deny-by-default allowlist for consent-server routes (unknown path -> `404`, known path wrong method -> `405`)
+- Hop-by-hop header stripping and trusted-header override prevention (`org-id`, `TPP-client-id`)
+- Correlation ID propagation/generation via `X-Correlation-ID`
+- Request body limit enforcement (`BFF_PROXY__MAX_REQUEST_BYTES`) with `413`
+- Deterministic upstream error mapping: timeout -> `503`, other connectivity failures -> `502`
+
+Error contract for proxy-originated failures:
+
+```json
+{
+	"code": "REQUEST_TOO_LARGE",
+	"message": "request entity too large"
+}
+```
+
+Common error codes:
+
+- `REQUEST_TOO_LARGE`
+- `METHOD_NOT_ALLOWED`
+- `NOT_FOUND`
+- `INVALID_PAYLOAD`
+- `UPSTREAM_TIMEOUT`
+- `UPSTREAM_UNAVAILABLE`
+
+## Placeholder mode guardrails
+
+- `BFF_PROXY__PLACEHOLDER_MODE_ENABLED=true` is blocked when `BFF_ENV=production`
+- `BFF_PROXY__PLACEHOLDER_USER_ID` must be empty if placeholder mode is disabled
 
 ## AI Instructions
 

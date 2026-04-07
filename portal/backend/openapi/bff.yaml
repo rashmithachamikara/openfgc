@@ -1,22 +1,238 @@
 openapi: 3.0.3
 info:
   title: OpenFGC Portal BFF API
-  version: 0.1.0
+  version: 0.2.0
   description: >-
-    Phase 1 placeholder contract for BFF endpoints. Expand this spec before
-    implementing auth and proxy route behavior.
+    Stateless portal BFF endpoints, including health checks, portal-facing
+    user routes, and explicit passthrough routes to consent-server. For proxied
+    endpoints in this spec, response payload shape is inherited from the
+    consent-management API.
+servers:
+  - url: http://localhost:8080
+tags:
+  - name: Health
+  - name: User
+  - name: Passthrough
 paths:
   /health:
     get:
+      tags: [Health]
       summary: Liveness check
       responses:
         '200':
           description: Service healthy
+  /health/liveness:
+    get:
+      tags: [Health]
+      summary: Liveness check
+      responses:
+        '200':
+          description: Service healthy
+  /health/readiness:
+    get:
+      tags: [Health]
+      summary: Readiness check
+      responses:
+        '200':
+          description: Service ready
+
+  /me/consents:
+    get:
+      tags: [User]
+      summary: List current user consents
+      description: >-
+        Proxies to consent-server GET /api/v1/consents and always overwrites
+        userIds with trusted identity context. Response payload shape is
+        inherited from consent-management API.
+      parameters:
+        - in: query
+          name: limit
+          schema:
+            type: integer
+        - in: query
+          name: offset
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: Upstream response
           content:
             application/json:
               schema:
                 type: object
-                properties:
-                  status:
-                    type: string
-                    example: ok
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+  /me/consents/{consentId}:
+    get:
+      tags: [User]
+      summary: Get consent by id for current user flow
+      description: >-
+        Response payload shape is inherited from consent-management API.
+      parameters:
+        - in: path
+          name: consentId
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+  /me/consents/{consentId}/approve:
+    post:
+      tags: [User]
+      summary: Approve consent for current user flow
+      description: >-
+        Proxies to POST /api/v1/consents/{consentId}/authorizations and enforces
+        status=APPROVED with trusted user identity. Response payload shape is
+        inherited from consent-management API.
+      parameters:
+        - in: path
+          name: consentId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/ProxyError'
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '413':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+  /me/consents/{consentId}/revoke:
+    put:
+      tags: [User]
+      summary: Revoke consent for current user flow
+      description: >-
+        Response payload shape is inherited from consent-management API.
+      parameters:
+        - in: path
+          name: consentId
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '400':
+          $ref: '#/components/responses/ProxyError'
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '413':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+  /api/consents:
+    get:
+      tags: [Passthrough]
+      summary: Passthrough search consents
+      description: >-
+        Response payload shape is inherited from consent-management API.
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '405':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+    post:
+      tags: [Passthrough]
+      summary: Passthrough create consent
+      description: >-
+        Response payload shape is inherited from consent-management API.
+      requestBody:
+        required: false
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: Upstream response
+          content:
+            application/json:
+              schema:
+                type: object
+        '404':
+          $ref: '#/components/responses/ProxyError'
+        '405':
+          $ref: '#/components/responses/ProxyError'
+        '413':
+          $ref: '#/components/responses/ProxyError'
+        '502':
+          $ref: '#/components/responses/ProxyError'
+        '503':
+          $ref: '#/components/responses/ProxyError'
+
+components:
+  schemas:
+    ProxyError:
+      type: object
+      required:
+        - code
+        - message
+      properties:
+        code:
+          type: string
+          example: UPSTREAM_UNAVAILABLE
+        message:
+          type: string
+          example: upstream unavailable
+  responses:
+    ProxyError:
+      description: Proxy-layer error response
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/ProxyError'
