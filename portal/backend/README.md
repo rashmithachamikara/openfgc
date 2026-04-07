@@ -21,6 +21,18 @@ Install Task if needed: https://taskfile.dev/installation/
 - Optional file overlay: set `BFF_CONFIG_FILE` to a YAML config file path
 - Final effective config is: defaults < file < env
 
+### CORS for local frontend
+
+When running `portal/frontend` on a different origin (for example Vite dev server), allow that origin with:
+
+- `BFF_CORS__ALLOWED_ORIGINS` (comma-separated origins)
+- `BFF_CORS__ALLOWED_METHODS` (comma-separated methods)
+- `BFF_CORS__ALLOWED_HEADERS` (comma-separated request headers)
+- `BFF_CORS__ALLOW_CREDENTIALS` (`true`/`false`)
+
+Requests that include an `Origin` header from a non-allowlisted origin are rejected.
+When credentials are enabled, origins must be explicitly allowlisted (wildcard origin is rejected).
+
 ## Health endpoints
 
 - `GET /health`

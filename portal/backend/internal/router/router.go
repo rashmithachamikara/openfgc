@@ -31,5 +31,12 @@ func New(log *slog.Logger, cfg config.Config) (http.Handler, error) {
 	mux.HandleFunc("PUT /me/consents/{consentId}/revoke", proxyHandler.MeConsentRevoke)
 	mux.HandleFunc("/api/{path...}", proxyHandler.API)
 
-	return middleware.CorrelationID(log, mux), nil
+	withCORS := middleware.CORS(mux, middleware.CORSOptions{
+		AllowedOrigins:   cfg.CORS.AllowedOrigins,
+		AllowedMethods:   cfg.CORS.AllowedMethods,
+		AllowedHeaders:   cfg.CORS.AllowedHeaders,
+		AllowCredentials: cfg.CORS.AllowCredentials,
+	})
+
+	return middleware.CorrelationID(log, withCORS), nil
 }

@@ -20,7 +20,16 @@ type Config struct {
 	Env    string       `koanf:"env"`
 	Server ServerConfig `koanf:"server"`
 	Log    LogConfig    `koanf:"log"`
+	CORS   CORSConfig   `koanf:"cors"`
 	Proxy  ProxyConfig  `koanf:"proxy"`
+}
+
+// CORSConfig contains browser cross-origin policy settings for local/frontend integration.
+type CORSConfig struct {
+	AllowedOrigins   []string `koanf:"allowed_origins"`
+	AllowedMethods   []string `koanf:"allowed_methods"`
+	AllowedHeaders   []string `koanf:"allowed_headers"`
+	AllowCredentials bool     `koanf:"allow_credentials"`
 }
 
 // ServerConfig contains HTTP server runtime settings.
@@ -91,6 +100,16 @@ func Load() (*Config, error) {
 		}
 	}
 
+	if rawOrigins := os.Getenv("BFF_CORS__ALLOWED_ORIGINS"); rawOrigins != "" {
+		cfg.CORS.AllowedOrigins = ParseCSV(rawOrigins)
+	}
+	if rawMethods := os.Getenv("BFF_CORS__ALLOWED_METHODS"); rawMethods != "" {
+		cfg.CORS.AllowedMethods = ParseCSV(rawMethods)
+	}
+	if rawHeaders := os.Getenv("BFF_CORS__ALLOWED_HEADERS"); rawHeaders != "" {
+		cfg.CORS.AllowedHeaders = ParseCSV(rawHeaders)
+	}
+
 	return &cfg, validate(cfg)
 }
 
@@ -117,6 +136,18 @@ func setDefaults(k *koanf.Koanf) error {
 		return err
 	}
 	if err := k.Set("log.level", "info"); err != nil {
+		return err
+	}
+	if err := k.Set("cors.allowed_origins", []string{}); err != nil {
+		return err
+	}
+	if err := k.Set("cors.allowed_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}); err != nil {
+		return err
+	}
+	if err := k.Set("cors.allowed_headers", []string{"Content-Type", "X-Correlation-ID"}); err != nil {
+		return err
+	}
+	if err := k.Set("cors.allow_credentials", false); err != nil {
 		return err
 	}
 	if err := k.Set("proxy.openfgc_api_url", "http://localhost:9090"); err != nil {
@@ -163,6 +194,36 @@ func validate(cfg Config) error {
 	if cfg.Proxy.MaxRequestBytes <= 0 {
 		return fmt.Errorf("proxy.max_request_bytes must be > 0")
 	}
+	for _, raw := range cfg.CORS.AllowedOrigins {
+		origin := strings.TrimSpace(raw)
+		if origin == "" {
+			continue
+		}
+		if cfg.CORS.AllowCredentials && origin == "*" {
+			return fmt.Errorf("cors.allowed_origins cannot contain wildcard when cors.allow_credentials is true")
+		}
+		u, err := url.ParseRequestURI(origin)
+		if err != nil {
+			return fmt.Errorf("cors.allowed_origins contains invalid URL %q: %w", origin, err)
+		}
+		if u.Scheme != "http" && u.Scheme != "https" {
+			return fmt.Errorf("cors.allowed_origins contains unsupported scheme for %q", origin)
+		}
+		if u.Host == "" {
+			return fmt.Errorf("cors.allowed_origins contains missing host for %q", origin)
+		}
+	}
+	if len(cfg.CORS.AllowedMethods) == 0 {
+		return fmt.Errorf("cors.allowed_methods must not be empty")
+	}
+	if len(cfg.CORS.AllowedHeaders) == 0 {
+		return fmt.Errorf("cors.allowed_headers must not be empty")
+	}
+	if cfg.CORS.AllowCredentials {
+		if len(cfg.CORS.AllowedOrigins) == 0 {
+			return fmt.Errorf("cors.allowed_origins must not be empty when cors.allow_credentials is true")
+		}
+	}
 	if cfg.Proxy.PlaceholderModeEnabled && strings.EqualFold(cfg.Env, "production") {
 		return fmt.Errorf("proxy.placeholder_mode_enabled cannot be true in production")
 	}
@@ -188,4 +249,21 @@ func ParseMethods(raw string) ([]string, error) {
 		methods[i] = strings.ToUpper(strings.TrimSpace(methods[i]))
 	}
 	return methods, nil
+}
+
+// ParseCSV parses comma-separated values and removes empty entries.
+func ParseCSV(raw string) []string {
+	if raw == "" {
+		return nil
+	}
+	parts := strings.Split(raw, ",")
+	out := make([]string, 0, len(parts))
+	for _, p := range parts {
+		v := strings.TrimSpace(p)
+		if v == "" {
+			continue
+		}
+		out = append(out, v)
+	}
+	return out
 }
