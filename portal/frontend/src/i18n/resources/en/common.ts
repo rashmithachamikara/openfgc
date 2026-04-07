@@ -50,6 +50,11 @@ const commonEn = {
       consentType: 'Consent type',
       clear: 'Clear',
     },
+    messages: {
+      loading: 'Loading consents...',
+      loadFailed: 'Unable to load consents right now.',
+      empty: 'No consents found for the selected filters.',
+    },
     table: {
       tableAriaLabel: 'Consent registry table',
       clientLabel: 'Client: {{client}}',

@@ -7,6 +7,14 @@ import type { ConsentRecord } from '../../../types/consent'
 
 interface ConsentRegistryTableProps {
   rows: ConsentRecord[]
+  totalCount: number
+  page: number
+  rowsPerPage: number
+  onPageChange: (page: number) => void
+  onRowsPerPageChange: (rowsPerPage: number) => void
+  onApprove: (consentID: string) => void
+  onRevoke: (consentID: string) => void
+  isMutating: boolean
 }
 
 type SortField = 'id' | 'type' | 'status' | 'createdAt'
@@ -64,10 +72,18 @@ function sortConsentRows(
   return sortDirection === 'asc' ? sortedRows : sortedRows.reverse()
 }
 
-function ConsentRegistryTable({ rows }: ConsentRegistryTableProps): React.JSX.Element {
+function ConsentRegistryTable({
+  rows,
+  totalCount,
+  page,
+  rowsPerPage,
+  onPageChange,
+  onRowsPerPageChange,
+  onApprove,
+  onRevoke,
+  isMutating,
+}: ConsentRegistryTableProps): React.JSX.Element {
   const { t } = useTranslation('common')
-  const [page, setPage] = useState<number>(0)
-  const [rowsPerPage, setRowsPerPage] = useState<number>(10)
   const [sortField, setSortField] = useState<SortField>('createdAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
@@ -76,17 +92,10 @@ function ConsentRegistryTable({ rows }: ConsentRegistryTableProps): React.JSX.El
     [rows, sortDirection, sortField],
   )
 
-  const paginatedRows = useMemo(() => {
-    const startIndex = page * rowsPerPage
-    const endIndex = startIndex + rowsPerPage
-
-    return sortedRows.slice(startIndex, endIndex)
-  }, [page, rowsPerPage, sortedRows])
-
   const groupedRows = useMemo(() => {
     const groupedMap = new Map<string, ConsentRecord[]>()
 
-    paginatedRows.forEach((row) => {
+    sortedRows.forEach((row) => {
       const existingRows = groupedMap.get(row.clientName)
 
       if (existingRows) {
@@ -101,7 +110,7 @@ function ConsentRegistryTable({ rows }: ConsentRegistryTableProps): React.JSX.El
       clientName,
       clientRows,
     }))
-  }, [paginatedRows])
+  }, [sortedRows])
 
   const rowsPerPageOptions: number[] = [5, 10, 25]
 
@@ -112,7 +121,7 @@ function ConsentRegistryTable({ rows }: ConsentRegistryTableProps): React.JSX.El
       density="standard"
       page={page}
       rowsPerPage={rowsPerPage}
-      totalCount={rows.length}
+      totalCount={totalCount}
       selected={selectedRowIds}
       sortField={sortField}
       sortDirection={sortDirection}
@@ -120,11 +129,8 @@ function ConsentRegistryTable({ rows }: ConsentRegistryTableProps): React.JSX.El
       onBulkDelete={() => {}}
       onClearSelection={() => {}}
       onDensityChange={() => {}}
-      onPageChange={setPage}
-      onRowsPerPageChange={(nextRowsPerPage) => {
-        setRowsPerPage(nextRowsPerPage)
-        setPage(0)
-      }}
+      onPageChange={onPageChange}
+      onRowsPerPageChange={onRowsPerPageChange}
       onSearchChange={() => {}}
       onSelectAll={() => {}}
       onSelectionChange={() => {}}
@@ -211,6 +217,10 @@ function ConsentRegistryTable({ rows }: ConsentRegistryTableProps): React.JSX.El
                             size="small"
                             color="warning"
                             aria-label={t('consentRegistry.actions.approve')}
+                            disabled={isMutating}
+                            onClick={() => {
+                              onApprove(row.id)
+                            }}
                           >
                             <CircleCheckBig size={16} />
                           </IconButton>
@@ -218,8 +228,11 @@ function ConsentRegistryTable({ rows }: ConsentRegistryTableProps): React.JSX.El
                           <IconButton
                             size="small"
                             color="error"
-                            disabled={!row.canRevoke}
+                            disabled={!row.canRevoke || isMutating}
                             aria-label={t('consentRegistry.actions.revoke')}
+                            onClick={() => {
+                              onRevoke(row.id)
+                            }}
                           >
                             <ShieldX size={16} />
                           </IconButton>
@@ -235,16 +248,15 @@ function ConsentRegistryTable({ rows }: ConsentRegistryTableProps): React.JSX.El
 
         <TablePagination
           component="div"
-          count={rows.length}
+          count={totalCount}
           page={page}
           rowsPerPage={rowsPerPage}
           rowsPerPageOptions={rowsPerPageOptions}
           onPageChange={(_, nextPage) => {
-            setPage(nextPage)
+            onPageChange(nextPage)
           }}
           onRowsPerPageChange={(event) => {
-            setRowsPerPage(Number(event.target.value))
-            setPage(0)
+            onRowsPerPageChange(Number(event.target.value))
           }}
         />
       </ListingTable.Container>
