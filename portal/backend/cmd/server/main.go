@@ -24,7 +24,14 @@ func main() {
 	}
 
 	log := logger.New(cfg.Log.Level)
-	handler := router.New(log)
+	if cfg.Proxy.PlaceholderModeEnabled {
+		log.Warn("placeholder identity mode is enabled; do not use in production")
+	}
+	handler, err := router.New(log, *cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "failed to initialize router: %v\n", err)
+		os.Exit(1)
+	}
 
 	srv := &http.Server{
 		Addr:         fmt.Sprintf("%s:%d", cfg.Server.Host, cfg.Server.Port),

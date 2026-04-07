@@ -5,12 +5,14 @@ import (
 	"log/slog"
 	"net/http"
 
+	"github.com/wso2/openfgc/portal/backend/internal/config"
 	"github.com/wso2/openfgc/portal/backend/internal/health"
 	"github.com/wso2/openfgc/portal/backend/internal/middleware"
+	"github.com/wso2/openfgc/portal/backend/internal/proxy"
 )
 
 // New builds the root HTTP handler with Phase 1 bootstrap routes.
-func New(log *slog.Logger) http.Handler {
+func New(log *slog.Logger, cfg config.Config) (http.Handler, error) {
 	mux := http.NewServeMux()
 
 	healthHandler := health.NewHandler()
@@ -18,5 +20,16 @@ func New(log *slog.Logger) http.Handler {
 	mux.HandleFunc("GET /health/readiness", healthHandler.Readiness)
 	mux.HandleFunc("GET /health", healthHandler.Liveness)
 
-	return middleware.CorrelationID(log, mux)
+	proxyHandler, err := proxy.NewHandler(cfg.Proxy)
+	if err != nil {
+		return nil, err
+	}
+
+	mux.HandleFunc("GET /me/consents", proxyHandler.MeConsents)
+	mux.HandleFunc("GET /me/consents/{consentId}", proxyHandler.MeConsentByID)
+	mux.HandleFunc("POST /me/consents/{consentId}/approve", proxyHandler.MeConsentApprove)
+	mux.HandleFunc("PUT /me/consents/{consentId}/revoke", proxyHandler.MeConsentRevoke)
+	mux.HandleFunc("/api/{path...}", proxyHandler.API)
+
+	return middleware.CorrelationID(log, mux), nil
 }
