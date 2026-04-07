@@ -23,18 +23,21 @@ Exit criteria:
 Goal: validate proxy behavior independently from auth.
 
 1. Implement proxy path mapping, method/path allowlist, timeout policy, and body limits.
-2. Add secure header handling:
+2. Introduce portal user endpoints in proxy mode (for example, `/me/consents`, `/me/consents/{consentId}`, `/me/consents/{consentId}/approve`, `/me/consents/{consentId}/revoke`) with explicit route mappings to upstream `/api/v1/*` contracts.
+3. Add secure header handling:
    - strip hop-by-hop headers
    - ignore client-supplied trusted headers
    - propagate/generate correlation id
-3. Inject currently unavailable auth-dependent values from config for test mode.
-4. Add hard guardrails so placeholder mode cannot run in production.
-5. Add integration tests for rewrite logic, header safety, query preservation, and error mapping.
+4. Inject currently unavailable auth-dependent values from config for test mode.
+5. Add hard guardrails so placeholder mode cannot run in production.
+6. Add integration tests for rewrite logic, header safety, query preservation, error mapping, and portal user endpoint route mappings in placeholder mode.
+7. Defer user ownership enforcement and principal-derived scoping for `/me/*` endpoints to Phase 3 when auth/session context is available.
 
 Exit criteria:
 1. Proxy behavior is fully testable without auth integration.
 2. Security checks on headers and route allowlisting pass.
-3. Placeholder identity mode is explicitly restricted to non-production use.
+3. Portal user endpoint mappings are implemented and validated in placeholder mode.
+4. Placeholder identity mode is explicitly restricted to non-production use.
 
 **Phase 3: Authentication and session implementation (depends on Phase 2)**
 Goal: replace placeholders with real identity from auth context.
