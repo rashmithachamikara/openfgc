@@ -35,6 +35,7 @@ Also follow `portal/frontend/AGENTS.md` for shared project standards. Use `porta
 
 - Every component/hook should have tests.
 - Place tests in `src/__tests__/` using `*.test.tsx`.
+- Use PascalCase for test filenames in `src/__tests__/` (e.g., `ConsentRegistryModals.test.tsx`).
 - Use Vitest + React Testing Library.
 - Test happy and error paths; mock network requests.
 
