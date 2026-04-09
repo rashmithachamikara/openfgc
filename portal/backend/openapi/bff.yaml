@@ -70,7 +70,11 @@ paths:
       tags: [User]
       summary: Get consent by id for current user flow
       description: >-
-        Response payload shape is inherited from consent-management API.
+        Aggregates consent details from consent-server by combining
+        GET /api/v1/consents/{consentId} with consent purpose and consent
+        element metadata lookups. Response includes purpose descriptions and
+        enriched element fields such as isMandatory, type, description, and
+        properties.
       parameters:
         - in: path
           name: consentId
@@ -79,11 +83,11 @@ paths:
             type: string
       responses:
         '200':
-          description: Upstream response
+          description: Aggregated consent detail response
           content:
             application/json:
               schema:
-                type: object
+                $ref: '#/components/schemas/MeConsentDetailAggregatedResponse'
         '404':
           $ref: '#/components/responses/ProxyError'
         '502':
@@ -217,6 +221,117 @@ paths:
 
 components:
   schemas:
+    MeConsentDetailAggregatedResponse:
+      type: object
+      required:
+        - id
+        - clientId
+        - type
+        - status
+        - createdTime
+        - updatedTime
+        - purposes
+      properties:
+        id:
+          type: string
+        clientId:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        createdTime:
+          type: integer
+          format: int64
+        updatedTime:
+          type: integer
+          format: int64
+        frequency:
+          type: integer
+        validityTime:
+          type: integer
+          format: int64
+        recurringIndicator:
+          type: boolean
+        dataAccessValidityDuration:
+          type: integer
+          format: int64
+        attributes:
+          type: object
+          additionalProperties:
+            type: string
+        authorizations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ConsentAuthorizationItem'
+        purposes:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeConsentPurposeItem'
+
+    MeConsentPurposeItem:
+      type: object
+      required:
+        - name
+        - description
+        - elements
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+        elements:
+          type: array
+          items:
+            $ref: '#/components/schemas/MeConsentElementItem'
+
+    MeConsentElementItem:
+      type: object
+      required:
+        - name
+        - isUserApproved
+        - isMandatory
+      properties:
+        name:
+          type: string
+        isUserApproved:
+          type: boolean
+        isMandatory:
+          type: boolean
+        type:
+          type: string
+        description:
+          type: string
+        properties:
+          type: object
+          additionalProperties:
+            type: string
+        value:
+          nullable: true
+
+    ConsentAuthorizationItem:
+      type: object
+      required:
+        - id
+        - type
+        - status
+        - updatedTime
+      properties:
+        id:
+          type: string
+        userId:
+          type: string
+        type:
+          type: string
+        status:
+          type: string
+        updatedTime:
+          type: integer
+          format: int64
+        resources:
+          type: object
+          nullable: true
+
     ProxyError:
       type: object
       required:

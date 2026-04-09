@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/wso2/openfgc/portal/backend/internal/config"
@@ -20,6 +21,74 @@ type Handler struct {
 type errorResponse struct {
 	Code    string `json:"code"`
 	Message string `json:"message"`
+}
+
+type consentRetrievalResponse struct {
+	ID                         string                      `json:"id"`
+	Purposes                   []consentPurposeItem        `json:"purposes"`
+	CreatedTime                int64                       `json:"createdTime"`
+	UpdatedTime                int64                       `json:"updatedTime"`
+	ClientID                   string                      `json:"clientId"`
+	Type                       string                      `json:"type"`
+	Status                     string                      `json:"status"`
+	Frequency                  *int                        `json:"frequency,omitempty"`
+	ValidityTime               *int64                      `json:"validityTime,omitempty"`
+	RecurringIndicator         *bool                       `json:"recurringIndicator,omitempty"`
+	DataAccessValidityDuration *int64                      `json:"dataAccessValidityDuration,omitempty"`
+	Attributes                 map[string]any              `json:"attributes,omitempty"`
+	Authorizations             []consentAuthorizationEntry `json:"authorizations,omitempty"`
+}
+
+type consentPurposeItem struct {
+	Name        string               `json:"name"`
+	Description string               `json:"description,omitempty"`
+	Elements    []consentElementItem `json:"elements"`
+}
+
+type consentElementItem struct {
+	Name           string         `json:"name"`
+	IsUserApproved bool           `json:"isUserApproved"`
+	Value          any            `json:"value,omitempty"`
+	IsMandatory    *bool          `json:"isMandatory,omitempty"`
+	Type           string         `json:"type,omitempty"`
+	Description    string         `json:"description,omitempty"`
+	Properties     map[string]any `json:"properties,omitempty"`
+}
+
+type consentAuthorizationEntry struct {
+	ID          string  `json:"id"`
+	UserID      *string `json:"userId,omitempty"`
+	Type        string  `json:"type"`
+	Status      string  `json:"status"`
+	UpdatedTime int64   `json:"updatedTime"`
+	Resources   any     `json:"resources,omitempty"`
+}
+
+type purposeListResponse struct {
+	Data []purposeMetadata `json:"data"`
+}
+
+type purposeMetadata struct {
+	ClientID    string                `json:"clientId"`
+	Name        string                `json:"name"`
+	Description *string               `json:"description"`
+	Elements    []purposeElementEntry `json:"elements"`
+}
+
+type purposeElementEntry struct {
+	Name        string `json:"name"`
+	IsMandatory bool   `json:"isMandatory"`
+}
+
+type elementListResponse struct {
+	Data []elementMetadata `json:"data"`
+}
+
+type elementMetadata struct {
+	Name        string         `json:"name"`
+	Type        string         `json:"type"`
+	Description *string        `json:"description"`
+	Properties  map[string]any `json:"properties"`
 }
 
 // NewHandler creates a proxy handler with initialized service.
@@ -92,9 +161,26 @@ func (h *Handler) MeConsentByID(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
 		return
 	}
-	if err := h.svc.Forward(w, r, http.MethodGet, "/api/v1/consents/"+consentID, nil, nil); err != nil {
+
+	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+consentID, nil, nil)
+	if err != nil {
 		h.writeProxyError(w, err)
+		return
 	}
+	if baseResp.StatusCode != http.StatusOK {
+		h.writeUpstreamResponse(w, baseResp)
+		return
+	}
+
+	aggregatedBody, err := h.buildAggregatedConsentResponse(r, baseResp.Body)
+	if err != nil {
+		h.writeProxyError(w, err)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	_, _ = w.Write(aggregatedBody)
 }
 
 // MeConsentApprove handles POST /me/consents/{consentId}/approve.
@@ -155,6 +241,222 @@ func (h *Handler) writeProxyError(w http.ResponseWriter, err error) {
 		return
 	}
 	writeJSONError(w, http.StatusBadGateway, "UPSTREAM_UNAVAILABLE", "upstream unavailable")
+}
+
+func (h *Handler) writeUpstreamResponse(w http.ResponseWriter, resp *UpstreamResponse) {
+	for key, values := range resp.Headers {
+		if strings.EqualFold(key, "Transfer-Encoding") || strings.EqualFold(key, "Connection") {
+			continue
+		}
+		for _, value := range values {
+			w.Header().Add(key, value)
+		}
+	}
+	w.WriteHeader(resp.StatusCode)
+	if len(resp.Body) > 0 {
+		_, _ = w.Write(resp.Body)
+	}
+}
+
+func (h *Handler) buildAggregatedConsentResponse(r *http.Request, baseBody []byte) ([]byte, error) {
+	var consent consentRetrievalResponse
+	if err := json.Unmarshal(baseBody, &consent); err != nil {
+		return nil, ErrUpstreamUnavailable
+	}
+
+	purposeMetadataByName := make(map[string]purposeMetadata, len(consent.Purposes))
+	for _, purpose := range consent.Purposes {
+		if _, exists := purposeMetadataByName[purpose.Name]; exists {
+			continue
+		}
+		metadata, err := h.fetchPurposeMetadata(r, consent.ClientID, purpose)
+		if err != nil {
+			return nil, err
+		}
+		purposeMetadataByName[purpose.Name] = metadata
+	}
+
+	elementMetadataByName := make(map[string]elementMetadata)
+	for _, purpose := range consent.Purposes {
+		for _, element := range purpose.Elements {
+			if _, exists := elementMetadataByName[element.Name]; exists {
+				continue
+			}
+			metadata, err := h.fetchElementMetadata(r, element.Name)
+			if err != nil {
+				return nil, err
+			}
+			elementMetadataByName[element.Name] = metadata
+		}
+	}
+
+	for purposeIndex := range consent.Purposes {
+		purpose := &consent.Purposes[purposeIndex]
+		purposeMetadata, exists := purposeMetadataByName[purpose.Name]
+		if !exists {
+			return nil, ErrUpstreamUnavailable
+		}
+		if purposeMetadata.Description != nil {
+			purpose.Description = *purposeMetadata.Description
+		}
+
+		mandatoryByElement := make(map[string]bool, len(purposeMetadata.Elements))
+		for _, entry := range purposeMetadata.Elements {
+			mandatoryByElement[entry.Name] = entry.IsMandatory
+		}
+
+		for elementIndex := range purpose.Elements {
+			element := &purpose.Elements[elementIndex]
+			mandatory, exists := mandatoryByElement[element.Name]
+			if !exists {
+				return nil, ErrUpstreamUnavailable
+			}
+			element.IsMandatory = &mandatory
+
+			elementMetadata, exists := elementMetadataByName[element.Name]
+			if !exists {
+				return nil, ErrUpstreamUnavailable
+			}
+			element.Type = elementMetadata.Type
+			if elementMetadata.Description != nil {
+				element.Description = *elementMetadata.Description
+			}
+			element.Properties = elementMetadata.Properties
+		}
+	}
+
+	aggregated, err := json.Marshal(consent)
+	if err != nil {
+		return nil, ErrUpstreamUnavailable
+	}
+
+	return aggregated, nil
+}
+
+func (h *Handler) fetchPurposeMetadata(r *http.Request, clientID string, consentPurpose consentPurposeItem) (purposeMetadata, error) {
+	exactByClient, err := h.fetchPurposeMetadataPage(r, consentPurpose.Name, clientID)
+	if err != nil {
+		return purposeMetadata{}, err
+	}
+	elementNames := make(map[string]struct{}, len(consentPurpose.Elements))
+	for _, element := range consentPurpose.Elements {
+		elementNames[element.Name] = struct{}{}
+	}
+
+	if purpose, ok := selectPurposeCandidate(exactByClient, consentPurpose.Name, clientID, elementNames); ok {
+		return purpose, nil
+	}
+
+	// Fallback without clientIds filter handles inconsistent historical data.
+	exactByName, err := h.fetchPurposeMetadataPage(r, consentPurpose.Name, "")
+	if err != nil {
+		return purposeMetadata{}, err
+	}
+	if purpose, ok := selectPurposeCandidate(exactByName, consentPurpose.Name, clientID, elementNames); ok {
+		return purpose, nil
+	}
+
+	return purposeMetadata{}, ErrUpstreamUnavailable
+}
+
+func (h *Handler) fetchPurposeMetadataPage(r *http.Request, purposeName, clientID string) ([]purposeMetadata, error) {
+	resp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consent-purposes", func(q url.Values) {
+		q.Set("name", purposeName)
+		if clientID != "" {
+			q.Set("clientIds", clientID)
+		}
+		q.Set("limit", "50")
+		q.Set("offset", "0")
+	}, nil)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return nil, ErrUpstreamUnavailable
+	}
+
+	var payload purposeListResponse
+	if err := json.Unmarshal(resp.Body, &payload); err != nil {
+		return nil, ErrUpstreamUnavailable
+	}
+
+	return payload.Data, nil
+}
+
+func selectPurposeCandidate(candidates []purposeMetadata, purposeName, clientID string, requiredElements map[string]struct{}) (purposeMetadata, bool) {
+	matchingName := make([]purposeMetadata, 0, len(candidates))
+	for _, purpose := range candidates {
+		if purpose.Name != purposeName {
+			continue
+		}
+		matchingName = append(matchingName, purpose)
+	}
+
+	if len(matchingName) == 0 {
+		return purposeMetadata{}, false
+	}
+
+	best := make([]purposeMetadata, 0, len(matchingName))
+	for _, purpose := range matchingName {
+		if purposeContainsAllElements(purpose, requiredElements) {
+			best = append(best, purpose)
+		}
+	}
+	if len(best) == 0 {
+		best = matchingName
+	}
+
+	if clientID != "" {
+		for _, purpose := range best {
+			if purpose.ClientID == clientID {
+				return purpose, true
+			}
+		}
+	}
+
+	return best[0], true
+}
+
+func purposeContainsAllElements(purpose purposeMetadata, requiredElements map[string]struct{}) bool {
+	if len(requiredElements) == 0 {
+		return true
+	}
+	purposeElements := make(map[string]struct{}, len(purpose.Elements))
+	for _, element := range purpose.Elements {
+		purposeElements[element.Name] = struct{}{}
+	}
+	for name := range requiredElements {
+		if _, ok := purposeElements[name]; !ok {
+			return false
+		}
+	}
+	return true
+}
+
+func (h *Handler) fetchElementMetadata(r *http.Request, elementName string) (elementMetadata, error) {
+	resp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consent-elements", func(q url.Values) {
+		q.Set("name", elementName)
+		q.Set("limit", strconv.Itoa(50))
+		q.Set("offset", "0")
+	}, nil)
+	if err != nil {
+		return elementMetadata{}, err
+	}
+	if resp.StatusCode != http.StatusOK {
+		return elementMetadata{}, ErrUpstreamUnavailable
+	}
+
+	var payload elementListResponse
+	if err := json.Unmarshal(resp.Body, &payload); err != nil {
+		return elementMetadata{}, ErrUpstreamUnavailable
+	}
+	for _, element := range payload.Data {
+		if element.Name == elementName {
+			return element, nil
+		}
+	}
+
+	return elementMetadata{}, ErrUpstreamUnavailable
 }
 
 func writeJSONError(w http.ResponseWriter, status int, code, message string) {

@@ -63,6 +63,13 @@ type Service struct {
 	allowlist map[string]struct{}
 }
 
+// UpstreamResponse captures proxied response details for caller-managed handling.
+type UpstreamResponse struct {
+	StatusCode int
+	Headers    http.Header
+	Body       []byte
+}
+
 // NewService builds a proxy service from app config.
 func NewService(cfg config.ProxyConfig) (*Service, error) {
 	parsed, err := url.Parse(cfg.OpenFGCAPIURL)
@@ -115,6 +122,22 @@ func (s *Service) CheckAPIAccess(method, fullPath string) (knownPath bool, metho
 
 // Forward sends a transformed request to upstream and writes the response.
 func (s *Service) Forward(w http.ResponseWriter, r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte) error {
+	resp, err := s.ForwardRaw(r, upstreamMethod, upstreamPath, queryMutator, body)
+	if err != nil {
+		return err
+	}
+
+	s.copyResponseHeaders(w.Header(), resp.Headers)
+	w.WriteHeader(resp.StatusCode)
+	if len(resp.Body) == 0 {
+		return nil
+	}
+	_, err = w.Write(resp.Body)
+	return err
+}
+
+// ForwardRaw sends a transformed request to upstream and returns response status, headers, and body.
+func (s *Service) ForwardRaw(r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte) (*UpstreamResponse, error) {
 	ctx, cancel := context.WithTimeout(r.Context(), s.cfg.OpenFGCAPITimeout)
 	defer cancel()
 
@@ -128,7 +151,7 @@ func (s *Service) Forward(w http.ResponseWriter, r *http.Request, upstreamMethod
 
 	upstreamReq, err := http.NewRequestWithContext(ctx, upstreamMethod, target.String(), bytes.NewReader(body))
 	if err != nil {
-		return err
+		return nil, err
 	}
 
 	s.copyHeaders(r.Header, upstreamReq.Header)
@@ -141,18 +164,24 @@ func (s *Service) Forward(w http.ResponseWriter, r *http.Request, upstreamMethod
 	if err != nil {
 		var netErr net.Error
 		if errors.Is(err, context.DeadlineExceeded) || (errors.As(err, &netErr) && netErr.Timeout()) {
-			return ErrUpstreamTimeout
+			return nil, ErrUpstreamTimeout
 		}
-		return ErrUpstreamUnavailable
+		return nil, ErrUpstreamUnavailable
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
 
-	s.copyResponseHeaders(w.Header(), resp.Header)
-	w.WriteHeader(resp.StatusCode)
-	_, err = io.Copy(w, resp.Body)
-	return err
+	respBody, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, err
+	}
+
+	return &UpstreamResponse{
+		StatusCode: resp.StatusCode,
+		Headers:    resp.Header.Clone(),
+		Body:       respBody,
+	}, nil
 }
 
 func toMethodSet(methods ...string) map[string]struct{} {

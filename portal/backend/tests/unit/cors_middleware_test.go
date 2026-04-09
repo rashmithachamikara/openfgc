@@ -10,7 +10,7 @@ import (
 
 func TestCORSMiddleware_AllowsConfiguredOrigin(t *testing.T) {
 	nextCalled := false
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		nextCalled = true
 		w.WriteHeader(http.StatusOK)
 	})
@@ -43,7 +43,7 @@ func TestCORSMiddleware_AllowsConfiguredOrigin(t *testing.T) {
 }
 
 func TestCORSMiddleware_BlocksUnknownOrigin(t *testing.T) {
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
 	})
 
@@ -66,7 +66,7 @@ func TestCORSMiddleware_BlocksUnknownOrigin(t *testing.T) {
 
 func TestCORSMiddleware_HandlesPreflight(t *testing.T) {
 	nextCalled := false
-	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		nextCalled = true
 		w.WriteHeader(http.StatusOK)
 	})

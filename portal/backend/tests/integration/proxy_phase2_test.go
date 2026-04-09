@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
@@ -403,5 +404,306 @@ func TestUpstreamUnavailableMapsTo502(t *testing.T) {
 	}
 	if payload["code"] != "UPSTREAM_UNAVAILABLE" {
 		t.Fatalf("expected code UPSTREAM_UNAVAILABLE, got %v", payload["code"])
+	}
+}
+
+func TestMeConsentByIDAggregatesPurposeAndElementDetails(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/consents/consent-123":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"id":"consent-123",
+				"clientId":"TPP-CLIENT-001",
+				"type":"accounts",
+				"status":"ACTIVE",
+				"createdTime":1702800000,
+				"updatedTime":1702800001,
+				"purposes":[
+					{
+						"name":"marketing_communication_preferences",
+						"elements":[
+							{"name":"user_email","isUserApproved":true}
+						]
+					}
+				]
+			}`))
+		case "/api/v1/consent-purposes":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"data":[
+					{
+						"name":"marketing_communication_preferences",
+						"description":"Marketing communication consent",
+						"elements":[
+							{"name":"user_email","isMandatory":true}
+						]
+					}
+				]
+			}`))
+		case "/api/v1/consent-elements":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"data":[
+					{
+						"name":"user_email",
+						"type":"basic",
+						"description":"User email address",
+						"properties":{"channel":"email"}
+					}
+				]
+			}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer upstream.Close()
+
+	bff := newPhase2Server(t, upstream.URL)
+	defer bff.Close()
+
+	resp, err := http.Get(bff.URL + "/me/consents/consent-123")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var payload map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		t.Fatalf("expected json response: %v", err)
+	}
+
+	purposes, ok := payload["purposes"].([]any)
+	if !ok || len(purposes) != 1 {
+		t.Fatalf("expected one purpose, got %v", payload["purposes"])
+	}
+	purpose, ok := purposes[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected purpose object, got %T", purposes[0])
+	}
+	if purpose["description"] != "Marketing communication consent" {
+		t.Fatalf("expected purpose description to be enriched, got %v", purpose["description"])
+	}
+
+	elements, ok := purpose["elements"].([]any)
+	if !ok || len(elements) != 1 {
+		t.Fatalf("expected one element, got %v", purpose["elements"])
+	}
+	element, ok := elements[0].(map[string]any)
+	if !ok {
+		t.Fatalf("expected element object, got %T", elements[0])
+	}
+	if mandatory, ok := element["isMandatory"].(bool); !ok || !mandatory {
+		t.Fatalf("expected isMandatory=true, got %v", element["isMandatory"])
+	}
+	if element["type"] != "basic" {
+		t.Fatalf("expected enriched element type, got %v", element["type"])
+	}
+	if element["description"] != "User email address" {
+		t.Fatalf("expected enriched element description, got %v", element["description"])
+	}
+}
+
+func TestMeConsentByIDFailsClosedWhenPurposeMetadataMissing(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/consents/consent-123":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"id":"consent-123",
+				"clientId":"TPP-CLIENT-001",
+				"type":"accounts",
+				"status":"ACTIVE",
+				"createdTime":1702800000,
+				"updatedTime":1702800001,
+				"purposes":[{"name":"marketing_communication_preferences","elements":[{"name":"user_email","isUserApproved":true}]}]
+			}`))
+		case "/api/v1/consent-purposes":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"data":[]}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer upstream.Close()
+
+	bff := newPhase2Server(t, upstream.URL)
+	defer bff.Close()
+
+	resp, err := http.Get(bff.URL + "/me/consents/consent-123")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusBadGateway {
+		t.Fatalf("expected 502, got %d", resp.StatusCode)
+	}
+
+	var payload map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		t.Fatalf("expected json error payload: %v", err)
+	}
+	if payload["code"] != "UPSTREAM_UNAVAILABLE" {
+		t.Fatalf("expected code UPSTREAM_UNAVAILABLE, got %v", payload["code"])
+	}
+}
+
+func TestMeConsentByIDHandlesNullableAndMixedProperties(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/consents/consent-123":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"id":"consent-123",
+				"clientId":"TPP-CLIENT-001",
+				"type":"accounts",
+				"status":"ACTIVE",
+				"frequency":null,
+				"validityTime":null,
+				"recurringIndicator":null,
+				"dataAccessValidityDuration":null,
+				"attributes":{"consentMode":1},
+				"authorizations":[{"id":"auth-1","userId":null,"type":"authorisation","status":"APPROVED","updatedTime":1702800002}],
+				"createdTime":1702800000,
+				"updatedTime":1702800001,
+				"purposes":[{"name":"marketing_communication_preferences","elements":[{"name":"user_email","isUserApproved":true}]}]
+			}`))
+		case "/api/v1/consent-purposes":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"data":[{"name":"marketing_communication_preferences","description":null,"elements":[{"name":"user_email","isMandatory":true}]}]
+			}`))
+		case "/api/v1/consent-elements":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"data":[{"name":"user_email","type":"json-payload","description":null,"properties":{"validationSchema":{"type":"object"}}}]
+			}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer upstream.Close()
+
+	bff := newPhase2Server(t, upstream.URL)
+	defer bff.Close()
+
+	resp, err := http.Get(bff.URL + "/me/consents/consent-123")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var payload map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		t.Fatalf("expected json response: %v", err)
+	}
+
+	purposes, ok := payload["purposes"].([]any)
+	if !ok || len(purposes) != 1 {
+		t.Fatalf("expected one purpose, got %v", payload["purposes"])
+	}
+	purpose := purposes[0].(map[string]any)
+	elements := purpose["elements"].([]any)
+	element := elements[0].(map[string]any)
+
+	if mandatory, ok := element["isMandatory"].(bool); !ok || !mandatory {
+		t.Fatalf("expected isMandatory=true, got %v", element["isMandatory"])
+	}
+	if element["type"] != "json-payload" {
+		t.Fatalf("expected enriched element type, got %v", element["type"])
+	}
+	properties, ok := element["properties"].(map[string]any)
+	if !ok {
+		t.Fatalf("expected properties map, got %T", element["properties"])
+	}
+	if _, ok := properties["validationSchema"].(map[string]any); !ok {
+		t.Fatalf("expected validationSchema object, got %T", properties["validationSchema"])
+	}
+}
+
+func TestMeConsentByIDPurposeLookupFallsBackWithoutClientFilter(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/api/v1/consents/consent-123":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{
+				"id":"consent-123",
+				"clientId":"TPP-CLIENT-003",
+				"type":"accounts",
+				"status":"ACTIVE",
+				"createdTime":1702800000,
+				"updatedTime":1702800001,
+				"purposes":[{"name":"data_sharing_purpose","elements":[{"name":"user_email","isUserApproved":true}]}]
+			}`))
+		case "/api/v1/consent-purposes":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			if strings.Contains(r.URL.RawQuery, "clientIds=TPP-CLIENT-003") {
+				_, _ = w.Write([]byte(`{"data":[]}`))
+				return
+			}
+			_, _ = w.Write([]byte(`{
+				"data":[{"clientId":"TPP-CLIENT-002","name":"data_sharing_purpose","description":"Third-party data sharing purpose","elements":[{"name":"user_email","isMandatory":false}]}]
+			}`))
+		case "/api/v1/consent-elements":
+			w.Header().Set("Content-Type", "application/json")
+			w.WriteHeader(http.StatusOK)
+			_, _ = w.Write([]byte(`{"data":[{"name":"user_email","type":"basic","description":"User email","properties":{}}]}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer upstream.Close()
+
+	bff := newPhase2Server(t, upstream.URL)
+	defer bff.Close()
+
+	resp, err := http.Get(bff.URL + "/me/consents/consent-123")
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	}
+
+	var payload map[string]any
+	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+		t.Fatalf("expected json response: %v", err)
+	}
+	purposes, ok := payload["purposes"].([]any)
+	if !ok || len(purposes) != 1 {
+		t.Fatalf("expected one purpose, got %v", payload["purposes"])
+	}
+	purpose := purposes[0].(map[string]any)
+	if purpose["description"] != "Third-party data sharing purpose" {
+		t.Fatalf("expected fallback purpose description, got %v", purpose["description"])
 	}
 }
