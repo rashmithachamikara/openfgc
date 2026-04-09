@@ -20,10 +20,17 @@ import {
   Avatar,
 } from '@wso2/oxygen-ui'
 import { ChevronRight, CheckCircle, XCircle } from '@wso2/oxygen-ui-icons-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
-import { useConsentDetailQuery, useRevokeConsentMutation } from './hooks/useConsentQueries'
+import ConsentApprovalDialog from './components/ConsentApprovalDialog'
+import ConsentRevocationDialog from './components/ConsentRevocationDialog'
+import {
+  useApproveConsentMutation,
+  useConsentDetailQuery,
+  useRevokeConsentMutation,
+} from './hooks/useConsentQueries'
 
 function formatEpoch(epochInSeconds: number | undefined): string {
   if (!epochInSeconds) {
@@ -47,7 +54,10 @@ function ConsentDetailsPage(): React.JSX.Element {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const consentDetailQuery = useConsentDetailQuery(id)
+  const approveMutation = useApproveConsentMutation()
   const revokeMutation = useRevokeConsentMutation()
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState<boolean>(false)
+  const [revocationDialogOpen, setRevocationDialogOpen] = useState<boolean>(false)
 
   if (!id) {
     return (
@@ -66,6 +76,8 @@ function ConsentDetailsPage(): React.JSX.Element {
   }
 
   const detail = consentDetailQuery.data
+  const canApprove = detail?.status === 'CREATED'
+  const canRevoke = detail?.status === 'ACTIVE'
 
   if (consentDetailQuery.isLoading) {
     return (
@@ -113,13 +125,26 @@ function ConsentDetailsPage(): React.JSX.Element {
             bottom: { md: 0 },
           }}
         >
+          {canApprove ? (
+            <Button
+              variant="contained"
+              color="warning"
+              size="small"
+              disabled={approveMutation.isPending}
+              onClick={() => {
+                setApprovalDialogOpen(true)
+              }}
+            >
+              {t('consentRegistry.actions.approve')}
+            </Button>
+          ) : null}
           <Button
             variant="contained"
             color="error"
             size="small"
-            disabled={revokeMutation.isPending}
+            disabled={revokeMutation.isPending || !canRevoke}
             onClick={() => {
-              revokeMutation.mutate(id)
+              setRevocationDialogOpen(true)
             }}
           >
             {t('consentRegistry.actions.revoke')}
@@ -570,6 +595,41 @@ function ConsentDetailsPage(): React.JSX.Element {
           </Table>
         </TableContainer>
       </Card>
+
+      <ConsentApprovalDialog
+        key={`approval-${id}-${String(approvalDialogOpen)}`}
+        open={approvalDialogOpen}
+        consentId={id}
+        purposes={detail.purposes}
+        loading={approveMutation.isPending}
+        onClose={() => {
+          setApprovalDialogOpen(false)
+        }}
+        onConfirm={() => {
+          approveMutation.mutate(id, {
+            onSuccess: () => {
+              setApprovalDialogOpen(false)
+            },
+          })
+        }}
+      />
+
+      <ConsentRevocationDialog
+        key={`revocation-${id}-${String(revocationDialogOpen)}`}
+        open={revocationDialogOpen}
+        consentId={id}
+        loading={revokeMutation.isPending}
+        onClose={() => {
+          setRevocationDialogOpen(false)
+        }}
+        onConfirm={() => {
+          revokeMutation.mutate(id, {
+            onSuccess: () => {
+              setRevocationDialogOpen(false)
+            },
+          })
+        }}
+      />
     </Box>
   )
 }
