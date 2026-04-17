@@ -158,24 +158,79 @@ func TestMeConsentsForcesUserIDs(t *testing.T) {
 }
 
 func TestApproveAndRevokeMappings(t *testing.T) {
-	t.Run("approve maps to authorizations endpoint", func(t *testing.T) {
+	t.Run("approve fetches consent and builds put payload", func(t *testing.T) {
 		var gotMethod string
 		var gotPath string
 		var gotBody map[string]any
+		var gotTPPClientID string
 
 		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			gotMethod = r.Method
-			gotPath = r.URL.Path
-			body, _ := io.ReadAll(r.Body)
-			_ = json.Unmarshal(body, &gotBody)
-			w.WriteHeader(http.StatusOK)
+			switch {
+			case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/consent-123":
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{
+					"id":"consent-123",
+					"clientId":"TPP-CLIENT-001",
+					"type":"accounts",
+					"status":"CREATED",
+					"frequency":0,
+					"validityTime":0,
+					"recurringIndicator":false,
+					"dataAccessValidityDuration":86400,
+					"attributes":{"department":"sales","region":"APAC"},
+					"authorizations":[
+						{"id":"auth-1","userId":"user1@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800000,"resources":{"accountIds":["acc-123","acc-456"]}}
+					],
+					"purposes":[
+						{"name":"profile_access","elements":[
+							{"name":"first_name","isUserApproved":false,"value":{}},
+							{"name":"last_name","isUserApproved":false,"value":{}}
+						]}
+					]
+				}`))
+			case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consent-purposes":
+				w.Header().Set("Content-Type", "application/json")
+				w.WriteHeader(http.StatusOK)
+				_, _ = w.Write([]byte(`{
+					"data":[
+						{"name":"profile_access","clientId":"TPP-CLIENT-001","description":null,"elements":[
+							{"name":"first_name","isMandatory":true},
+							{"name":"last_name","isMandatory":false}
+						]}
+					]
+				}`))
+			case r.Method == http.MethodPut && r.URL.Path == "/api/v1/consents/consent-123":
+				gotMethod = r.Method
+				gotPath = r.URL.Path
+				gotTPPClientID = r.Header.Get("TPP-client-id")
+				body, _ := io.ReadAll(r.Body)
+				_ = json.Unmarshal(body, &gotBody)
+				w.WriteHeader(http.StatusOK)
+			default:
+				w.WriteHeader(http.StatusNotFound)
+			}
 		}))
 		defer upstream.Close()
 
-		bff := newPhase2Server(t, upstream.URL)
+		cfg, err := config.Load()
+		if err != nil {
+			t.Fatalf("failed to load config: %v", err)
+		}
+		cfg.Proxy.OpenFGCAPIURL = upstream.URL
+		cfg.Proxy.PlaceholderModeEnabled = true
+		cfg.Proxy.PlaceholderUserID = "user@example.com"
+		cfg.Proxy.PlaceholderOrgID = "ORG-001"
+		cfg.Proxy.PlaceholderClientID = "PLACEHOLDER-CLIENT-999"
+
+		h, err := router.New(logger.New("error"), *cfg)
+		if err != nil {
+			t.Fatalf("failed to create router: %v", err)
+		}
+		bff := httptest.NewServer(h)
 		defer bff.Close()
 
-		payload := []byte(`{"type":"authorisation","userId":"attacker@example.com"}`)
+		payload := []byte(`[{"purposeName":"profile_access","elementName":"last_name"}]`)
 		resp, err := http.Post(bff.URL+"/me/consents/consent-123/approve", "application/json", bytes.NewReader(payload))
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
@@ -187,17 +242,74 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		if resp.StatusCode != http.StatusOK {
 			t.Fatalf("expected 200, got %d", resp.StatusCode)
 		}
-		if gotMethod != http.MethodPost {
-			t.Fatalf("expected POST, got %s", gotMethod)
+		if gotMethod != http.MethodPut {
+			t.Fatalf("expected PUT, got %s", gotMethod)
 		}
-		if gotPath != "/api/v1/consents/consent-123/authorizations" {
+		if gotPath != "/api/v1/consents/consent-123" {
 			t.Fatalf("unexpected path: %s", gotPath)
 		}
-		if gotBody["status"] != "APPROVED" {
-			t.Fatalf("expected status APPROVED, got %v", gotBody["status"])
+		if gotTPPClientID != "TPP-CLIENT-001" {
+			t.Fatalf("expected TPP-client-id from consent clientId, got %s", gotTPPClientID)
 		}
-		if gotBody["userId"] != "user@example.com" {
-			t.Fatalf("expected placeholder userId, got %v", gotBody["userId"])
+		if gotBody["type"] != "accounts" {
+			t.Fatalf("expected type accounts, got %v", gotBody["type"])
+		}
+		if gotBody["frequency"] != float64(0) {
+			t.Fatalf("expected frequency 0, got %v", gotBody["frequency"])
+		}
+		if gotBody["validityTime"] != float64(0) {
+			t.Fatalf("expected validityTime 0, got %v", gotBody["validityTime"])
+		}
+		if gotBody["recurringIndicator"] != false {
+			t.Fatalf("expected recurringIndicator false, got %v", gotBody["recurringIndicator"])
+		}
+
+		purposes, ok := gotBody["purposes"].([]any)
+		if !ok || len(purposes) != 1 {
+			t.Fatalf("expected one purpose, got %v", gotBody["purposes"])
+		}
+		purpose, ok := purposes[0].(map[string]any)
+		if !ok {
+			t.Fatalf("expected purpose object, got %T", purposes[0])
+		}
+		elements, ok := purpose["elements"].([]any)
+		if !ok || len(elements) != 2 {
+			t.Fatalf("expected two elements, got %v", purpose["elements"])
+		}
+		mandatoryElement, ok := elements[0].(map[string]any)
+		if !ok {
+			t.Fatalf("expected first element object, got %T", elements[0])
+		}
+		if mandatoryElement["isUserApproved"] != true {
+			t.Fatalf("expected mandatory element approved, got %v", mandatoryElement["isUserApproved"])
+		}
+		optionalElement, ok := elements[1].(map[string]any)
+		if !ok {
+			t.Fatalf("expected optional element object, got %T", elements[1])
+		}
+		if optionalElement["isUserApproved"] != true {
+			t.Fatalf("expected selected optional element approved, got %v", optionalElement["isUserApproved"])
+		}
+
+		authorizations, ok := gotBody["authorizations"].([]any)
+		if !ok || len(authorizations) != 1 {
+			t.Fatalf("expected one authorization, got %v", gotBody["authorizations"])
+		}
+		updatedAuthorization, ok := authorizations[0].(map[string]any)
+		if !ok {
+			t.Fatalf("expected authorization object, got %T", authorizations[0])
+		}
+		if updatedAuthorization["userId"] != "user@example.com" {
+			t.Fatalf("expected current user id, got %v", updatedAuthorization["userId"])
+		}
+		if updatedAuthorization["status"] != "APPROVED" {
+			t.Fatalf("expected approved authorization status, got %v", updatedAuthorization["status"])
+		}
+		if updatedAuthorization["type"] != "authorisation" {
+			t.Fatalf("expected authorization type authorisation, got %v", updatedAuthorization["type"])
+		}
+		if resources, exists := updatedAuthorization["resources"]; !exists || resources == nil {
+			t.Fatalf("expected resources to be present as an empty object, got %v", updatedAuthorization["resources"])
 		}
 	})
 

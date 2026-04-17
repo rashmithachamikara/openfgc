@@ -160,13 +160,19 @@ function ConsentRegistryPage(): React.JSX.Element {
               setApprovalDialogOpen(false)
               setSelectedApprovalConsentID(null)
             }}
-            onConfirm={() => {
-              approveMutation.mutate(selectedApprovalConsentID, {
-                onSuccess: () => {
-                  setApprovalDialogOpen(false)
-                  setSelectedApprovalConsentID(null)
+            onConfirm={(selectedOptionalElements) => {
+              approveMutation.mutate(
+                {
+                  consentID: selectedApprovalConsentID,
+                  selectedOptionalElements,
                 },
-              })
+                {
+                  onSuccess: () => {
+                    setApprovalDialogOpen(false)
+                    setSelectedApprovalConsentID(null)
+                  },
+                },
+              )
             }}
           />
         ) : null}

@@ -45,7 +45,7 @@ Portal-facing user endpoints:
 
 - `GET /me/consents` -> upstream `GET /api/v1/consents` with forced `userIds=<placeholder>`
 - `GET /me/consents/{consentId}` -> upstream `GET /api/v1/consents/{consentId}`
-- `POST /me/consents/{consentId}/approve` -> upstream `POST /api/v1/consents/{consentId}/authorizations`
+- `POST /me/consents/{consentId}/approve` -> BFF fetches current consent, merges selected optional approvals, uses the consent's `clientId` as the trusted upstream `TPP-client-id`, updates an existing authorization to approved for the trusted user (or creates one if none exist), and upstreams `PUT /api/v1/consents/{consentId}`
 - `PUT /me/consents/{consentId}/revoke` -> upstream `PUT /api/v1/consents/{consentId}/revoke`
 
 Proxy hardening:

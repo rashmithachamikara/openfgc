@@ -12,6 +12,7 @@ import {
   revokeMyConsent,
 } from '../api/consentsApi'
 import type {
+  ConsentApprovalSelection,
   ConsentAPIStatus,
   ConsentDetailAPI,
   ConsentListQueryParams,
@@ -22,6 +23,11 @@ import type {
 interface ConsentListResult {
   rows: ConsentRecord[]
   total: number
+}
+
+interface ApproveConsentVariables {
+  consentID: string
+  selectedOptionalElements: ConsentApprovalSelection[]
 }
 
 function toUnixStartOfDay(dateText: string): number | undefined {
@@ -127,14 +133,22 @@ export function useConsentDetailQuery(
   })
 }
 
-export function useApproveConsentMutation(): UseMutationResult<unknown, Error, string> {
+export function useApproveConsentMutation(): UseMutationResult<
+  unknown,
+  Error,
+  ApproveConsentVariables
+> {
   const queryClient = useQueryClient()
 
   return useMutation({
-    mutationFn: async (consentID: string): Promise<unknown> => approveMyConsent(consentID),
-    onSuccess: async (_data, consentID): Promise<void> => {
+    mutationFn: async ({
+      consentID,
+      selectedOptionalElements,
+    }: ApproveConsentVariables): Promise<unknown> =>
+      approveMyConsent(consentID, selectedOptionalElements),
+    onSuccess: async (_data, variables): Promise<void> => {
       await queryClient.invalidateQueries({ queryKey: ['consents'] })
-      await queryClient.invalidateQueries({ queryKey: ['consent', consentID] })
+      await queryClient.invalidateQueries({ queryKey: ['consent', variables.consentID] })
     },
   })
 }

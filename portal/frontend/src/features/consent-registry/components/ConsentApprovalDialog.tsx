@@ -13,12 +13,7 @@ import {
   Typography,
 } from '@wso2/oxygen-ui'
 import { useTranslation } from 'react-i18next'
-import type { ConsentPurposeItem } from '../../../types/consent'
-
-export interface ConsentApprovalSelection {
-  purposeName: string
-  elementName: string
-}
+import type { ConsentApprovalSelection, ConsentPurposeItem } from '../../../types/consent'
 
 interface ConsentApprovalDialogProps {
   open: boolean

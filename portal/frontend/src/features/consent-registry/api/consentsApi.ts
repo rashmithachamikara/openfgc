@@ -1,4 +1,5 @@
 import type {
+  ConsentApprovalSelection,
   ConsentDetailAPI,
   ConsentListQueryParams,
   ConsentSearchResponse,
@@ -27,13 +28,16 @@ export async function fetchMyConsentByID(consentID: string): Promise<ConsentDeta
   })
 }
 
-export async function approveMyConsent(consentID: string): Promise<unknown> {
+export async function approveMyConsent(
+  consentID: string,
+  selectedOptionalElements: ConsentApprovalSelection[],
+): Promise<unknown> {
   return apiRequest<unknown>(`/me/consents/${consentID}/approve`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
-    body: JSON.stringify({}),
+    body: JSON.stringify(selectedOptionalElements),
   })
 }
 

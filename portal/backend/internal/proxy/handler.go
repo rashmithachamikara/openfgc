@@ -64,6 +64,33 @@ type consentAuthorizationEntry struct {
 	Resources   any     `json:"resources,omitempty"`
 }
 
+type consentApprovalSelection struct {
+	PurposeName string `json:"purposeName"`
+	ElementName string `json:"elementName"`
+}
+
+type consentAuthorizationPayload struct {
+	UserID    *string `json:"userId,omitempty"`
+	Type      string  `json:"type"`
+	Status    string  `json:"status"`
+	Resources any     `json:"resources"`
+}
+
+type consentUpdatePayload struct {
+	Type                       string                        `json:"type"`
+	ValidityTime               *int64                        `json:"validityTime,omitempty"`
+	RecurringIndicator         *bool                         `json:"recurringIndicator,omitempty"`
+	DataAccessValidityDuration *int64                        `json:"dataAccessValidityDuration,omitempty"`
+	Frequency                  *int                          `json:"frequency,omitempty"`
+	Purposes                   []consentPurposeItem          `json:"purposes"`
+	Attributes                 map[string]any                `json:"attributes,omitempty"`
+	Authorizations             []consentAuthorizationPayload `json:"authorizations,omitempty"`
+}
+
+func toConsentApprovalKey(purposeName, elementName string) string {
+	return purposeName + "::" + elementName
+}
+
 type purposeListResponse struct {
 	Data []purposeMetadata `json:"data"`
 }
@@ -199,12 +226,31 @@ func (h *Handler) MeConsentApprove(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusRequestEntityTooLarge, "REQUEST_TOO_LARGE", "request entity too large")
 		return
 	}
-	payload, err := h.buildApprovalPayload(body)
+	selections, err := parseApprovalSelections(body)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
-	if err := h.svc.Forward(w, r, http.MethodPost, "/api/v1/consents/"+consentID+"/authorizations", nil, payload); err != nil {
+	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+consentID, nil, nil)
+	if err != nil {
+		h.writeProxyError(w, err)
+		return
+	}
+	if baseResp.StatusCode != http.StatusOK {
+		h.writeUpstreamResponse(w, baseResp)
+		return
+	}
+
+	payload, trustedClientID, err := h.buildApprovalUpdatePayload(r, baseResp.Body, selections)
+	if err != nil {
+		if errors.Is(err, ErrUpstreamTimeout) || errors.Is(err, ErrUpstreamUnavailable) {
+			h.writeProxyError(w, err)
+			return
+		}
+		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
+		return
+	}
+	if err := h.svc.ForwardWithClientID(w, r, http.MethodPut, "/api/v1/consents/"+consentID, nil, payload, trustedClientID); err != nil {
 		h.writeProxyError(w, err)
 	}
 }
@@ -483,23 +529,6 @@ func (h *Handler) readBoundedBody(r *http.Request) ([]byte, error) {
 	return body, nil
 }
 
-func (h *Handler) buildApprovalPayload(in []byte) ([]byte, error) {
-	payload := map[string]any{
-		"type":   "authorisation",
-		"status": "APPROVED",
-		"userId": h.cfg.PlaceholderUserID,
-	}
-	if len(in) > 0 {
-		if err := json.Unmarshal(in, &payload); err != nil {
-			return nil, err
-		}
-	}
-	payload["type"] = valueOrDefault(payload["type"], "authorisation")
-	payload["status"] = "APPROVED"
-	payload["userId"] = h.cfg.PlaceholderUserID
-	return json.Marshal(payload)
-}
-
 func (h *Handler) buildRevokePayload(in []byte) ([]byte, error) {
 	payload := map[string]any{
 		"actionBy": h.cfg.PlaceholderUserID,
@@ -516,10 +545,172 @@ func (h *Handler) buildRevokePayload(in []byte) ([]byte, error) {
 	return json.Marshal(payload)
 }
 
-func valueOrDefault(v any, fallback string) string {
-	s, ok := v.(string)
-	if !ok || strings.TrimSpace(s) == "" {
-		return fallback
+func parseApprovalSelections(in []byte) ([]consentApprovalSelection, error) {
+	if len(in) == 0 {
+		return nil, nil
 	}
-	return s
+	var selections []consentApprovalSelection
+	if err := json.Unmarshal(in, &selections); err != nil {
+		return nil, err
+	}
+	for _, selection := range selections {
+		if strings.TrimSpace(selection.PurposeName) == "" || strings.TrimSpace(selection.ElementName) == "" {
+			return nil, errors.New("invalid approval selection")
+		}
+	}
+	return selections, nil
+}
+
+func (h *Handler) buildApprovalUpdatePayload(r *http.Request, baseBody []byte, selections []consentApprovalSelection) ([]byte, string, error) {
+	var consent consentRetrievalResponse
+	if err := json.Unmarshal(baseBody, &consent); err != nil {
+		return nil, "", ErrUpstreamUnavailable
+	}
+
+	if err := h.enrichMandatoryFlags(r, &consent); err != nil {
+		return nil, "", err
+	}
+
+	selectedOptionalElements := make(map[string]struct{}, len(selections))
+	for _, selection := range selections {
+		selectedOptionalElements[toConsentApprovalKey(selection.PurposeName, selection.ElementName)] = struct{}{}
+	}
+
+	matchedSelections := make(map[string]struct{}, len(selectedOptionalElements))
+	updatedPurposes := make([]consentPurposeItem, len(consent.Purposes))
+	for purposeIndex, purpose := range consent.Purposes {
+		updatedPurpose := purpose
+		updatedPurpose.Elements = make([]consentElementItem, len(purpose.Elements))
+		for elementIndex, element := range purpose.Elements {
+			updatedElement := element
+			if element.IsMandatory != nil && *element.IsMandatory {
+				updatedElement.IsUserApproved = true
+			} else {
+				key := toConsentApprovalKey(purpose.Name, element.Name)
+				_, updatedElement.IsUserApproved = selectedOptionalElements[key]
+				if updatedElement.IsUserApproved {
+					matchedSelections[key] = struct{}{}
+				}
+			}
+			updatedPurpose.Elements[elementIndex] = updatedElement
+		}
+		updatedPurposes[purposeIndex] = updatedPurpose
+	}
+
+	if len(matchedSelections) != len(selectedOptionalElements) {
+		return nil, "", errors.New("invalid approval selection")
+	}
+
+	updatedAuthorizations := make([]consentAuthorizationPayload, 0, len(consent.Authorizations))
+	for _, authorization := range consent.Authorizations {
+		updatedAuthorizations = append(updatedAuthorizations, consentAuthorizationPayload{
+			UserID:    authorization.UserID,
+			Type:      authorization.Type,
+			Status:    authorization.Status,
+			Resources: normalizeAuthorizationResources(authorization.Resources),
+		})
+	}
+
+	userID := strings.TrimSpace(h.cfg.PlaceholderUserID)
+	if userID == "" {
+		return nil, "", ErrUpstreamUnavailable
+	}
+	updatedAuthorization := consentAuthorizationPayload{
+		UserID:    &userID,
+		Type:      "authorisation",
+		Status:    "APPROVED",
+		Resources: map[string]any{},
+	}
+
+	if index, ok := findAuthorizationIndexToUpdate(consent.Authorizations, userID); ok {
+		updatedAuthorizations[index] = updatedAuthorization
+	} else {
+		updatedAuthorizations = append(updatedAuthorizations, updatedAuthorization)
+	}
+
+	payload := consentUpdatePayload{
+		Type:                       consent.Type,
+		ValidityTime:               consent.ValidityTime,
+		RecurringIndicator:         consent.RecurringIndicator,
+		DataAccessValidityDuration: consent.DataAccessValidityDuration,
+		Frequency:                  consent.Frequency,
+		Purposes:                   updatedPurposes,
+		Attributes:                 consent.Attributes,
+		Authorizations:             updatedAuthorizations,
+	}
+
+	serializedPayload, err := json.Marshal(payload)
+	if err != nil {
+		return nil, "", ErrUpstreamUnavailable
+	}
+
+	return serializedPayload, consent.ClientID, nil
+}
+
+func (h *Handler) enrichMandatoryFlags(r *http.Request, consent *consentRetrievalResponse) error {
+	purposeMetadataByName := make(map[string]purposeMetadata, len(consent.Purposes))
+	for _, purpose := range consent.Purposes {
+		if _, exists := purposeMetadataByName[purpose.Name]; exists {
+			continue
+		}
+		metadata, err := h.fetchPurposeMetadata(r, consent.ClientID, purpose)
+		if err != nil {
+			return err
+		}
+		purposeMetadataByName[purpose.Name] = metadata
+	}
+
+	for purposeIndex := range consent.Purposes {
+		purpose := &consent.Purposes[purposeIndex]
+		purposeMetadata, exists := purposeMetadataByName[purpose.Name]
+		if !exists {
+			return ErrUpstreamUnavailable
+		}
+
+		mandatoryByElement := make(map[string]bool, len(purposeMetadata.Elements))
+		for _, entry := range purposeMetadata.Elements {
+			mandatoryByElement[entry.Name] = entry.IsMandatory
+		}
+
+		for elementIndex := range purpose.Elements {
+			element := &purpose.Elements[elementIndex]
+			mandatory, exists := mandatoryByElement[element.Name]
+			if !exists {
+				return ErrUpstreamUnavailable
+			}
+			element.IsMandatory = &mandatory
+		}
+	}
+
+	return nil
+}
+
+func normalizeAuthorizationResources(resources any) any {
+	if resources == nil {
+		return map[string]any{}
+	}
+	return resources
+}
+
+func findAuthorizationIndexToUpdate(authorizations []consentAuthorizationEntry, userID string) (int, bool) {
+	if len(authorizations) == 0 {
+		return -1, false
+	}
+
+	for index, authorization := range authorizations {
+		if authorization.UserID != nil && strings.EqualFold(strings.TrimSpace(*authorization.UserID), userID) {
+			return index, true
+		}
+	}
+
+	latestIndex := 0
+	latestUpdatedTime := authorizations[0].UpdatedTime
+	for index := 1; index < len(authorizations); index++ {
+		if authorizations[index].UpdatedTime > latestUpdatedTime {
+			latestUpdatedTime = authorizations[index].UpdatedTime
+			latestIndex = index
+		}
+	}
+
+	return latestIndex, true
 }

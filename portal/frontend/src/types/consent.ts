@@ -38,6 +38,11 @@ export interface ConsentElementApprovalItem {
   properties?: Record<string, string>
 }
 
+export interface ConsentApprovalSelection {
+  purposeName: string
+  elementName: string
+}
+
 export interface ConsentPurposeItem {
   name: string
   elements: ConsentElementApprovalItem[]

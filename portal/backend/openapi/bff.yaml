@@ -100,9 +100,13 @@ paths:
       tags: [User]
       summary: Approve consent for current user flow
       description: >-
-        Proxies to POST /api/v1/consents/{consentId}/authorizations and enforces
-        status=APPROVED with trusted user identity. Response payload shape is
-        inherited from consent-management API.
+        Accepts the selected optional purpose/element approvals, fetches the
+        current consent, builds a full consent update payload, and forwards it
+        as PUT /api/v1/consents/{consentId}. The upstream TPP-client-id header
+        is derived from the fetched consent's clientId, mandatory elements are
+        always set to approved, and an existing authorization is updated to
+        APPROVED for the trusted current user identity (falls back to creating
+        one if none exist).
       parameters:
         - in: path
           name: consentId
@@ -114,7 +118,15 @@ paths:
         content:
           application/json:
             schema:
-              type: object
+              type: array
+              items:
+                type: object
+                required: [purposeName, elementName]
+                properties:
+                  purposeName:
+                    type: string
+                  elementName:
+                    type: string
       responses:
         '200':
           description: Upstream response

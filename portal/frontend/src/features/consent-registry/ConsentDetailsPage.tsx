@@ -605,12 +605,15 @@ function ConsentDetailsPage(): React.JSX.Element {
         onClose={() => {
           setApprovalDialogOpen(false)
         }}
-        onConfirm={() => {
-          approveMutation.mutate(id, {
-            onSuccess: () => {
-              setApprovalDialogOpen(false)
+        onConfirm={(selectedOptionalElements) => {
+          approveMutation.mutate(
+            { consentID: id, selectedOptionalElements },
+            {
+              onSuccess: () => {
+                setApprovalDialogOpen(false)
+              },
             },
-          })
+          )
         }}
       />
 

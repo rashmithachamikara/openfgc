@@ -1,6 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OxygenTheme, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
 import i18n from '../i18n/i18n'
 import ConsentApprovalDialog from '../features/consent-registry/components/ConsentApprovalDialog'
@@ -13,6 +13,15 @@ function renderWithProviders(component: React.JSX.Element): void {
     </I18nextProvider>,
   )
 }
+
+beforeEach(() => {
+  vi.useFakeTimers()
+})
+
+afterEach(() => {
+  vi.runOnlyPendingTimers()
+  vi.useRealTimers()
+})
 
 describe('consent registry dialogs', () => {
   it('submits selected optional permissions from approval dialog', () => {

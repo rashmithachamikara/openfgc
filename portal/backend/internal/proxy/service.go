@@ -136,8 +136,29 @@ func (s *Service) Forward(w http.ResponseWriter, r *http.Request, upstreamMethod
 	return err
 }
 
+// ForwardWithClientID sends a transformed request to upstream using the provided trusted client id.
+func (s *Service) ForwardWithClientID(w http.ResponseWriter, r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte, trustedClientID string) error {
+	resp, err := s.ForwardRawWithClientID(r, upstreamMethod, upstreamPath, queryMutator, body, trustedClientID)
+	if err != nil {
+		return err
+	}
+
+	s.copyResponseHeaders(w.Header(), resp.Headers)
+	w.WriteHeader(resp.StatusCode)
+	if len(resp.Body) == 0 {
+		return nil
+	}
+	_, err = w.Write(resp.Body)
+	return err
+}
+
 // ForwardRaw sends a transformed request to upstream and returns response status, headers, and body.
 func (s *Service) ForwardRaw(r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte) (*UpstreamResponse, error) {
+	return s.ForwardRawWithClientID(r, upstreamMethod, upstreamPath, queryMutator, body, "")
+}
+
+// ForwardRawWithClientID sends a transformed request to upstream using the provided trusted client id.
+func (s *Service) ForwardRawWithClientID(r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte, trustedClientID string) (*UpstreamResponse, error) {
 	ctx, cancel := context.WithTimeout(r.Context(), s.cfg.OpenFGCAPITimeout)
 	defer cancel()
 
@@ -155,7 +176,7 @@ func (s *Service) ForwardRaw(r *http.Request, upstreamMethod, upstreamPath strin
 	}
 
 	s.copyHeaders(r.Header, upstreamReq.Header)
-	s.setTrustedHeaders(r, upstreamReq)
+	s.setTrustedHeaders(r, upstreamReq, trustedClientID)
 	if len(body) > 0 {
 		upstreamReq.Header.Set("Content-Length", "")
 	}
@@ -243,11 +264,13 @@ func (s *Service) skipHeader(name string) bool {
 	return false
 }
 
-func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Request) {
+func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Request, trustedClientID string) {
 	if s.cfg.PlaceholderOrgID != "" {
 		outgoing.Header.Set("org-id", s.cfg.PlaceholderOrgID)
 	}
-	if s.cfg.PlaceholderClientID != "" {
+	if trustedClientID != "" {
+		outgoing.Header.Set("TPP-client-id", trustedClientID)
+	} else if s.cfg.PlaceholderClientID != "" {
 		outgoing.Header.Set("TPP-client-id", s.cfg.PlaceholderClientID)
 	}
 	correlationID := incoming.Header.Get("X-Correlation-ID")
