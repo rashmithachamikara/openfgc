@@ -22,11 +22,13 @@ function MainLayout(): React.JSX.Element {
           <Header.Brand>
             <Header.BrandLogo>
               <Box
+                component="img"
+                src="/wso2-logo.png"
+                alt={t('app.title')}
                 sx={{
                   width: 28,
                   height: 28,
-                  borderRadius: 1,
-                  bgcolor: 'primary.main',
+                  objectFit: 'contain',
                 }}
               />
             </Header.BrandLogo>
