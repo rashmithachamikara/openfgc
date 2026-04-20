@@ -324,31 +324,8 @@ func (s *store) Search(ctx context.Context, filters model.ConsentSearchFilters) 
 
 	whereClause := strings.Join(whereConditions, " AND ")
 
-	// Build COUNT query
-	countQuery := fmt.Sprintf("SELECT COUNT(DISTINCT CONSENT.CONSENT_ID) as count FROM CONSENT%s WHERE %s",
-		joinClause, whereClause)
-
-	// Execute count query
-	countRows, err := dbClient.Query(dbmodel.DBQuery{
-		ID:            "COUNT_SEARCH_RESULTS",
-		Query:         countQuery,
-		PostgresQuery: dbutils.ConvertToPostgresParams(countQuery),
-	}, countArgs...)
-	if err != nil {
-		return nil, 0, err
-	}
-
-	totalCount := 0
-	if len(countRows) > 0 {
-		if count, ok := countRows[0]["count"].(int64); ok {
-			totalCount = int(count)
-		} else if countVal, ok := countRows[0]["count"].([]uint8); ok {
-			// MySQL may return count as []uint8
-			if parsedCount, parseErr := strconv.ParseInt(string(countVal), 10, 64); parseErr == nil {
-				totalCount = int(parsedCount)
-			}
-		}
-	}
+	// Skipping count query for performance. Set totalCount to -1 to indicate not calculated.
+	totalCount := -1
 
 	// Build SELECT query with DISTINCT to handle JOIN duplicates
 	selectQuery := fmt.Sprintf(

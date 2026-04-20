@@ -64,7 +64,7 @@ fi
 # Configuration
 BINARY_NAME="consent-server"
 TARGET_DIR="target"
-OUTPUT_DIR="$TARGET_DIR/server"
+OUTPUT_DIR="$TARGET_DIR/server-test-1"
 DIST_DIR="$TARGET_DIR/dist"
 SOURCE_DIR="consent-server/cmd/server"
 CONFIG_SOURCE="consent-server/cmd/server/repository/conf/deployment.yaml"

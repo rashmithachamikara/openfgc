@@ -109,15 +109,15 @@ func (h *consentHandler) listConsents(w http.ResponseWriter, r *http.Request) {
 	// Parse pagination parameters
 	limit := 10
 	offset := 0
-	const maxLimit = 100
+	//	const maxLimit = 100
 
 	if limitStr := r.URL.Query().Get("limit"); limitStr != "" {
 		if l, err := strconv.Atoi(limitStr); err == nil && l > 0 {
-			if l > maxLimit {
-				limit = maxLimit
-			} else {
-				limit = l
-			}
+			// if l > maxLimit {
+			// 	limit = maxLimit
+			// } else {
+			limit = l
+			// }
 		}
 	}
 
