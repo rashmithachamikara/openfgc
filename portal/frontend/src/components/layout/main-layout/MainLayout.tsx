@@ -30,7 +30,7 @@ function MainLayout(): React.JSX.Element {
                 }}
               />
             </Header.BrandLogo>
-            <Header.BrandTitle>OpenFGC</Header.BrandTitle>
+            <Header.BrandTitle>{t('app.title')}</Header.BrandTitle>
           </Header.Brand>
           <Header.Spacer />
           <Header.Actions>

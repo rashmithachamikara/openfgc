@@ -1,6 +1,6 @@
 const commonEn = {
   app: {
-    title: 'OpenFGC Portal',
+    title: 'Consent Portal',
   },
   sidebar: {
     ariaLabel: 'Primary navigation',
