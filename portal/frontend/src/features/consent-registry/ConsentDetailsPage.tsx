@@ -24,6 +24,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import { formatEpochSeconds, formatIsoDateTime } from '../../utils/dateTime'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
 import {
@@ -32,12 +33,16 @@ import {
   useRevokeConsentMutation,
 } from './hooks/useConsentQueries'
 
-function formatEpoch(epochInSeconds: number | undefined): string {
-  if (!epochInSeconds) {
-    return '-'
-  }
+const LIFECYCLE_DATE_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  day: '2-digit',
+  month: '2-digit',
+  year: 'numeric',
+}
 
-  return new Date(epochInSeconds * 1000).toLocaleString()
+const LIFECYCLE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  hour: '2-digit',
+  minute: '2-digit',
+  second: '2-digit',
 }
 
 function formatDuration(durationInSeconds: number | undefined): string {
@@ -251,7 +256,7 @@ function ConsentDetailsPage(): React.JSX.Element {
                 {t('consentRegistry.details.created', 'Created')}
               </Typography>
               <Typography variant="body2" fontWeight={600}>
-                {formatEpoch(detail.createdTime)}
+                {formatEpochSeconds(detail.createdTime)}
               </Typography>
             </Box>
             <Box>
@@ -264,7 +269,7 @@ function ConsentDetailsPage(): React.JSX.Element {
                 {t('consentRegistry.details.validUntil', 'Valid Until')}
               </Typography>
               <Typography variant="body2" fontWeight={600}>
-                {formatEpoch(detail.validityTime)}
+                {formatEpochSeconds(detail.validityTime)}
               </Typography>
             </Box>
           </Box>
@@ -448,7 +453,7 @@ function ConsentDetailsPage(): React.JSX.Element {
                   </TableCell>
                   <TableCell>
                     <Typography variant="body2">
-                      {formatEpoch(authorization.updatedTime)}
+                      {formatEpochSeconds(authorization.updatedTime)}
                     </Typography>
                   </TableCell>
                   <TableCell>
@@ -507,10 +512,14 @@ function ConsentDetailsPage(): React.JSX.Element {
                   </Stack>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">01/03/2026</Typography>
+                  <Typography variant="body2">
+                    {formatIsoDateTime('2026-03-01T09:15:04', LIFECYCLE_DATE_FORMAT_OPTIONS)}
+                  </Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">09:15:04 AM</Typography>
+                  <Typography variant="body2">
+                    {formatIsoDateTime('2026-03-01T09:15:04', LIFECYCLE_TIME_FORMAT_OPTIONS)}
+                  </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
@@ -530,10 +539,14 @@ function ConsentDetailsPage(): React.JSX.Element {
                   </Stack>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">02/03/2026</Typography>
+                  <Typography variant="body2">
+                    {formatIsoDateTime('2026-03-02T15:29:57', LIFECYCLE_DATE_FORMAT_OPTIONS)}
+                  </Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">03:29:57 PM</Typography>
+                  <Typography variant="body2">
+                    {formatIsoDateTime('2026-03-02T15:29:57', LIFECYCLE_TIME_FORMAT_OPTIONS)}
+                  </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
@@ -553,10 +566,14 @@ function ConsentDetailsPage(): React.JSX.Element {
                   </Stack>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">02/03/2026</Typography>
+                  <Typography variant="body2">
+                    {formatIsoDateTime('2026-03-02T15:30:00', LIFECYCLE_DATE_FORMAT_OPTIONS)}
+                  </Typography>
                 </TableCell>
                 <TableCell>
-                  <Typography variant="body2">03:30:00 PM</Typography>
+                  <Typography variant="body2">
+                    {formatIsoDateTime('2026-03-02T15:30:00', LIFECYCLE_TIME_FORMAT_OPTIONS)}
+                  </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
@@ -577,12 +594,12 @@ function ConsentDetailsPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color="text.secondary">
-                    30/05/2026
+                    {formatIsoDateTime('2026-05-30T23:59:59', LIFECYCLE_DATE_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color="text.secondary">
-                    11:59:59 PM
+                    {formatIsoDateTime('2026-05-30T23:59:59', LIFECYCLE_TIME_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>

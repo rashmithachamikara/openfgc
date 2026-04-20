@@ -4,6 +4,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink } from 'react-router-dom'
 import type { ConsentRecord } from '../../../types/consent'
+import { formatIsoDateTime } from '../../../utils/dateTime'
 
 interface ConsentRegistryTableProps {
   rows: ConsentRecord[]
@@ -38,15 +39,13 @@ function getStatusChipColor(
   return 'default'
 }
 
-function formatCreatedAt(createdAt: string): string {
-  return new Date(createdAt).toLocaleString('en-US', {
-    month: 'short',
-    day: '2-digit',
-    year: 'numeric',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  })
+const CREATED_AT_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  month: 'short',
+  day: '2-digit',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+  hour12: false,
 }
 
 function sortConsentRows(
@@ -201,7 +200,9 @@ function ConsentRegistryTable({
                       />
                     </ListingTable.Cell>
                     <ListingTable.Cell>{row.purposes.join(', ')}</ListingTable.Cell>
-                    <ListingTable.Cell>{formatCreatedAt(row.createdAt)}</ListingTable.Cell>
+                    <ListingTable.Cell>
+                      {formatIsoDateTime(row.createdAt, CREATED_AT_FORMAT_OPTIONS)}
+                    </ListingTable.Cell>
                     <ListingTable.Cell align="center">
                       <ListingTable.RowActions visibility="always">
                         <IconButton
