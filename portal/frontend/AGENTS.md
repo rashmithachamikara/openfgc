@@ -44,6 +44,7 @@ Use this file as the canonical shared policy. Use provider-specific files for to
 
 - Add tests for components and hooks.
 - Keep tests under src/__tests__ using *.test.tsx (or co-located when justified).
+- Use PascalCase for test filenames in src/__tests__ (for example, ConsentRegistryModals.test.tsx).
 - Test happy path and error path, and mock network requests when needed.
 - Before merge, ensure lint, format, test, and build all pass.
 

@@ -1,14 +1,23 @@
-name: CI
+name: Portal Frontend CI
 
 on:
   push:
     branches:
       - '**'
+    paths:
+      - 'portal/frontend/**'
+      - '.github/workflows/portal-frontend-ci.yml'
   pull_request:
+    paths:
+      - 'portal/frontend/**'
+      - '.github/workflows/portal-frontend-ci.yml'
 
 jobs:
-  lint-and-build:
+  portal-frontend-ci:
     runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: portal/frontend
 
     steps:
       - name: Checkout
@@ -24,6 +33,7 @@ jobs:
         with:
           node-version: 22
           cache: pnpm
+          cache-dependency-path: portal/frontend/pnpm-lock.yaml
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile

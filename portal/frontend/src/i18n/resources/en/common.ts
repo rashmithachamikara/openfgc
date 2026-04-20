@@ -35,6 +35,31 @@ const commonEn = {
       revoke: 'Revoke',
       approve: 'Approve',
     },
+    modals: {
+      consentId: 'Consent ID',
+      actions: {
+        cancel: 'Cancel',
+        processing: 'Processing...',
+      },
+      approval: {
+        title: 'Review & Approve Consent',
+        subtitle: 'Please review the data sharing permissions before approval.',
+        mandatory: 'Mandatory Data (Required)',
+        optional: 'Optional Permissions',
+        required: 'Required',
+        toggle: 'Toggle permission',
+        noMandatory: 'No mandatory requirements for this consent.',
+        noOptional: 'No optional permissions available.',
+        confirm: 'Approve & Continue',
+      },
+      revocation: {
+        title: 'Confirm Revocation',
+        message: 'Are you sure you want to revoke all data permissions?',
+        note: 'This action revokes both mandatory and optional data permissions for this consent.',
+        confirm: 'Revoke All Data',
+        cancel: 'Keep Permissions',
+      },
+    },
     status: {
       all: 'All',
       active: 'Active',
@@ -49,6 +74,11 @@ const commonEn = {
       endDate: 'End date',
       consentType: 'Consent type',
       clear: 'Clear',
+    },
+    messages: {
+      loading: 'Loading consents...',
+      loadFailed: 'Unable to load consents right now.',
+      empty: 'No consents found for the selected filters.',
     },
     table: {
       tableAriaLabel: 'Consent registry table',
