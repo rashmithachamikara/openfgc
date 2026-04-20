@@ -108,4 +108,4 @@ function Example(): React.JSX.Element {
 
 ## CI
 
-GitHub Actions CI runs pnpm-based install, lint, and build checks on every push and pull request.
+GitHub Actions CI runs pnpm-based install, lint, and build checks on every push and pull request on portal/frontend direcotry.

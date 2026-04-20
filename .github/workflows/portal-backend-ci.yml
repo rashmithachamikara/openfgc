@@ -1,4 +1,4 @@
-name: BFF Backend CI
+name: Portal Backend CI
 
 on:
   pull_request:
