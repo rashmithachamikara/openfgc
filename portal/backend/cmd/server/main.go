@@ -41,27 +41,40 @@ func main() {
 		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
 
+	serveErrCh := make(chan error, 1)
+
 	go func() {
 		log.Info("starting OpenFGC portal backend server", "addr", srv.Addr)
 		if err := srv.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			log.Error("server stopped unexpectedly", "error", err)
-			os.Exit(1)
+			serveErrCh <- err
 		}
 	}()
 
 	ctx, stop := signal.NotifyContext(context.Background(), syscall.SIGINT, syscall.SIGTERM)
 	defer stop()
 
-	<-ctx.Done()
+	exitCode := 0
+
+	select {
+	case <-ctx.Done():
+	case err := <-serveErrCh:
+		log.Error("server stopped unexpectedly", "error", err)
+		exitCode = 1
+	}
+
 	shutdownCtx, cancel := context.WithTimeout(context.Background(), cfg.Server.ShutdownTimeout)
 	defer cancel()
 
 	log.Info("shutting down OpenFGC portal backend server")
 	if err := srv.Shutdown(shutdownCtx); err != nil {
 		log.Error("graceful shutdown failed", "error", err)
-		os.Exit(1)
+		exitCode = 1
 	}
 
 	time.Sleep(50 * time.Millisecond)
 	log.Info("OpenFGC portal backend server stopped")
+
+	if exitCode != 0 {
+		os.Exit(exitCode)
+	}
 }
