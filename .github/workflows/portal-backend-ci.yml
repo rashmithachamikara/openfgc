@@ -12,7 +12,7 @@ on:
       - '.github/workflows/bff-backend-ci.yml'
 
 jobs:
-  bff-backend:
+  portal-backend-ci:
     runs-on: ubuntu-latest
     defaults:
       run:

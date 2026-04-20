@@ -13,7 +13,7 @@ on:
       - '.github/workflows/portal-frontend-ci.yml'
 
 jobs:
-  lint-and-build:
+  portal-frontend-ci:
     runs-on: ubuntu-latest
     defaults:
       run:
