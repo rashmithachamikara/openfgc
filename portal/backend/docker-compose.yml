@@ -4,6 +4,8 @@ services:
       context: .
       dockerfile: Dockerfile
     env_file:
-      - .env.example
+      # Load local environment overrides when present.
+      - path: .env
+        required: false
     ports:
       - "8080:8080"
