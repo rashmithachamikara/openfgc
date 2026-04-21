@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Link as RouterLink } from 'react-router-dom'
 import type { ConsentRecord } from '../../../types/consent'
 import { formatIsoDateTime } from '../../../utils/dateTime'
+import { getConsentStatusChipColor } from '../utils/statusChip'
 
 interface ConsentRegistryTableProps {
   rows: ConsentRecord[]
@@ -20,24 +21,6 @@ interface ConsentRegistryTableProps {
 
 type SortField = 'id' | 'type' | 'status' | 'createdAt'
 type SortDirection = 'asc' | 'desc'
-
-function getStatusChipColor(
-  status: ConsentRecord['status'],
-): 'success' | 'warning' | 'error' | 'default' {
-  if (status === 'Active') {
-    return 'success'
-  }
-
-  if (status === 'Pending') {
-    return 'warning'
-  }
-
-  if (status === 'Revoked') {
-    return 'error'
-  }
-
-  return 'default'
-}
 
 const CREATED_AT_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   month: 'short',
@@ -194,7 +177,7 @@ function ConsentRegistryTable({
                     <ListingTable.Cell>
                       <Chip
                         size="small"
-                        color={getStatusChipColor(row.status)}
+                        color={getConsentStatusChipColor(row.status)}
                         label={t(`consentRegistry.status.${row.status.toLowerCase()}`)}
                         variant="outlined"
                       />

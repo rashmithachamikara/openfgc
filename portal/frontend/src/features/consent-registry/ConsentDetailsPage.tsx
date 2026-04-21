@@ -27,6 +27,7 @@ import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcr
 import { formatEpochSeconds, formatIsoDateTime } from '../../utils/dateTime'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
+import { getConsentStatusChipColor } from './utils/statusChip'
 import {
   useApproveConsentMutation,
   useConsentDetailQuery,
@@ -171,7 +172,7 @@ function ConsentDetailsPage(): React.JSX.Element {
             <Stack direction="row" spacing={1}>
               <Chip
                 label={detail.status}
-                color={detail.status === 'ACTIVE' ? 'success' : 'warning'}
+                color={getConsentStatusChipColor(detail.status)}
                 size="small"
                 variant="filled"
               />
