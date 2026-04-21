@@ -71,11 +71,15 @@ function mapStatus(status: ConsentAPIStatus | string): ConsentRecord['status'] {
     return 'Revoked'
   }
 
+  if (status === 'REJECTED') {
+    return 'Rejected'
+  }
+
   if (status === 'EXPIRED') {
     return 'Expired'
   }
 
-  return 'Pending'
+  return 'Expired'
 }
 
 function toListParams(
@@ -90,6 +94,7 @@ function toListParams(
         : {
             Active: 'ACTIVE',
             Pending: 'CREATED',
+            Rejected: 'REJECTED',
             Revoked: 'REVOKED',
             Expired: 'EXPIRED',
           }[filters.status],

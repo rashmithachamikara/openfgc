@@ -61,6 +61,7 @@ function ConsentRegistryFilters({
             <MenuItem value="All">{t('consentRegistry.status.all')}</MenuItem>
             <MenuItem value="Active">{t('consentRegistry.status.active')}</MenuItem>
             <MenuItem value="Pending">{t('consentRegistry.status.pending')}</MenuItem>
+            <MenuItem value="Rejected">{t('consentRegistry.status.rejected')}</MenuItem>
             <MenuItem value="Revoked">{t('consentRegistry.status.revoked')}</MenuItem>
             <MenuItem value="Expired">{t('consentRegistry.status.expired')}</MenuItem>
           </Select>

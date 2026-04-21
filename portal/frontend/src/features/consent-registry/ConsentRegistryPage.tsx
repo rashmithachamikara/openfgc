@@ -26,6 +26,7 @@ const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
   'All',
   'Active',
   'Pending',
+  'Rejected',
   'Revoked',
   'Expired',
 ]

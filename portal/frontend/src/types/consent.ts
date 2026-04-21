@@ -1,4 +1,4 @@
-export type ConsentStatus = 'Active' | 'Pending' | 'Revoked' | 'Expired'
+export type ConsentStatus = 'Active' | 'Pending' | 'Rejected' | 'Revoked' | 'Expired'
 
 export type ConsentAPIStatus = 'CREATED' | 'ACTIVE' | 'REJECTED' | 'REVOKED' | 'EXPIRED'
 

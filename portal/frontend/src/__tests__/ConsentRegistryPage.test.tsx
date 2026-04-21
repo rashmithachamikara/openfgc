@@ -102,4 +102,43 @@ describe('ConsentRegistryPage', () => {
     expect(await screen.findByText('Unable to load consents right now.')).toBeInTheDocument()
     expect(screen.queryByRole('table', { name: 'Consent registry table' })).not.toBeInTheDocument()
   })
+
+  it('does not render approve action for rejected consents', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [
+          {
+            id: 'CON-9123',
+            clientId: 'Sample_Client',
+            type: 'Accounts',
+            status: 'REJECTED',
+            createdTime: 1702800000,
+            updatedTime: 1702800000,
+            purposes: [
+              {
+                name: 'Marketing',
+                elements: [],
+              },
+            ],
+          },
+        ],
+        metadata: {
+          total: 1,
+          offset: 0,
+          count: 1,
+          limit: 10,
+        },
+      }),
+    })
+
+    const queryClient = createQueryClient()
+
+    renderConsentRegistryPage(queryClient)
+
+    expect(await screen.findByRole('table', { name: 'Consent registry table' })).toBeInTheDocument()
+    expect(screen.queryByLabelText('Approve')).not.toBeInTheDocument()
+  })
 })
