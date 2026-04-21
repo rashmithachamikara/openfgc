@@ -319,6 +319,11 @@ components:
           additionalProperties:
             type: string
         value:
+          oneOf:
+            - type: string
+            - type: object
+            - type: array
+              items: {}
           nullable: true
 
     ConsentAuthorizationItem:
