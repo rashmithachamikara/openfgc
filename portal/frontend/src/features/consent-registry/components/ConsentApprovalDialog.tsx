@@ -237,8 +237,12 @@ function ConsentApprovalDialog({
                           slotProps={{
                             input: {
                               'aria-label': t(
-                                'consentRegistry.modals.approval.toggle',
-                                'Toggle permission',
+                                'consentRegistry.modals.approval.toggleWithDetails',
+                                'Toggle permission for {{elementName}} in {{purposeName}}',
+                                {
+                                  elementName: element.elementName,
+                                  purposeName: element.purposeName,
+                                },
                               ),
                             },
                           }}
