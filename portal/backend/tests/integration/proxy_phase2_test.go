@@ -387,6 +387,53 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 			t.Fatalf("expected revocationReason passthrough, got %v", gotBody["revocationReason"])
 		}
 	})
+
+	t.Run("revoke accepts null payload", func(t *testing.T) {
+		var gotMethod string
+		var gotPath string
+		var gotBody map[string]any
+
+		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			gotMethod = r.Method
+			gotPath = r.URL.Path
+			body, _ := io.ReadAll(r.Body)
+			_ = json.Unmarshal(body, &gotBody)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer upstream.Close()
+
+		bff := newPhase2Server(t, upstream.URL)
+		defer bff.Close()
+
+		req, err := http.NewRequest(http.MethodPut, bff.URL+"/me/consents/consent-123/revoke", bytes.NewReader([]byte(`null`)))
+		if err != nil {
+			t.Fatalf("request creation failed: %v", err)
+		}
+		req.Header.Set("Content-Type", "application/json")
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		defer func() {
+			_ = resp.Body.Close()
+		}()
+
+		if resp.StatusCode != http.StatusOK {
+			t.Fatalf("expected 200, got %d", resp.StatusCode)
+		}
+		if gotMethod != http.MethodPut {
+			t.Fatalf("expected PUT, got %s", gotMethod)
+		}
+		if gotPath != "/api/v1/consents/consent-123/revoke" {
+			t.Fatalf("unexpected path: %s", gotPath)
+		}
+		if gotBody["actionBy"] != "user@example.com" {
+			t.Fatalf("expected placeholder actionBy, got %v", gotBody["actionBy"])
+		}
+		if len(gotBody) != 1 {
+			t.Fatalf("expected only actionBy in payload, got %v", gotBody)
+		}
+	})
 }
 
 func TestAPIDenyByDefault(t *testing.T) {

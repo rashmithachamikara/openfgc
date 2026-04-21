@@ -551,6 +551,11 @@ func (h *Handler) readBoundedBody(r *http.Request) ([]byte, error) {
 }
 
 func (h *Handler) buildRevokePayload(in []byte, userID string) ([]byte, error) {
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, errors.New("missing actionBy")
+	}
+
 	payload := map[string]any{
 		"actionBy": userID,
 	}
@@ -558,11 +563,11 @@ func (h *Handler) buildRevokePayload(in []byte, userID string) ([]byte, error) {
 		if err := json.Unmarshal(in, &payload); err != nil {
 			return nil, err
 		}
+		if payload == nil {
+			payload = map[string]any{}
+		}
 	}
 	payload["actionBy"] = userID
-	if payload["actionBy"] == "" {
-		return nil, errors.New("missing actionBy")
-	}
 	return json.Marshal(payload)
 }
 
