@@ -6,6 +6,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
 	"testing"
 	"time"
@@ -171,8 +172,16 @@ func TestMeConsentsForcesUserIDs(t *testing.T) {
 	if gotPath != "/api/v1/consents" {
 		t.Fatalf("expected path /api/v1/consents, got %s", gotPath)
 	}
-	if gotQuery != "limit=5&userIds=user%40example.com" && gotQuery != "userIds=user%40example.com&limit=5" {
-		t.Fatalf("expected query to include forced userIds and preserve limit, got %s", gotQuery)
+	queryValues, err := url.ParseQuery(gotQuery)
+	if err != nil {
+		t.Fatalf("expected valid query string, got parse error: %v", err)
+	}
+	if queryValues.Get("limit") != "5" {
+		t.Fatalf("expected limit=5, got %v", queryValues["limit"])
+	}
+	userIDs := queryValues["userIds"]
+	if len(userIDs) != 1 || userIDs[0] != "user@example.com" {
+		t.Fatalf("expected forced userIds=user@example.com, got %v", userIDs)
 	}
 }
 
@@ -598,8 +607,8 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
 				t.Fatalf("expected json error payload: %v", err)
 			}
-			if payload["code"] != "PLACEHOLDER_DISABLED" {
-				t.Fatalf("expected PLACEHOLDER_DISABLED, got %v", payload["code"])
+			if payload["code"] != "IDENTITY_UNAVAILABLE" {
+				t.Fatalf("expected IDENTITY_UNAVAILABLE, got %v", payload["code"])
 			}
 		})
 	}
