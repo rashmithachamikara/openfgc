@@ -6,11 +6,18 @@ import (
 	"encoding/hex"
 	"log/slog"
 	"net/http"
+	"os"
+	"strconv"
+	"sync/atomic"
+	"time"
 	"unicode"
 )
 
 const correlationHeader = "X-Correlation-ID"
 const maxCorrelationIDLength = 64
+
+var randomRead = rand.Read
+var fallbackSequence uint64
 
 // CorrelationID ensures each request has a correlation ID and mirrors it in responses.
 func CorrelationID(log *slog.Logger, next http.Handler) http.Handler {
@@ -50,8 +57,17 @@ func isValidCorrelationID(id string) bool {
 
 func newCorrelationID() string {
 	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return "fallback-correlation-id"
+	if _, err := randomRead(buf); err != nil {
+		return fallbackCorrelationID()
 	}
 	return hex.EncodeToString(buf)
+}
+
+func fallbackCorrelationID() string {
+	sequence := atomic.AddUint64(&fallbackSequence, 1)
+	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano(), 36)
+	pid := strconv.Itoa(os.Getpid())
+	seq := strconv.FormatUint(sequence, 36)
+
+	return "fb-" + timestamp + "-" + pid + "-" + seq
 }
