@@ -29,6 +29,14 @@ const commonEn = {
       created: 'Created Date',
       back: 'Back to Registry',
       notFound: 'Consent record not found',
+      actions: {
+        viewResources: 'View Resources',
+      },
+      resourcesModal: {
+        title: 'Authorization Resources',
+        authRef: 'Auth',
+        close: 'Close',
+      },
       values: {
         yes: 'Yes',
         no: 'No',

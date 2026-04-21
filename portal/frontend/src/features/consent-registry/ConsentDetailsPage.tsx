@@ -8,6 +8,10 @@ import {
   CardContent,
   CardHeader,
   Chip,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Divider,
   Stack,
   Table,
@@ -19,7 +23,7 @@ import {
   Typography,
   Avatar,
 } from '@wso2/oxygen-ui'
-import { ChevronRight, CheckCircle, XCircle } from '@wso2/oxygen-ui-icons-react'
+import { ChevronRight, CheckCircle, Eye, XCircle } from '@wso2/oxygen-ui-icons-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -55,6 +59,26 @@ function formatDuration(durationInSeconds: number | undefined): string {
   return `${hours}h`
 }
 
+function formatResourcesForModal(resources: unknown): string {
+  if (!resources) {
+    return '-'
+  }
+
+  if (typeof resources === 'string') {
+    try {
+      return JSON.stringify(JSON.parse(resources), null, 2)
+    } catch {
+      return resources
+    }
+  }
+
+  try {
+    return JSON.stringify(resources, null, 2)
+  } catch {
+    return String(resources)
+  }
+}
+
 function ConsentDetailsPage(): React.JSX.Element {
   const { t } = useTranslation('common')
   const { id } = useParams<{ id: string }>()
@@ -64,6 +88,8 @@ function ConsentDetailsPage(): React.JSX.Element {
   const revokeMutation = useRevokeConsentMutation()
   const [approvalDialogOpen, setApprovalDialogOpen] = useState<boolean>(false)
   const [revocationDialogOpen, setRevocationDialogOpen] = useState<boolean>(false)
+  const [resourcesModalOpen, setResourcesModalOpen] = useState<boolean>(false)
+  const [selectedResourcesJson, setSelectedResourcesJson] = useState<string>('')
 
   if (!id) {
     return (
@@ -454,9 +480,19 @@ function ConsentDetailsPage(): React.JSX.Element {
                     </Typography>
                   </TableCell>
                   <TableCell>
-                    <Typography variant="body2">
-                      {authorization.resources ? JSON.stringify(authorization.resources) : '-'}
-                    </Typography>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="secondary"
+                      startIcon={<Eye size={14} />}
+                      disabled={!authorization.resources}
+                      onClick={() => {
+                        setSelectedResourcesJson(formatResourcesForModal(authorization.resources))
+                        setResourcesModalOpen(true)
+                      }}
+                    >
+                      {t('consentRegistry.details.actions.viewResources', 'View Resources')}
+                    </Button>
                   </TableCell>
                 </TableRow>
               ))}
@@ -464,6 +500,50 @@ function ConsentDetailsPage(): React.JSX.Element {
           </Table>
         </TableContainer>
       </Card>
+
+      <Dialog
+        open={resourcesModalOpen}
+        onClose={() => {
+          setResourcesModalOpen(false)
+        }}
+        maxWidth="md"
+        fullWidth
+      >
+        <DialogTitle sx={{ borderBottom: 1, borderColor: 'divider' }}>
+          {t('consentRegistry.details.resourcesModal.title', 'Authorization Resources')}
+        </DialogTitle>
+        <DialogContent sx={{ pt: 2.5, pb: 2 }}>
+          <Box
+            component="pre"
+            sx={{
+              mb: 0,
+              p: 2,
+              border: 1,
+              borderColor: 'divider',
+              borderRadius: 1,
+              bgcolor: 'background.default',
+              color: 'text.primary',
+              fontSize: '0.8125rem',
+              fontFamily: 'monospace',
+              whiteSpace: 'pre',
+              overflow: 'auto',
+              maxHeight: '60vh',
+            }}
+          >
+            {selectedResourcesJson}
+          </Box>
+        </DialogContent>
+        <DialogActions sx={{ px: 3, pb: 3 }}>
+          <Button
+            variant="outlined"
+            onClick={() => {
+              setResourcesModalOpen(false)
+            }}
+          >
+            {t('consentRegistry.details.resourcesModal.close', 'Close')}
+          </Button>
+        </DialogActions>
+      </Dialog>
 
       {/* Consent Lifecycle Section intentionally have mock data until backend API
         provides lifecycle timeline fields. */}
