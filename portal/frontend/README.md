@@ -80,7 +80,7 @@ Recommended precedence:
 
 1. `portal/frontend/AGENTS.md` for shared frontend standards
 2. `.github/copilot-instructions.md` for Copilot-specific defaults
-3. `.github/instructions/*.instructions.md` for task and file-type specific rules
+3. `.github/instructions/*.instructions.md` for task and file-type-specific rules
 4. `portal/frontend/.ai/oxygen-ui/AGENTS.md` for Oxygen component catalog/examples
 
 Copilot instruction files are automatically discovered by Copilot Chat and applied based on their `applyTo` patterns.
@@ -108,4 +108,4 @@ function Example(): React.JSX.Element {
 
 ## CI
 
-GitHub Actions CI runs pnpm-based install, lint, and build checks on every push and pull request on portal/frontend direcotry.
+GitHub Actions CI runs pnpm-based install, lint, and build checks on every push and pull request on portal/frontend directory.
