@@ -35,7 +35,13 @@ function toUnixStartOfDay(dateText: string): number | undefined {
     return undefined
   }
 
-  return Math.floor(new Date(`${dateText}T00:00:00`).getTime() / 1000)
+  const unixMilliseconds = new Date(`${dateText}T00:00:00`).getTime()
+
+  if (Number.isNaN(unixMilliseconds)) {
+    return undefined
+  }
+
+  return Math.floor(unixMilliseconds / 1000)
 }
 
 function toUnixEndOfDay(dateText: string): number | undefined {
@@ -43,7 +49,13 @@ function toUnixEndOfDay(dateText: string): number | undefined {
     return undefined
   }
 
-  return Math.floor(new Date(`${dateText}T23:59:59`).getTime() / 1000)
+  const unixMilliseconds = new Date(`${dateText}T23:59:59`).getTime()
+
+  if (Number.isNaN(unixMilliseconds)) {
+    return undefined
+  }
+
+  return Math.floor(unixMilliseconds / 1000)
 }
 
 function mapStatus(status: ConsentAPIStatus | string): ConsentRecord['status'] {
