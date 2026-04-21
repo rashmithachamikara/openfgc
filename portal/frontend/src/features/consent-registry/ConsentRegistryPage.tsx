@@ -118,7 +118,7 @@ function ConsentRegistryPage(): React.JSX.Element {
           <Typography>{t('consentRegistry.messages.loading')}</Typography>
         ) : null}
 
-        {!consentListQuery.isLoading && !consentListQuery.isError ? (
+        {!consentListQuery.isLoading && !consentListQuery.isError && rows.length > 0 ? (
           <ConsentRegistryTable
             rows={rows}
             totalCount={totalCount}
