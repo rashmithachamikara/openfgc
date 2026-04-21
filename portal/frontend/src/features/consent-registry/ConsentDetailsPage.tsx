@@ -27,7 +27,7 @@ import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcr
 import { formatEpochSeconds, formatIsoDateTime } from '../../utils/dateTime'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
-import { getConsentStatusChipColor } from './utils/statusChip'
+import { getConsentStatusChipColor, getConsentStatusLabelKey } from './utils/statusChip'
 import {
   useApproveConsentMutation,
   useConsentDetailQuery,
@@ -171,17 +171,12 @@ function ConsentDetailsPage(): React.JSX.Element {
           action={
             <Stack direction="row" spacing={1}>
               <Chip
-                label={detail.status}
+                label={t(`consentRegistry.status.${getConsentStatusLabelKey(detail.status)}`)}
                 color={getConsentStatusChipColor(detail.status)}
                 size="small"
-                variant="filled"
+                variant="outlined"
               />
-              <Chip
-                label={detail.type}
-                size="small"
-                variant="filled"
-                sx={{ bgcolor: 'warning.main', color: 'warning.contrastText' }}
-              />
+              <Chip label={detail.type} color="default" size="small" variant="outlined" />
             </Stack>
           }
           sx={{ pb: 2 }}
@@ -446,10 +441,15 @@ function ConsentDetailsPage(): React.JSX.Element {
                   <TableCell>{authorization.type}</TableCell>
                   <TableCell>
                     <Chip
-                      label={authorization.status}
-                      color="success"
+                      label={t(
+                        `consentRegistry.status.${getConsentStatusLabelKey(
+                          authorization.status,
+                          'authorization',
+                        )}`,
+                      )}
+                      color={getConsentStatusChipColor(authorization.status)}
                       size="small"
-                      variant="filled"
+                      variant="outlined"
                     />
                   </TableCell>
                   <TableCell>

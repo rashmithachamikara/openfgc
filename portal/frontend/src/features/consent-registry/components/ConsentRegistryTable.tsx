@@ -5,7 +5,7 @@ import { useTranslation } from 'react-i18next'
 import { Link as RouterLink } from 'react-router-dom'
 import type { ConsentRecord } from '../../../types/consent'
 import { formatIsoDateTime } from '../../../utils/dateTime'
-import { getConsentStatusChipColor } from '../utils/statusChip'
+import { getConsentStatusChipColor, getConsentStatusLabelKey } from '../utils/statusChip'
 
 interface ConsentRegistryTableProps {
   rows: ConsentRecord[]
@@ -178,7 +178,7 @@ function ConsentRegistryTable({
                       <Chip
                         size="small"
                         color={getConsentStatusChipColor(row.status)}
-                        label={t(`consentRegistry.status.${row.status.toLowerCase()}`)}
+                        label={t(`consentRegistry.status.${getConsentStatusLabelKey(row.status)}`)}
                         variant="outlined"
                       />
                     </ListingTable.Cell>

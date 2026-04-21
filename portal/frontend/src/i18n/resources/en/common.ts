@@ -64,8 +64,13 @@ const commonEn = {
       all: 'All',
       active: 'Active',
       pending: 'Pending',
+      created: 'Created',
+      approved: 'Approved',
+      rejected: 'Rejected',
       revoked: 'Revoked',
       expired: 'Expired',
+      systemExpired: 'System Expired',
+      systemRevoked: 'System Revoked',
     },
     filters: {
       sectionAriaLabel: 'Consent filters',
