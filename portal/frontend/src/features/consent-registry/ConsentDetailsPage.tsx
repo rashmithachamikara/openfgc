@@ -213,7 +213,9 @@ function ConsentDetailsPage(): React.JSX.Element {
                 {t('consentRegistry.details.recurring', 'Recurring')}
               </Typography>
               <Typography variant="body2" fontWeight={600}>
-                {detail.recurringIndicator ? 'Yes' : 'No'}
+                {detail.recurringIndicator
+                  ? t('consentRegistry.details.values.yes', 'Yes')
+                  : t('consentRegistry.details.values.no', 'No')}
               </Typography>
             </Box>
             <Box>
@@ -369,7 +371,11 @@ function ConsentDetailsPage(): React.JSX.Element {
                             </TableCell>
                             <TableCell>
                               <Chip
-                                label={element.isMandatory ? 'Required' : 'Optional'}
+                                label={
+                                  element.isMandatory
+                                    ? t('consentRegistry.details.values.required', 'Required')
+                                    : t('consentRegistry.details.values.optional', 'Optional')
+                                }
                                 size="small"
                                 color={element.isMandatory ? 'error' : 'default'}
                                 variant="outlined"

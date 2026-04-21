@@ -29,6 +29,12 @@ const commonEn = {
       created: 'Created Date',
       back: 'Back to Registry',
       notFound: 'Consent record not found',
+      values: {
+        yes: 'Yes',
+        no: 'No',
+        required: 'Required',
+        optional: 'Optional',
+      },
     },
     actions: {
       view: 'View',
