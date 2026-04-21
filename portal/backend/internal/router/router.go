@@ -24,11 +24,16 @@ func New(log *slog.Logger, cfg config.Config) (http.Handler, error) {
 	if err != nil {
 		return nil, err
 	}
+	userIDOptions := middleware.UserIDOptions{
+		PlaceholderModeEnabled: cfg.Proxy.PlaceholderModeEnabled,
+		PlaceholderUserID:      cfg.Proxy.PlaceholderUserID,
+		Environment:            cfg.Env,
+	}
 
-	mux.HandleFunc("GET /me/consents", proxyHandler.MeConsents)
-	mux.HandleFunc("GET /me/consents/{consentId}", proxyHandler.MeConsentByID)
-	mux.HandleFunc("POST /me/consents/{consentId}/approve", proxyHandler.MeConsentApprove)
-	mux.HandleFunc("PUT /me/consents/{consentId}/revoke", proxyHandler.MeConsentRevoke)
+	mux.Handle("GET /me/consents", middleware.UserID(http.HandlerFunc(proxyHandler.MeConsents), userIDOptions))
+	mux.Handle("GET /me/consents/{consentId}", middleware.UserID(http.HandlerFunc(proxyHandler.MeConsentByID), userIDOptions))
+	mux.Handle("POST /me/consents/{consentId}/approve", middleware.UserID(http.HandlerFunc(proxyHandler.MeConsentApprove), userIDOptions))
+	mux.Handle("PUT /me/consents/{consentId}/revoke", middleware.UserID(http.HandlerFunc(proxyHandler.MeConsentRevoke), userIDOptions))
 	mux.HandleFunc("/api/{path...}", proxyHandler.API)
 
 	withCORS := middleware.CORS(mux, middleware.CORSOptions{

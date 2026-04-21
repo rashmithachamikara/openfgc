@@ -74,6 +74,25 @@ func newPhase2ServerWithMaxBytes(t *testing.T, upstreamURL string, maxBytes int6
 	return httptest.NewServer(h)
 }
 
+func newPhase2ServerPlaceholderDisabled(t *testing.T, upstreamURL string) *httptest.Server {
+	t.Helper()
+	cfg, err := config.Load()
+	if err != nil {
+		t.Fatalf("failed to load config: %v", err)
+	}
+	cfg.Proxy.OpenFGCAPIURL = upstreamURL
+	cfg.Proxy.PlaceholderModeEnabled = false
+	cfg.Proxy.PlaceholderUserID = ""
+	cfg.Proxy.PlaceholderOrgID = "ORG-001"
+	cfg.Proxy.PlaceholderClientID = "TPP-CLIENT-001"
+
+	h, err := router.New(logger.New("error"), *cfg)
+	if err != nil {
+		t.Fatalf("failed to create router: %v", err)
+	}
+	return httptest.NewServer(h)
+}
+
 func TestAPIPassthroughRewriteAndHeaderSafety(t *testing.T) {
 	var gotPath string
 	var gotQuery string
@@ -516,6 +535,73 @@ func TestUpstreamUnavailableMapsTo502(t *testing.T) {
 	}
 	if payload["code"] != "UPSTREAM_UNAVAILABLE" {
 		t.Fatalf("expected code UPSTREAM_UNAVAILABLE, got %v", payload["code"])
+	}
+}
+
+func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
+	upstreamCalled := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		upstreamCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	bff := newPhase2ServerPlaceholderDisabled(t, upstream.URL)
+	defer bff.Close()
+
+	testCases := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{name: "me consents", method: http.MethodGet, path: "/me/consents"},
+		{name: "me consent by id", method: http.MethodGet, path: "/me/consents/consent-123"},
+		{name: "me approve", method: http.MethodPost, path: "/me/consents/consent-123/approve", body: "[]"},
+		{name: "me revoke", method: http.MethodPut, path: "/me/consents/consent-123/revoke", body: "{}"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			upstreamCalled = false
+
+			var body io.Reader
+			if tc.body != "" {
+				body = strings.NewReader(tc.body)
+			}
+
+			req, err := http.NewRequest(tc.method, bff.URL+tc.path, body)
+			if err != nil {
+				t.Fatalf("request creation failed: %v", err)
+			}
+			if tc.body != "" {
+				req.Header.Set("Content-Type", "application/json")
+			}
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("request failed: %v", err)
+			}
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+
+			if resp.StatusCode != http.StatusServiceUnavailable {
+				t.Fatalf("expected 503, got %d", resp.StatusCode)
+			}
+
+			if upstreamCalled {
+				t.Fatal("expected request to be blocked before upstream call")
+			}
+
+			var payload map[string]any
+			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+				t.Fatalf("expected json error payload: %v", err)
+			}
+			if payload["code"] != "PLACEHOLDER_DISABLED" {
+				t.Fatalf("expected PLACEHOLDER_DISABLED, got %v", payload["code"])
+			}
+		})
 	}
 }
 

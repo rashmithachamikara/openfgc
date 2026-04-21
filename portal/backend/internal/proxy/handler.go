@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/wso2/openfgc/portal/backend/internal/config"
+	"github.com/wso2/openfgc/portal/backend/internal/middleware"
 )
 
 // Handler serves /api and /me route groups for Phase 2.
@@ -166,12 +167,12 @@ func (h *Handler) MeConsents(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
 		return
 	}
-	if !h.cfg.PlaceholderModeEnabled {
-		writeJSONError(w, http.StatusInternalServerError, "PLACEHOLDER_DISABLED", "placeholder mode disabled")
+	userID, ok := h.resolveUserID(w, r)
+	if !ok {
 		return
 	}
 	if err := h.svc.Forward(w, r, http.MethodGet, "/api/v1/consents", func(q url.Values) {
-		q.Set("userIds", h.cfg.PlaceholderUserID)
+		q.Set("userIds", userID)
 	}, nil); err != nil {
 		h.writeProxyError(w, err)
 	}
@@ -181,6 +182,9 @@ func (h *Handler) MeConsents(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) MeConsentByID(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodGet {
 		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
+		return
+	}
+	if _, ok := h.resolveUserID(w, r); !ok {
 		return
 	}
 	consentID := r.PathValue("consentId")
@@ -216,6 +220,10 @@ func (h *Handler) MeConsentApprove(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
 		return
 	}
+	userID, ok := h.resolveUserID(w, r)
+	if !ok {
+		return
+	}
 	consentID := r.PathValue("consentId")
 	if consentID == "" {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
@@ -241,7 +249,7 @@ func (h *Handler) MeConsentApprove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload, trustedClientID, err := h.buildApprovalUpdatePayload(r, baseResp.Body, selections)
+	payload, trustedClientID, err := h.buildApprovalUpdatePayload(r, baseResp.Body, selections, userID)
 	if err != nil {
 		if errors.Is(err, ErrUpstreamTimeout) || errors.Is(err, ErrUpstreamUnavailable) {
 			h.writeProxyError(w, err)
@@ -261,6 +269,10 @@ func (h *Handler) MeConsentRevoke(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
 		return
 	}
+	userID, ok := h.resolveUserID(w, r)
+	if !ok {
+		return
+	}
 	consentID := r.PathValue("consentId")
 	if consentID == "" {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
@@ -271,7 +283,7 @@ func (h *Handler) MeConsentRevoke(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusRequestEntityTooLarge, "REQUEST_TOO_LARGE", "request entity too large")
 		return
 	}
-	payload, err := h.buildRevokePayload(body)
+	payload, err := h.buildRevokePayload(body, userID)
 	if err != nil {
 		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
@@ -511,6 +523,15 @@ func writeJSONError(w http.ResponseWriter, status int, code, message string) {
 	_ = json.NewEncoder(w).Encode(errorResponse{Code: code, Message: message})
 }
 
+func (h *Handler) resolveUserID(w http.ResponseWriter, r *http.Request) (string, bool) {
+	userID, ok := middleware.UserIDFromContext(r.Context())
+	if !ok {
+		writeJSONError(w, http.StatusServiceUnavailable, "PLACEHOLDER_UNAVAILABLE", "placeholder identity unavailable")
+		return "", false
+	}
+	return userID, true
+}
+
 func (h *Handler) readBoundedBody(r *http.Request) ([]byte, error) {
 	if r.Body == nil {
 		return nil, nil
@@ -529,16 +550,16 @@ func (h *Handler) readBoundedBody(r *http.Request) ([]byte, error) {
 	return body, nil
 }
 
-func (h *Handler) buildRevokePayload(in []byte) ([]byte, error) {
+func (h *Handler) buildRevokePayload(in []byte, userID string) ([]byte, error) {
 	payload := map[string]any{
-		"actionBy": h.cfg.PlaceholderUserID,
+		"actionBy": userID,
 	}
 	if len(in) > 0 {
 		if err := json.Unmarshal(in, &payload); err != nil {
 			return nil, err
 		}
 	}
-	payload["actionBy"] = h.cfg.PlaceholderUserID
+	payload["actionBy"] = userID
 	if payload["actionBy"] == "" {
 		return nil, errors.New("missing actionBy")
 	}
@@ -561,7 +582,7 @@ func parseApprovalSelections(in []byte) ([]consentApprovalSelection, error) {
 	return selections, nil
 }
 
-func (h *Handler) buildApprovalUpdatePayload(r *http.Request, baseBody []byte, selections []consentApprovalSelection) ([]byte, string, error) {
+func (h *Handler) buildApprovalUpdatePayload(r *http.Request, baseBody []byte, selections []consentApprovalSelection, userID string) ([]byte, string, error) {
 	var consent consentRetrievalResponse
 	if err := json.Unmarshal(baseBody, &consent); err != nil {
 		return nil, "", ErrUpstreamUnavailable
@@ -611,7 +632,7 @@ func (h *Handler) buildApprovalUpdatePayload(r *http.Request, baseBody []byte, s
 		})
 	}
 
-	userID := strings.TrimSpace(h.cfg.PlaceholderUserID)
+	userID = strings.TrimSpace(userID)
 	if userID == "" {
 		return nil, "", ErrUpstreamUnavailable
 	}
