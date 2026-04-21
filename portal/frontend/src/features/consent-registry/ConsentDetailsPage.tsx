@@ -411,13 +411,7 @@ function ConsentDetailsPage(): React.JSX.Element {
             <TableHead>
               <TableRow sx={{ bgcolor: 'action.default' }}>
                 <TableCell sx={{ fontWeight: 700 }}>
-                  {t('consentRegistry.details.table.authId', 'Auth ID')}
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>
                   {t('consentRegistry.details.table.user', 'User')}
-                </TableCell>
-                <TableCell sx={{ fontWeight: 700 }}>
-                  {t('consentRegistry.details.table.type', 'Type')}
                 </TableCell>
                 <TableCell sx={{ fontWeight: 700 }}>
                   {t('consentRegistry.details.table.status', 'Status')}
@@ -434,9 +428,6 @@ function ConsentDetailsPage(): React.JSX.Element {
               {(detail.authorizations ?? []).map((authorization) => (
                 <TableRow key={authorization.id}>
                   <TableCell>
-                    <code>{authorization.id}</code>
-                  </TableCell>
-                  <TableCell>
                     <Stack direction="row" spacing={1} alignItems="center">
                       <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
                         {(authorization.userId ?? 'U').charAt(0).toUpperCase()}
@@ -444,7 +435,6 @@ function ConsentDetailsPage(): React.JSX.Element {
                       <Typography variant="body2">{authorization.userId ?? '-'}</Typography>
                     </Stack>
                   </TableCell>
-                  <TableCell>{authorization.type}</TableCell>
                   <TableCell>
                     <Chip
                       label={t(
