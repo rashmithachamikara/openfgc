@@ -1,6 +1,9 @@
 package unit
 
 import (
+	"errors"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 	"time"
 
@@ -62,5 +65,29 @@ func TestIsAllowedPassthroughMethod(t *testing.T) {
 	}
 	if svc.IsAllowedPassthroughMethod("DELETE") {
 		t.Fatal("expected DELETE to be disallowed")
+	}
+}
+
+func TestForwardRawMapsBodyReadFailureToUpstreamUnavailable(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Length", "10")
+		_, _ = w.Write([]byte("abc"))
+	}))
+	defer upstream.Close()
+
+	svc, err := proxy.NewService(config.ProxyConfig{
+		OpenFGCAPIURL:      upstream.URL,
+		OpenFGCAPITimeout:  2 * time.Second,
+		MaxRequestBytes:    1024,
+		AllowedPassthrough: []string{"GET"},
+	})
+	if err != nil {
+		t.Fatalf("failed to construct service: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
+	_, err = svc.ForwardRaw(req, http.MethodGet, "/api/v1/consents", nil, nil)
+	if !errors.Is(err, proxy.ErrUpstreamUnavailable) {
+		t.Fatalf("expected ErrUpstreamUnavailable, got: %v", err)
 	}
 }

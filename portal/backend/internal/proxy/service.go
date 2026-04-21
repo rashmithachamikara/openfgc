@@ -7,6 +7,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -195,7 +196,7 @@ func (s *Service) ForwardRawWithClientID(r *http.Request, upstreamMethod, upstre
 
 	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("read upstream response body: %w", ErrUpstreamUnavailable)
 	}
 
 	return &UpstreamResponse{
