@@ -24,7 +24,8 @@ function MainLayout(): React.JSX.Element {
               <Box
                 component="img"
                 src="/wso2-logo.png"
-                alt={t('app.title')}
+                alt=""
+                aria-hidden="true"
                 sx={{
                   width: 28,
                   height: 28,
