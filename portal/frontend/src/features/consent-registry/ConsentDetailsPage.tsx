@@ -590,12 +590,12 @@ function ConsentDetailsPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-01T09:15:04', LIFECYCLE_DATE_FORMAT_OPTIONS)}
+                    {formatIsoDateTime('2026-03-01T09:15:04Z', LIFECYCLE_DATE_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-01T09:15:04', LIFECYCLE_TIME_FORMAT_OPTIONS)}
+                    {formatIsoDateTime('2026-03-01T09:15:04Z', LIFECYCLE_TIME_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -617,12 +617,12 @@ function ConsentDetailsPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-02T15:29:57', LIFECYCLE_DATE_FORMAT_OPTIONS)}
+                    {formatIsoDateTime('2026-03-02T15:29:57Z', LIFECYCLE_DATE_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-02T15:29:57', LIFECYCLE_TIME_FORMAT_OPTIONS)}
+                    {formatIsoDateTime('2026-03-02T15:29:57Z', LIFECYCLE_TIME_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -644,12 +644,12 @@ function ConsentDetailsPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-02T15:30:00', LIFECYCLE_DATE_FORMAT_OPTIONS)}
+                    {formatIsoDateTime('2026-03-02T15:30:00Z', LIFECYCLE_DATE_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2">
-                    {formatIsoDateTime('2026-03-02T15:30:00', LIFECYCLE_TIME_FORMAT_OPTIONS)}
+                    {formatIsoDateTime('2026-03-02T15:30:00Z', LIFECYCLE_TIME_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>
@@ -671,12 +671,12 @@ function ConsentDetailsPage(): React.JSX.Element {
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color="text.secondary">
-                    {formatIsoDateTime('2026-05-30T23:59:59', LIFECYCLE_DATE_FORMAT_OPTIONS)}
+                    {formatIsoDateTime('2026-05-30T23:59:59Z', LIFECYCLE_DATE_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>
                   <Typography variant="body2" color="text.secondary">
-                    {formatIsoDateTime('2026-05-30T23:59:59', LIFECYCLE_TIME_FORMAT_OPTIONS)}
+                    {formatIsoDateTime('2026-05-30T23:59:59Z', LIFECYCLE_TIME_FORMAT_OPTIONS)}
                   </Typography>
                 </TableCell>
                 <TableCell>
