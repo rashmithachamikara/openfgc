@@ -69,7 +69,7 @@ func TestIsAllowedPassthroughMethod(t *testing.T) {
 }
 
 func TestForwardRawMapsBodyReadFailureToUpstreamUnavailable(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Length", "10")
 		_, _ = w.Write([]byte("abc"))
 	}))
