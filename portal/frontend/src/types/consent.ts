@@ -8,7 +8,8 @@ export interface ConsentRecord {
   type: string
   status: ConsentStatus
   purposes: string[]
-  createdAt: string
+  updatedAt: string
+  expirationTime?: number
   canRevoke: boolean
   canApprove: boolean
 }

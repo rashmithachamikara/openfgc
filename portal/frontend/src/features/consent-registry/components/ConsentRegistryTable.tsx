@@ -4,7 +4,7 @@ import { Fragment, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink } from 'react-router-dom'
 import type { ConsentRecord } from '../../../types/consent'
-import { formatIsoDateTime } from '../../../utils/dateTime'
+import { formatEpochSeconds, formatIsoDateTime } from '../../../utils/dateTime'
 import { getConsentStatusChipColor, getConsentStatusLabelKey } from '../utils/statusChip'
 
 interface ConsentRegistryTableProps {
@@ -19,10 +19,10 @@ interface ConsentRegistryTableProps {
   isMutating: boolean
 }
 
-type SortField = 'id' | 'type' | 'status' | 'createdAt'
+type SortField = 'type' | 'status' | 'updatedAt' | 'expirationTime'
 type SortDirection = 'asc' | 'desc'
 
-const CREATED_AT_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   month: 'short',
   day: '2-digit',
   year: 'numeric',
@@ -39,6 +39,18 @@ function sortConsentRows(
   const sortedRows = [...rows].sort((leftRow, rightRow) => {
     const leftValue = leftRow[sortField]
     const rightValue = rightRow[sortField]
+
+    if (leftValue == null && rightValue == null) {
+      return 0
+    }
+
+    if (leftValue == null) {
+      return 1
+    }
+
+    if (rightValue == null) {
+      return -1
+    }
 
     if (leftValue < rightValue) {
       return -1
@@ -66,7 +78,7 @@ function ConsentRegistryTable({
   isMutating,
 }: ConsentRegistryTableProps): React.JSX.Element {
   const { t } = useTranslation('common')
-  const [sortField, setSortField] = useState<SortField>('createdAt')
+  const [sortField, setSortField] = useState<SortField>('updatedAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
 
   const sortedRows = useMemo(
@@ -121,7 +133,7 @@ function ConsentRegistryTable({
         setSortDirection(nextDirection)
       }}
     >
-      <ListingTable.Container sx={{ minWidth: 900 }}>
+      <ListingTable.Container sx={{ minWidth: 1080 }}>
         <ListingTable
           density="standard"
           variant="table"
@@ -129,11 +141,7 @@ function ConsentRegistryTable({
         >
           <ListingTable.Head>
             <ListingTable.Row>
-              <ListingTable.Cell>
-                <ListingTable.SortLabel field="id">
-                  {t('consentRegistry.table.headers.consentId')}
-                </ListingTable.SortLabel>
-              </ListingTable.Cell>
+              <ListingTable.Cell>{t('consentRegistry.table.headers.purposes')}</ListingTable.Cell>
               <ListingTable.Cell>
                 <ListingTable.SortLabel field="type">
                   {t('consentRegistry.table.headers.type')}
@@ -144,10 +152,14 @@ function ConsentRegistryTable({
                   {t('consentRegistry.table.headers.status')}
                 </ListingTable.SortLabel>
               </ListingTable.Cell>
-              <ListingTable.Cell>{t('consentRegistry.table.headers.purposes')}</ListingTable.Cell>
               <ListingTable.Cell>
-                <ListingTable.SortLabel field="createdAt">
-                  {t('consentRegistry.table.headers.created')}
+                <ListingTable.SortLabel field="updatedAt">
+                  {t('consentRegistry.table.headers.updated')}
+                </ListingTable.SortLabel>
+              </ListingTable.Cell>
+              <ListingTable.Cell>
+                <ListingTable.SortLabel field="expirationTime">
+                  {t('consentRegistry.table.headers.expiration')}
                 </ListingTable.SortLabel>
               </ListingTable.Cell>
               <ListingTable.Cell align="center">
@@ -172,7 +184,9 @@ function ConsentRegistryTable({
 
                 {group.clientRows.map((row) => (
                   <ListingTable.Row key={row.id} hover variant="table">
-                    <ListingTable.Cell>#{row.id}</ListingTable.Cell>
+                    <ListingTable.Cell sx={{ fontWeight: 500 }}>
+                      {row.purposes.join(', ')}
+                    </ListingTable.Cell>
                     <ListingTable.Cell>{row.type}</ListingTable.Cell>
                     <ListingTable.Cell>
                       <Chip
@@ -182,9 +196,21 @@ function ConsentRegistryTable({
                         variant="outlined"
                       />
                     </ListingTable.Cell>
-                    <ListingTable.Cell>{row.purposes.join(', ')}</ListingTable.Cell>
                     <ListingTable.Cell>
-                      {formatIsoDateTime(row.createdAt, CREATED_AT_FORMAT_OPTIONS)}
+                      {formatIsoDateTime(row.updatedAt, DATE_TIME_FORMAT_OPTIONS)}
+                    </ListingTable.Cell>
+                    <ListingTable.Cell
+                      sx={
+                        row.expirationTime === 0
+                          ? {
+                              color: 'text.disabled',
+                            }
+                          : undefined
+                      }
+                    >
+                      {row.expirationTime === 0
+                        ? t('consentRegistry.table.notApplicable')
+                        : formatEpochSeconds(row.expirationTime, DATE_TIME_FORMAT_OPTIONS)}
                     </ListingTable.Cell>
                     <ListingTable.Cell align="center">
                       <ListingTable.RowActions visibility="always">

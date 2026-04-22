@@ -103,12 +103,14 @@ const commonEn = {
     table: {
       tableAriaLabel: 'Consent registry table',
       clientLabel: 'Client: {{client}}',
+      notApplicable: 'Not applicable',
       headers: {
         consentId: 'Consent ID',
         type: 'Type',
         status: 'Status',
         purposes: 'Purposes',
-        created: 'Created',
+        updated: 'Updated',
+        expiration: 'Expiration',
         actions: 'Actions',
       },
     },

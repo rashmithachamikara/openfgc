@@ -55,6 +55,7 @@ describe('ConsentRegistryPage', () => {
             status: 'ACTIVE',
             createdTime: 1702800000,
             updatedTime: 1702800000,
+            validityTime: 0,
             purposes: [
               {
                 name: 'Marketing',
@@ -80,7 +81,9 @@ describe('ConsentRegistryPage', () => {
     expect(screen.getByLabelText('Consent filters')).toBeInTheDocument()
     expect(await screen.findByRole('table', { name: 'Consent registry table' })).toBeInTheDocument()
     expect(await screen.findByText('Client: Tesco_Bank_v1')).toBeInTheDocument()
-    expect(await screen.findByText('#CON-8291')).toBeInTheDocument()
+    expect(await screen.findByText('Marketing')).toBeInTheDocument()
+    expect(await screen.findByText('Not applicable')).toBeInTheDocument()
+    expect(screen.queryByText('Consent ID')).not.toBeInTheDocument()
   })
 
   it('shows an error message when consent fetch fails', async () => {

@@ -115,7 +115,8 @@ function toConsentRow(consent: ConsentDetailAPI): ConsentRecord {
     type: consent.type,
     status: mappedStatus,
     purposes: consent.purposes.map((purpose) => purpose.name),
-    createdAt: new Date(consent.createdTime * 1000).toISOString(),
+    updatedAt: new Date(consent.updatedTime * 1000).toISOString(),
+    expirationTime: consent.validityTime,
     canRevoke: mappedStatus === 'Active',
     canApprove: mappedStatus === 'Pending',
   }
