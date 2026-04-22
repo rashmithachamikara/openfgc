@@ -72,10 +72,10 @@ describe('consent registry dialogs', () => {
       />,
     )
 
-    fireEvent.click(screen.getByRole('button', { name: /revoke all data/i }))
+    fireEvent.click(screen.getByRole('button', { name: /revoke consents/i }))
     expect(onConfirm).toHaveBeenCalledTimes(1)
 
-    fireEvent.click(screen.getByRole('button', { name: /keep permissions/i }))
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
     expect(onClose).toHaveBeenCalledTimes(1)
   })
 })
