@@ -6,7 +6,7 @@ export interface ConsentRecord {
   id: string
   clientName: string
   type: string
-  status: ConsentStatus
+  status: string
   purposes: string[]
   updatedAt: string
   expirationTime?: number

@@ -32,7 +32,12 @@ import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcr
 import { formatEpochSeconds, formatIsoDateTime } from '../../utils/dateTime'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
-import { getConsentStatusChipColor, getConsentStatusLabelKey } from './utils/statusChip'
+import {
+  getConsentStatusChipColor,
+  getConsentStatusLabelKey,
+  isConsentApprovableStatus,
+  isConsentRevokableStatus,
+} from './utils/statusChip'
 import {
   useApproveConsentMutation,
   useConsentDetailQuery,
@@ -129,8 +134,8 @@ function ConsentDetailsPage(): React.JSX.Element {
   }
 
   const detail = consentDetailQuery.data
-  const canApprove = detail?.status === 'CREATED'
-  const canRevoke = detail?.status === 'ACTIVE'
+  const canApprove = detail ? isConsentApprovableStatus(detail.status) : false
+  const canRevoke = detail ? isConsentRevokableStatus(detail.status) : false
 
   if (consentDetailQuery.isLoading) {
     return (

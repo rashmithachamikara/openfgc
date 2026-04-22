@@ -11,9 +11,13 @@ import {
   fetchMyConsents,
   revokeMyConsent,
 } from '../api/consentsApi'
+import {
+  isConsentApprovableStatus,
+  isConsentRevokableStatus,
+  normalizeConsentStatus,
+} from '../utils/statusChip'
 import type {
   ConsentApprovalSelection,
-  ConsentAPIStatus,
   ConsentDetailAPI,
   ConsentListQueryParams,
   ConsentRecord,
@@ -58,46 +62,21 @@ function toUnixEndOfDay(dateText: string): number | undefined {
   return Math.floor(unixMilliseconds / 1000)
 }
 
-function mapStatus(status: ConsentAPIStatus | string): ConsentRecord['status'] {
-  if (status === 'ACTIVE') {
-    return 'Active'
-  }
-
-  if (status === 'CREATED') {
-    return 'Pending'
-  }
-
-  if (status === 'REVOKED') {
-    return 'Revoked'
-  }
-
-  if (status === 'REJECTED') {
-    return 'Rejected'
-  }
-
-  if (status === 'EXPIRED') {
-    return 'Expired'
-  }
-
-  return 'Expired'
-}
-
 function toListParams(
   filters: ConsentRegistryFilters,
   page: number,
   rowsPerPage: number,
 ): ConsentListQueryParams {
+  const statusFilterMap: Record<Exclude<ConsentRegistryFilters['status'], 'All'>, string> = {
+    Active: 'ACTIVE',
+    Pending: 'CREATED,PENDING',
+    Rejected: 'REJECTED',
+    Revoked: 'REVOKED',
+    Expired: 'EXPIRED',
+  }
+
   return {
-    consentStatuses:
-      filters.status === 'All'
-        ? undefined
-        : {
-            Active: 'ACTIVE',
-            Pending: 'CREATED',
-            Rejected: 'REJECTED',
-            Revoked: 'REVOKED',
-            Expired: 'EXPIRED',
-          }[filters.status],
+    consentStatuses: filters.status === 'All' ? undefined : statusFilterMap[filters.status],
     consentTypes: filters.consentType.trim() || undefined,
     fromTime: toUnixStartOfDay(filters.startDate),
     toTime: toUnixEndOfDay(filters.endDate),
@@ -107,18 +86,18 @@ function toListParams(
 }
 
 function toConsentRow(consent: ConsentDetailAPI): ConsentRecord {
-  const mappedStatus = mapStatus(consent.status)
+  const normalizedStatus = normalizeConsentStatus(consent.status)
 
   return {
     id: consent.id,
     clientName: consent.clientId,
     type: consent.type,
-    status: mappedStatus,
+    status: normalizedStatus,
     purposes: consent.purposes.map((purpose) => purpose.name),
     updatedAt: new Date(consent.updatedTime * 1000).toISOString(),
     expirationTime: consent.validityTime,
-    canRevoke: mappedStatus === 'Active',
-    canApprove: mappedStatus === 'Pending',
+    canRevoke: isConsentRevokableStatus(normalizedStatus),
+    canApprove: isConsentApprovableStatus(normalizedStatus),
   }
 }
 
