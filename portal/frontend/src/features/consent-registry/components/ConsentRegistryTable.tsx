@@ -1,4 +1,12 @@
-import { Chip, IconButton, ListingTable, TablePagination } from '@wso2/oxygen-ui'
+import {
+  Box,
+  Chip,
+  IconButton,
+  ListingTable,
+  Popover,
+  TablePagination,
+  Typography,
+} from '@wso2/oxygen-ui'
 import { CircleCheckBig, Eye, ShieldX } from '@wso2/oxygen-ui-icons-react'
 import { Fragment, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -30,6 +38,8 @@ const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   minute: '2-digit',
   hour12: false,
 }
+
+const PURPOSE_PREVIEW_COUNT = 2
 
 function sortConsentRows(
   rows: ConsentRecord[],
@@ -80,6 +90,8 @@ function ConsentRegistryTable({
   const { t } = useTranslation('common')
   const [sortField, setSortField] = useState<SortField>('updatedAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
+  const [purposesPopoverAnchor, setPurposesPopoverAnchor] = useState<HTMLElement | null>(null)
+  const [selectedPurposes, setSelectedPurposes] = useState<string[]>([])
 
   const sortedRows = useMemo(
     () => sortConsentRows(rows, sortField, sortDirection),
@@ -109,6 +121,12 @@ function ConsentRegistryTable({
   const rowsPerPageOptions: number[] = [5, 10, 25]
 
   const selectedRowIds: readonly string[] = []
+  const isPurposesPopoverOpen = Boolean(purposesPopoverAnchor)
+
+  const handlePurposesPopoverClose = (): void => {
+    setPurposesPopoverAnchor(null)
+    setSelectedPurposes([])
+  }
 
   return (
     <ListingTable.Provider
@@ -185,7 +203,38 @@ function ConsentRegistryTable({
                 {group.clientRows.map((row) => (
                   <ListingTable.Row key={row.id} hover variant="table">
                     <ListingTable.Cell sx={{ fontWeight: 500 }}>
-                      {row.purposes.join(', ')}
+                      <Box
+                        sx={{
+                          display: 'flex',
+                          alignItems: 'center',
+                          gap: 0.75,
+                          flexWrap: 'wrap',
+                        }}
+                      >
+                        {row.purposes.slice(0, PURPOSE_PREVIEW_COUNT).map((purpose) => (
+                          <Chip
+                            key={`${row.id}-${purpose}`}
+                            size="small"
+                            label={purpose}
+                            variant="outlined"
+                          />
+                        ))}
+                        {row.purposes.length > PURPOSE_PREVIEW_COUNT ? (
+                          <Chip
+                            size="small"
+                            color="primary"
+                            variant="outlined"
+                            label={t('consentRegistry.table.purposes.more', {
+                              count: row.purposes.length - PURPOSE_PREVIEW_COUNT,
+                              defaultValue: '+{{count}} more',
+                            })}
+                            onClick={(event) => {
+                              setPurposesPopoverAnchor(event.currentTarget)
+                              setSelectedPurposes(row.purposes)
+                            }}
+                          />
+                        ) : null}
+                      </Box>
                     </ListingTable.Cell>
                     <ListingTable.Cell>{row.type}</ListingTable.Cell>
                     <ListingTable.Cell>
@@ -255,6 +304,25 @@ function ConsentRegistryTable({
             ))}
           </ListingTable.Body>
         </ListingTable>
+
+        <Popover
+          open={isPurposesPopoverOpen}
+          anchorEl={purposesPopoverAnchor}
+          onClose={handlePurposesPopoverClose}
+          anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
+          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+        >
+          <Box sx={{ p: 2, minWidth: 220, maxWidth: 360 }}>
+            <Typography variant="subtitle2" sx={{ mb: 1 }}>
+              {t('consentRegistry.table.purposes.title', 'Consent purposes')}
+            </Typography>
+            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+              {selectedPurposes.map((purpose) => (
+                <Chip key={purpose} size="small" label={purpose} variant="outlined" />
+              ))}
+            </Box>
+          </Box>
+        </Popover>
 
         <TablePagination
           component="div"

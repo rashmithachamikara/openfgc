@@ -343,12 +343,15 @@ function ConsentDetailsPage(): React.JSX.Element {
                 disableGutters
                 elevation={0}
                 sx={{
+                  mb: 1,
                   border: 1,
                   borderColor: 'divider',
                   borderRadius: 1,
                   overflow: 'hidden',
                   '&:before': { display: 'none' },
-                  '&.Mui-expanded': { m: 0 },
+                  '&.Mui-expanded': { mt: 0, mb: 1 },
+                  '&:last-of-type': { mb: 0 },
+                  '&.Mui-expanded:last-of-type': { mb: 0 },
                 }}
               >
                 <AccordionSummary
@@ -356,9 +359,6 @@ function ConsentDetailsPage(): React.JSX.Element {
                   sx={{ '&:hover': { bgcolor: 'action.hover' } }}
                 >
                   <Stack direction="row" spacing={1.5} alignItems="center">
-                    <Typography variant="body2" fontWeight={600}>
-                      {purpose.name}
-                    </Typography>
                     <Chip
                       label={`${approved}/${total} approved`}
                       color="primary"
@@ -368,6 +368,9 @@ function ConsentDetailsPage(): React.JSX.Element {
                         '& .MuiChip-label': { px: 0.75, fontSize: '0.6875rem', fontWeight: 500 },
                       }}
                     />
+                    <Typography variant="body2" fontWeight={600}>
+                      {purpose.name}
+                    </Typography>
                   </Stack>
                 </AccordionSummary>
                 <AccordionDetails sx={{ p: 0 }}>
@@ -383,9 +386,6 @@ function ConsentDetailsPage(): React.JSX.Element {
                           </TableCell>
                           <TableCell sx={{ fontWeight: 700 }}>
                             {t('consentRegistry.details.table.required', 'Required')}
-                          </TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>
-                            {t('consentRegistry.details.table.type', 'Type')}
                           </TableCell>
                           <TableCell sx={{ fontWeight: 700 }}>
                             {t('consentRegistry.details.table.description', 'Description')}
@@ -428,7 +428,6 @@ function ConsentDetailsPage(): React.JSX.Element {
                                 variant="outlined"
                               />
                             </TableCell>
-                            <TableCell>{element.type ?? '-'}</TableCell>
                             <TableCell>{element.description ?? '-'}</TableCell>
                           </TableRow>
                         ))}
