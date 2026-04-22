@@ -20,6 +20,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Tooltip,
   Typography,
   Avatar,
 } from '@wso2/oxygen-ui'
@@ -77,6 +78,26 @@ function formatResourcesForModal(resources: unknown): string {
   } catch {
     return String(resources)
   }
+}
+
+function isEmptyAuthorizationResources(resources: unknown): boolean {
+  if (resources == null) {
+    return true
+  }
+
+  if (typeof resources === 'string') {
+    return resources.trim().length === 0
+  }
+
+  if (Array.isArray(resources)) {
+    return resources.length === 0
+  }
+
+  if (typeof resources === 'object') {
+    return Object.keys(resources as Record<string, unknown>).length === 0
+  }
+
+  return false
 }
 
 function ConsentDetailsPage(): React.JSX.Element {
@@ -451,51 +472,67 @@ function ConsentDetailsPage(): React.JSX.Element {
               </TableRow>
             </TableHead>
             <TableBody>
-              {(detail.authorizations ?? []).map((authorization) => (
-                <TableRow key={authorization.id}>
-                  <TableCell>
-                    <Stack direction="row" spacing={1} alignItems="center">
-                      <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
-                        {(authorization.userId ?? 'U').charAt(0).toUpperCase()}
-                      </Avatar>
-                      <Typography variant="body2">{authorization.userId ?? '-'}</Typography>
-                    </Stack>
-                  </TableCell>
-                  <TableCell>
-                    <Chip
-                      label={t(
-                        `consentRegistry.status.${getConsentStatusLabelKey(
-                          authorization.status,
-                          'authorization',
-                        )}`,
-                      )}
-                      color={getConsentStatusChipColor(authorization.status)}
-                      size="small"
-                      variant="outlined"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Typography variant="body2">
-                      {formatEpochSeconds(authorization.updatedTime)}
-                    </Typography>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      size="small"
-                      variant="contained"
-                      color="secondary"
-                      startIcon={<Eye size={14} />}
-                      disabled={!authorization.resources}
-                      onClick={() => {
-                        setSelectedResourcesJson(formatResourcesForModal(authorization.resources))
-                        setResourcesModalOpen(true)
-                      }}
-                    >
-                      {t('consentRegistry.details.actions.viewResources', 'View Resources')}
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {(detail.authorizations ?? []).map((authorization) => {
+                const resourcesEmpty = isEmptyAuthorizationResources(authorization.resources)
+
+                return (
+                  <TableRow key={authorization.id}>
+                    <TableCell>
+                      <Stack direction="row" spacing={1} alignItems="center">
+                        <Avatar sx={{ width: 24, height: 24, fontSize: '0.75rem' }}>
+                          {(authorization.userId ?? 'U').charAt(0).toUpperCase()}
+                        </Avatar>
+                        <Typography variant="body2">{authorization.userId ?? '-'}</Typography>
+                      </Stack>
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={t(
+                          `consentRegistry.status.${getConsentStatusLabelKey(
+                            authorization.status,
+                            'authorization',
+                          )}`,
+                        )}
+                        color={getConsentStatusChipColor(authorization.status)}
+                        size="small"
+                        variant="outlined"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Typography variant="body2">
+                        {formatEpochSeconds(authorization.updatedTime)}
+                      </Typography>
+                    </TableCell>
+                    <TableCell>
+                      <Tooltip
+                        title={t(
+                          'consentRegistry.details.actions.noResourcesTooltip',
+                          'No resources available',
+                        )}
+                        disableHoverListener={!resourcesEmpty}
+                      >
+                        <span>
+                          <Button
+                            size="small"
+                            variant="contained"
+                            color="secondary"
+                            startIcon={<Eye size={14} />}
+                            disabled={resourcesEmpty}
+                            onClick={() => {
+                              setSelectedResourcesJson(
+                                formatResourcesForModal(authorization.resources),
+                              )
+                              setResourcesModalOpen(true)
+                            }}
+                          >
+                            {t('consentRegistry.details.actions.viewResources', 'View Resources')}
+                          </Button>
+                        </span>
+                      </Tooltip>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </TableContainer>

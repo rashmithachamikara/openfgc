@@ -31,6 +31,7 @@ const commonEn = {
       notFound: 'Consent record not found',
       actions: {
         viewResources: 'View Resources',
+        noResourcesTooltip: 'No resources available',
       },
       resourcesModal: {
         title: 'Authorization Resources',
