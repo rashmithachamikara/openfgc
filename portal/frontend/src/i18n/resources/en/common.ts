@@ -104,6 +104,11 @@ const commonEn = {
       tableAriaLabel: 'Consent registry table',
       clientLabel: 'Client: {{client}}',
       notApplicable: 'Not applicable',
+      purposes: {
+        more: '+{{count}} more',
+        title: 'Consent purposes',
+        hint: 'Showing all purposes of the consent',
+      },
       headers: {
         consentId: 'Consent ID',
         type: 'Type',

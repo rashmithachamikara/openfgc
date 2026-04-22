@@ -310,16 +310,68 @@ function ConsentRegistryTable({
           anchorEl={purposesPopoverAnchor}
           onClose={handlePurposesPopoverClose}
           anchorOrigin={{ vertical: 'bottom', horizontal: 'left' }}
-          transformOrigin={{ vertical: 'top', horizontal: 'left' }}
+          transformOrigin={{ vertical: -4, horizontal: 'left' }}
+          PaperProps={{
+            sx: {
+              mt: 0.5,
+              borderRadius: 1,
+              border: 2,
+              borderColor: 'divider',
+              boxShadow: 6,
+              overflow: 'hidden',
+            },
+          }}
         >
-          <Box sx={{ p: 2, minWidth: 220, maxWidth: 360 }}>
-            <Typography variant="subtitle2" sx={{ mb: 1 }}>
-              {t('consentRegistry.table.purposes.title', 'Consent purposes')}
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.75 }}>
+          <Box sx={{ minWidth: 260, maxWidth: 420 }}>
+            <Box
+              sx={{
+                px: 2,
+                py: 1.5,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'space-between',
+                bgcolor: 'action.hover',
+                borderBottom: 1,
+                borderColor: 'divider',
+              }}
+            >
+              <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                {t('consentRegistry.table.purposes.title', 'Consent purposes')}
+              </Typography>
+              <Chip
+                size="small"
+                color="default"
+                variant="filled"
+                label={selectedPurposes.length}
+                sx={{ height: 20, '& .MuiChip-label': { px: 0.75, fontWeight: 600 } }}
+              />
+            </Box>
+            <Box
+              sx={{
+                p: 2,
+                display: 'flex',
+                gap: 0.75,
+                flexWrap: 'wrap',
+                maxHeight: 280,
+                overflowY: 'auto',
+              }}
+            >
               {selectedPurposes.map((purpose) => (
                 <Chip key={purpose} size="small" label={purpose} variant="outlined" />
               ))}
+            </Box>
+            <Box
+              sx={{
+                px: 2,
+                py: 1,
+                borderTop: 1,
+                borderColor: 'divider',
+                bgcolor: 'background.paper',
+              }}
+            >
+              <Typography variant="caption" color="text.secondary">
+                {t('consentRegistry.table.purposes.hint', 'Showing all purposes of the consent')}
+              </Typography>
             </Box>
           </Box>
         </Popover>
