@@ -68,10 +68,10 @@ const commonEn = {
       },
       revocation: {
         title: 'Confirm Revocation',
-        message: 'Are you sure you want to revoke all data permissions?',
-        note: 'This action revokes both mandatory and optional data permissions for this consent.',
-        confirm: 'Revoke All Data',
-        cancel: 'Keep Permissions',
+        message: 'Are you sure you want to revoke consent?',
+        note: 'This action revokes both mandatory and optional consents granted for all associated purposes.',
+        confirm: 'Revoke Consents',
+        cancel: 'Cancel',
       },
     },
     status: {
