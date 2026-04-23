@@ -41,6 +41,15 @@ const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
 
 const PURPOSE_PREVIEW_COUNT = 2
 
+const CONSENT_REGISTRY_COLUMN_WIDTHS = {
+  purposes: '34%',
+  type: '11%',
+  status: '13%',
+  updated: '16%',
+  expiration: '16%',
+  actions: '10%',
+} as const
+
 function sortConsentRows(
   rows: ConsentRecord[],
   sortField: SortField,
@@ -156,31 +165,37 @@ function ConsentRegistryTable({
           density="standard"
           variant="table"
           aria-label={t('consentRegistry.table.tableAriaLabel')}
+          sx={{ tableLayout: 'fixed' }}
         >
           <ListingTable.Head>
             <ListingTable.Row>
-              <ListingTable.Cell>{t('consentRegistry.table.headers.purposes')}</ListingTable.Cell>
-              <ListingTable.Cell>
+              <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.purposes }}>
+                {t('consentRegistry.table.headers.purposes')}
+              </ListingTable.Cell>
+              <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.type }}>
                 <ListingTable.SortLabel field="type">
                   {t('consentRegistry.table.headers.type')}
                 </ListingTable.SortLabel>
               </ListingTable.Cell>
-              <ListingTable.Cell>
+              <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.status }}>
                 <ListingTable.SortLabel field="status">
                   {t('consentRegistry.table.headers.status')}
                 </ListingTable.SortLabel>
               </ListingTable.Cell>
-              <ListingTable.Cell>
+              <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.updated }}>
                 <ListingTable.SortLabel field="updatedAt">
                   {t('consentRegistry.table.headers.updated')}
                 </ListingTable.SortLabel>
               </ListingTable.Cell>
-              <ListingTable.Cell>
+              <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.expiration }}>
                 <ListingTable.SortLabel field="expirationTime">
                   {t('consentRegistry.table.headers.expiration')}
                 </ListingTable.SortLabel>
               </ListingTable.Cell>
-              <ListingTable.Cell align="center">
+              <ListingTable.Cell
+                align="center"
+                sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.actions }}
+              >
                 {t('consentRegistry.table.headers.actions')}
               </ListingTable.Cell>
             </ListingTable.Row>
@@ -202,7 +217,9 @@ function ConsentRegistryTable({
 
                 {group.clientRows.map((row) => (
                   <ListingTable.Row key={row.id} hover variant="table">
-                    <ListingTable.Cell sx={{ fontWeight: 500 }}>
+                    <ListingTable.Cell
+                      sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.purposes, fontWeight: 500 }}
+                    >
                       <Box
                         sx={{
                           display: 'flex',
@@ -236,8 +253,10 @@ function ConsentRegistryTable({
                         ) : null}
                       </Box>
                     </ListingTable.Cell>
-                    <ListingTable.Cell>{row.type}</ListingTable.Cell>
-                    <ListingTable.Cell>
+                    <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.type }}>
+                      {row.type}
+                    </ListingTable.Cell>
+                    <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.status }}>
                       <Chip
                         size="small"
                         color={getConsentStatusChipColor(row.status)}
@@ -245,23 +264,29 @@ function ConsentRegistryTable({
                         variant="outlined"
                       />
                     </ListingTable.Cell>
-                    <ListingTable.Cell>
+                    <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.updated }}>
                       {formatIsoDateTime(row.updatedAt, DATE_TIME_FORMAT_OPTIONS)}
                     </ListingTable.Cell>
                     <ListingTable.Cell
                       sx={
                         row.expirationTime === 0
                           ? {
+                              width: CONSENT_REGISTRY_COLUMN_WIDTHS.expiration,
                               color: 'text.disabled',
                             }
-                          : undefined
+                          : {
+                              width: CONSENT_REGISTRY_COLUMN_WIDTHS.expiration,
+                            }
                       }
                     >
                       {row.expirationTime === 0
                         ? t('consentRegistry.table.notApplicable')
                         : formatEpochSeconds(row.expirationTime, DATE_TIME_FORMAT_OPTIONS)}
                     </ListingTable.Cell>
-                    <ListingTable.Cell align="center">
+                    <ListingTable.Cell
+                      align="center"
+                      sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.actions }}
+                    >
                       <ListingTable.RowActions visibility="always">
                         <IconButton
                           size="small"
