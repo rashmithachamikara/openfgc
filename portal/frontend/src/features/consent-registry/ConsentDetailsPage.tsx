@@ -24,7 +24,7 @@ import {
   Typography,
   Avatar,
 } from '@wso2/oxygen-ui'
-import { ChevronRight, CheckCircle, Eye, XCircle } from '@wso2/oxygen-ui-icons-react'
+import { ChevronRight, CheckCircle, CircleHelp, Eye, XCircle } from '@wso2/oxygen-ui-icons-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -65,13 +65,51 @@ const PURPOSE_ELEMENTS_COLUMN_WIDTHS = {
 
 const ELEMENT_NAME_MAX_DISPLAY_LENGTH = 28
 
-function formatDuration(durationInSeconds: number | undefined): string {
+type DurationUnit = 'hour' | 'day' | 'year'
+
+interface DurationDisplayParts {
+  value: number
+  unit: DurationUnit
+}
+
+function getDurationDisplayParts(
+  durationInSeconds: number | undefined,
+): DurationDisplayParts | null {
   if (!durationInSeconds || durationInSeconds <= 0) {
-    return '-'
+    return null
   }
 
-  const hours = Math.floor(durationInSeconds / 3600)
-  return `${hours}h`
+  const totalHours = durationInSeconds / 3600
+
+  if (totalHours < 24) {
+    return { value: Math.max(1, Math.floor(totalHours)), unit: 'hour' }
+  }
+
+  const totalDays = totalHours / 24
+
+  if (totalDays < 365) {
+    return { value: Math.floor(totalDays), unit: 'day' }
+  }
+
+  return { value: Math.floor(totalDays / 365), unit: 'year' }
+}
+
+function getDurationUnitLabelKey(unit: DurationUnit, isSingular: boolean): string {
+  if (unit === 'hour') {
+    return isSingular
+      ? 'consentRegistry.details.durationUnitHourSingular'
+      : 'consentRegistry.details.durationUnitHourPlural'
+  }
+
+  if (unit === 'day') {
+    return isSingular
+      ? 'consentRegistry.details.durationUnitDaySingular'
+      : 'consentRegistry.details.durationUnitDayPlural'
+  }
+
+  return isSingular
+    ? 'consentRegistry.details.durationUnitYearSingular'
+    : 'consentRegistry.details.durationUnitYearPlural'
 }
 
 function formatResourcesForModal(resources: unknown): string {
@@ -153,6 +191,15 @@ function ConsentDetailsPage(): React.JSX.Element {
   const detail = consentDetailQuery.data
   const canApprove = detail ? isConsentApprovableStatus(detail.status) : false
   const canRevoke = detail ? isConsentRevokableStatus(detail.status) : false
+  const hasFrequency = detail ? detail.frequency != null && detail.frequency !== 0 : false
+  const hasDuration = detail
+    ? detail.dataAccessValidityDuration != null && detail.dataAccessValidityDuration !== 0
+    : false
+  const hasValidityTime = detail ? detail.validityTime != null : false
+  const durationDisplay = detail ? getDurationDisplayParts(detail.dataAccessValidityDuration) : null
+  const durationUnitLabel = durationDisplay
+    ? t(getDurationUnitLabelKey(durationDisplay.unit, durationDisplay.value === 1))
+    : ''
 
   if (consentDetailQuery.isLoading) {
     return (
@@ -232,7 +279,7 @@ function ConsentDetailsPage(): React.JSX.Element {
         <CardHeader
           title={
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" fontWeight={600}>
+              <Typography variant="body2" fontWeight={400} sx={{ fontFamily: 'monospace' }}>
                 {t('consentRegistry.details.consentId', 'Consent ID')}: {id}
               </Typography>
             </Stack>
@@ -263,66 +310,12 @@ function ConsentDetailsPage(): React.JSX.Element {
               <Typography
                 variant="caption"
                 color="text.secondary"
-                fontWeight={600}
-                sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-              >
-                {t('consentRegistry.details.clientId', 'Client ID')}
-              </Typography>
-              <Typography variant="body2" fontWeight={600}>
-                {detail.clientId}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight={600}
-                sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-              >
-                {t('consentRegistry.details.recurring', 'Recurring')}
-              </Typography>
-              <Typography variant="body2" fontWeight={600}>
-                {detail.recurringIndicator
-                  ? t('consentRegistry.details.values.yes', 'Yes')
-                  : t('consentRegistry.details.values.no', 'No')}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight={600}
-                sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-              >
-                {t('consentRegistry.details.frequency', 'Frequency')}
-              </Typography>
-              <Typography variant="body2" fontWeight={600}>
-                {detail.frequency ?? '-'}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight={600}
-                sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-              >
-                {t('consentRegistry.details.duration', 'Duration')}
-              </Typography>
-              <Typography variant="body2" fontWeight={600}>
-                {formatDuration(detail.dataAccessValidityDuration)}
-              </Typography>
-            </Box>
-            <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight={600}
+                fontWeight={700}
                 sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
               >
                 {t('consentRegistry.details.created', 'Created')}
               </Typography>
-              <Typography variant="body2" fontWeight={600}>
+              <Typography variant="body2" fontWeight={500}>
                 {formatEpochSeconds(detail.createdTime)}
               </Typography>
             </Box>
@@ -330,15 +323,140 @@ function ConsentDetailsPage(): React.JSX.Element {
               <Typography
                 variant="caption"
                 color="text.secondary"
-                fontWeight={600}
+                fontWeight={700}
+                sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
+              >
+                {t('consentRegistry.details.updated', 'Updated')}
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {formatEpochSeconds(detail.updatedTime)}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={700}
                 sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
               >
                 {t('consentRegistry.details.validUntil', 'Valid Until')}
               </Typography>
-              <Typography variant="body2" fontWeight={600}>
-                {formatEpochSeconds(detail.validityTime)}
+              <Typography variant="body2" fontWeight={500}>
+                <Box
+                  component="span"
+                  sx={{ color: hasValidityTime ? 'text.primary' : 'text.disabled' }}
+                >
+                  {hasValidityTime
+                    ? formatEpochSeconds(detail.validityTime)
+                    : t('consentRegistry.table.notApplicable', 'Not applicable')}
+                </Box>
               </Typography>
             </Box>
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={700}
+                sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
+              >
+                {t('consentRegistry.details.clientId', 'Client ID')}
+              </Typography>
+              <Typography variant="body2" fontWeight={500} sx={{ fontFamily: 'monospace' }}>
+                {detail.clientId}
+              </Typography>
+            </Box>
+            <Box>
+              <Typography
+                variant="caption"
+                color="text.secondary"
+                fontWeight={700}
+                sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
+              >
+                {t('consentRegistry.details.recurring', 'Recurring')}
+              </Typography>
+              <Typography variant="body2" fontWeight={500}>
+                {detail.recurringIndicator
+                  ? t('consentRegistry.details.values.yes', 'Yes')
+                  : t('consentRegistry.details.values.no', 'No')}
+              </Typography>
+            </Box>
+            {hasFrequency ? (
+              <Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight={700}
+                  sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
+                >
+                  <Box
+                    component="span"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    {t('consentRegistry.details.frequency', 'Access Limit')}
+                    <Tooltip
+                      title={t(
+                        'consentRegistry.details.frequencyHelp',
+                        'This indicates how many times this consent can be accessed per day.',
+                      )}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          color: 'text.disabled',
+                        }}
+                      >
+                        <CircleHelp size={14} />
+                      </Box>
+                    </Tooltip>
+                  </Box>
+                </Typography>
+                <Typography variant="body2" fontWeight={500}>
+                  {detail.frequency}{' '}
+                  {detail.frequency === 1
+                    ? t('consentRegistry.details.frequencyUnitSingular', 'time per day')
+                    : t('consentRegistry.details.frequencyUnitPlural', 'times per day')}
+                </Typography>
+              </Box>
+            ) : null}
+            {hasDuration ? (
+              <Box>
+                <Typography
+                  variant="caption"
+                  color="text.secondary"
+                  fontWeight={700}
+                  sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
+                >
+                  <Box
+                    component="span"
+                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                  >
+                    {t('consentRegistry.details.duration', 'Lookback Period')}
+                    <Tooltip
+                      title={t(
+                        'consentRegistry.details.durationHelp',
+                        'This defines how far back data can be accessed. For example, if set to 6 months, data from up to 6 months ago is accessible.',
+                      )}
+                    >
+                      <Box
+                        component="span"
+                        sx={{
+                          display: 'inline-flex',
+                          alignItems: 'center',
+                          color: 'text.disabled',
+                        }}
+                      >
+                        <CircleHelp size={14} />
+                      </Box>
+                    </Tooltip>
+                  </Box>
+                </Typography>
+                <Typography variant="body2" fontWeight={500}>
+                  {durationDisplay ? `${durationDisplay.value} ${durationUnitLabel}` : '-'}
+                </Typography>
+              </Box>
+            ) : null}
           </Box>
         </CardContent>
       </Card>
@@ -658,7 +776,7 @@ function ConsentDetailsPage(): React.JSX.Element {
         <CardHeader
           title={
             <Typography variant="subtitle1" fontWeight={600}>
-              {t('consentRegistry.details.section.lifecycle', 'Consent Lifecycle')} (Mock Data)
+              {t('consentRegistry.details.section.lifecycle', 'Consent Lifecycle')}
             </Typography>
           }
           sx={{ pb: 0 }}
