@@ -56,6 +56,15 @@ const LIFECYCLE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
   second: '2-digit',
 }
 
+const PURPOSE_ELEMENTS_COLUMN_WIDTHS = {
+  element: '28%',
+  approved: '14%',
+  required: '18%',
+  description: '40%',
+} as const
+
+const ELEMENT_NAME_MAX_DISPLAY_LENGTH = 28
+
 function formatDuration(durationInSeconds: number | undefined): string {
   if (!durationInSeconds || durationInSeconds <= 0) {
     return '-'
@@ -83,6 +92,14 @@ function formatResourcesForModal(resources: unknown): string {
   } catch {
     return String(resources)
   }
+}
+
+function truncateElementName(elementName: string, maxLength: number): string {
+  if (elementName.length <= maxLength) {
+    return elementName
+  }
+
+  return `${elementName.slice(0, Math.max(maxLength - 1, 1))}...`
 }
 
 function isEmptyAuthorizationResources(resources: unknown): boolean {
@@ -380,19 +397,45 @@ function ConsentDetailsPage(): React.JSX.Element {
                 </AccordionSummary>
                 <AccordionDetails sx={{ p: 0 }}>
                   <TableContainer>
-                    <Table size="small" sx={{ '& tbody tr:hover': { bgcolor: 'action.hover' } }}>
+                    <Table
+                      size="small"
+                      sx={{
+                        tableLayout: 'fixed',
+                        '& tbody tr:hover': { bgcolor: 'action.hover' },
+                      }}
+                    >
                       <TableHead>
                         <TableRow>
-                          <TableCell sx={{ fontWeight: 700 }}>
+                          <TableCell
+                            sx={{
+                              fontWeight: 700,
+                              width: PURPOSE_ELEMENTS_COLUMN_WIDTHS.element,
+                            }}
+                          >
                             {t('consentRegistry.details.table.element', 'Element')}
                           </TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>
+                          <TableCell
+                            sx={{
+                              fontWeight: 700,
+                              width: PURPOSE_ELEMENTS_COLUMN_WIDTHS.approved,
+                            }}
+                          >
                             {t('consentRegistry.details.table.approved', 'Approved')}
                           </TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>
+                          <TableCell
+                            sx={{
+                              fontWeight: 700,
+                              width: PURPOSE_ELEMENTS_COLUMN_WIDTHS.required,
+                            }}
+                          >
                             {t('consentRegistry.details.table.required', 'Required')}
                           </TableCell>
-                          <TableCell sx={{ fontWeight: 700 }}>
+                          <TableCell
+                            sx={{
+                              fontWeight: 700,
+                              width: PURPOSE_ELEMENTS_COLUMN_WIDTHS.description,
+                            }}
+                          >
                             {t('consentRegistry.details.table.description', 'Description')}
                           </TableCell>
                         </TableRow>
@@ -400,8 +443,30 @@ function ConsentDetailsPage(): React.JSX.Element {
                       <TableBody>
                         {purpose.elements.map((element) => (
                           <TableRow key={element.name}>
-                            <TableCell>
-                              <code>{element.name}</code>
+                            <TableCell sx={{ width: PURPOSE_ELEMENTS_COLUMN_WIDTHS.element }}>
+                              <Tooltip
+                                title={element.name}
+                                disableHoverListener={
+                                  element.name.length <= ELEMENT_NAME_MAX_DISPLAY_LENGTH
+                                }
+                              >
+                                <Box
+                                  component="code"
+                                  sx={{
+                                    display: 'inline-block',
+                                    maxWidth: '100%',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    whiteSpace: 'nowrap',
+                                    verticalAlign: 'bottom',
+                                  }}
+                                >
+                                  {truncateElementName(
+                                    element.name,
+                                    ELEMENT_NAME_MAX_DISPLAY_LENGTH,
+                                  )}
+                                </Box>
+                              </Tooltip>
                             </TableCell>
                             <TableCell>
                               {element.isUserApproved ? (
