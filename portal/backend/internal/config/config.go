@@ -185,8 +185,8 @@ func validate(cfg Config) error {
 	if cfg.Server.ShutdownTimeout <= 0 {
 		return fmt.Errorf("server.shutdown_timeout must be > 0")
 	}
-	if _, err := url.ParseRequestURI(cfg.Proxy.OpenFGCAPIURL); err != nil {
-		return fmt.Errorf("proxy.openfgc_api_url must be a valid URL: %w", err)
+	if _, err := ValidateOpenFGCAPIURL(cfg.Proxy.OpenFGCAPIURL); err != nil {
+		return err
 	}
 	if cfg.Proxy.OpenFGCAPITimeout <= 0 {
 		return fmt.Errorf("proxy.openfgc_api_timeout must be > 0")
@@ -234,6 +234,27 @@ func validate(cfg Config) error {
 		return fmt.Errorf("proxy.allowed_passthrough_methods must not be empty")
 	}
 	return nil
+}
+
+// ValidateOpenFGCAPIURL validates and parses the configured upstream OpenFGC API URL.
+func ValidateOpenFGCAPIURL(rawURL string) (*url.URL, error) {
+	upstream := strings.TrimSpace(rawURL)
+	if upstream == "" {
+		return nil, fmt.Errorf("proxy.openfgc_api_url must not be empty")
+	}
+
+	parsed, err := url.Parse(upstream)
+	if err != nil {
+		return nil, fmt.Errorf("proxy.openfgc_api_url must be a valid URL: %w", err)
+	}
+	if parsed.Scheme != "http" && parsed.Scheme != "https" {
+		return nil, fmt.Errorf("proxy.openfgc_api_url must use http or https scheme")
+	}
+	if parsed.Host == "" {
+		return nil, fmt.Errorf("proxy.openfgc_api_url must include a host")
+	}
+
+	return parsed, nil
 }
 
 // ParseMethods parses a JSON array of HTTP methods from BFF_PROXY__ALLOWED_PASSTHROUGH_METHODS.

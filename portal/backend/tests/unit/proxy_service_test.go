@@ -4,12 +4,43 @@ import (
 	"errors"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/wso2/openfgc/portal/backend/internal/config"
 	"github.com/wso2/openfgc/portal/backend/internal/proxy"
 )
+
+func TestNewServiceRejectsInvalidUpstreamURL(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		errText string
+	}{
+		{name: "empty url", url: "", errText: "must not be empty"},
+		{name: "relative url", url: "/consent-server", errText: "must use http or https scheme"},
+		{name: "missing host", url: "http:///api", errText: "must include a host"},
+		{name: "unsupported scheme", url: "ftp://localhost:9090", errText: "must use http or https scheme"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			_, err := proxy.NewService(config.ProxyConfig{
+				OpenFGCAPIURL:      tt.url,
+				OpenFGCAPITimeout:  2 * time.Second,
+				MaxRequestBytes:    1024,
+				AllowedPassthrough: []string{"GET"},
+			})
+			if err == nil {
+				t.Fatal("expected constructor error for invalid URL")
+			}
+			if !strings.Contains(err.Error(), tt.errText) {
+				t.Fatalf("expected error to contain %q, got %v", tt.errText, err)
+			}
+		})
+	}
+}
 
 func TestCheckAPIAccess(t *testing.T) {
 	svc, err := proxy.NewService(config.ProxyConfig{

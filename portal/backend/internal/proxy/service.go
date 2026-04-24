@@ -73,7 +73,7 @@ type UpstreamResponse struct {
 
 // NewService builds a proxy service from app config.
 func NewService(cfg config.ProxyConfig) (*Service, error) {
-	parsed, err := url.Parse(cfg.OpenFGCAPIURL)
+	parsed, err := config.ValidateOpenFGCAPIURL(cfg.OpenFGCAPIURL)
 	if err != nil {
 		return nil, err
 	}

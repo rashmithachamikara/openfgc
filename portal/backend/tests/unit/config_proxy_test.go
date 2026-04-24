@@ -49,3 +49,30 @@ func TestAllowedPassthroughMethodsEnvJSON(t *testing.T) {
 		t.Fatalf("unexpected methods: %#v", cfg.Proxy.AllowedPassthrough)
 	}
 }
+
+func TestOpenFGCAPIURLRequiresHTTPSchemeAndHost(t *testing.T) {
+	tests := []struct {
+		name    string
+		url     string
+		errText string
+	}{
+		{name: "empty url", url: "", errText: "must not be empty"},
+		{name: "relative url", url: "/consent-server", errText: "must use http or https scheme"},
+		{name: "missing host", url: "http:///api", errText: "must include a host"},
+		{name: "unsupported scheme", url: "ftp://localhost:9090", errText: "must use http or https scheme"},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			t.Setenv("BFF_PROXY__OPENFGC_API_URL", tt.url)
+
+			_, err := config.Load()
+			if err == nil {
+				t.Fatal("expected config load error")
+			}
+			if !strings.Contains(err.Error(), tt.errText) {
+				t.Fatalf("expected error to contain %q, got %v", tt.errText, err)
+			}
+		})
+	}
+}
