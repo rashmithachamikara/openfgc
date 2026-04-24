@@ -178,9 +178,6 @@ func (s *Service) ForwardRawWithClientID(r *http.Request, upstreamMethod, upstre
 
 	s.copyHeaders(r.Header, upstreamReq.Header)
 	s.setTrustedHeaders(r, upstreamReq, trustedClientID)
-	if len(body) > 0 {
-		upstreamReq.Header.Set("Content-Length", "")
-	}
 
 	resp, err := s.http.Do(upstreamReq)
 	if err != nil {
@@ -260,6 +257,9 @@ func (s *Service) skipHeader(name string) bool {
 		return true
 	}
 	if strings.EqualFold(canonical, "Org-Id") || strings.EqualFold(canonical, "TPP-Client-Id") {
+		return true
+	}
+	if strings.EqualFold(canonical, "Content-Length") {
 		return true
 	}
 	return false
