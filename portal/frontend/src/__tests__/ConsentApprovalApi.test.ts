@@ -23,16 +23,15 @@ describe('approveMyConsent', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [requestUrl, requestInit] = fetchMock.mock.calls[0] ?? []
+    const requestHeaders = new Headers((requestInit?.headers as HeadersInit | undefined) ?? {})
 
     expect(String(requestUrl)).toContain('/me/consents/consent-123/approve')
     expect(requestInit).toMatchObject({
       method: 'POST',
       credentials: 'include',
-      headers: {
-        Accept: 'application/json',
-        'Content-Type': 'application/json',
-      },
       body: JSON.stringify(selectedOptionalElements),
     })
+    expect(requestHeaders.get('Accept')).toBe('application/json')
+    expect(requestHeaders.get('Content-Type')).toBe('application/json')
   })
 })

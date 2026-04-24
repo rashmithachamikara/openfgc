@@ -20,6 +20,16 @@ interface RequestOptions extends RequestInit {
   query?: Record<string, string | number | boolean | undefined>
 }
 
+function buildHeaders(headers?: HeadersInit): Headers {
+  const normalizedHeaders = new Headers(headers)
+
+  if (!normalizedHeaders.has('Accept')) {
+    normalizedHeaders.set('Accept', 'application/json')
+  }
+
+  return normalizedHeaders
+}
+
 /**
  * Builds an absolute request URL from the configured API base URL and query params.
  */
@@ -51,10 +61,7 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   const response = await fetch(buildURL(path, query), {
     credentials: 'include',
     ...requestInit,
-    headers: {
-      Accept: 'application/json',
-      ...headers,
-    },
+    headers: buildHeaders(headers),
   })
 
   if (!response.ok) {
@@ -94,10 +101,7 @@ export async function apiRequestNoContent(
   const response = await fetch(buildURL(path, query), {
     credentials: 'include',
     ...requestInit,
-    headers: {
-      Accept: 'application/json',
-      ...headers,
-    },
+    headers: buildHeaders(headers),
   })
 
   if (!response.ok) {
