@@ -195,7 +195,7 @@ function ConsentDetailsPage(): React.JSX.Element {
   const hasDuration = detail
     ? detail.dataAccessValidityDuration != null && detail.dataAccessValidityDuration !== 0
     : false
-  const hasValidityTime = detail ? detail.validityTime != null : false
+  const hasValidityTime = detail ? detail.validityTime != null && detail.validityTime !== 0 : false
   const durationDisplay = detail ? getDurationDisplayParts(detail.dataAccessValidityDuration) : null
   const durationUnitLabel = durationDisplay
     ? t(getDurationUnitLabelKey(durationDisplay.unit, durationDisplay.value === 1))
