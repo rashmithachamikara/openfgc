@@ -50,7 +50,7 @@ Tests are written with [Vitest](https://vitest.dev/) and [React Testing Library]
 
 ## Project Structure
 
-```
+```text
 src/
 ├── components/       # Reusable UI components
 ├── features/         # Feature-level modules (pages, domains)
