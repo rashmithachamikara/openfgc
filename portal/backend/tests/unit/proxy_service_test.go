@@ -122,3 +122,57 @@ func TestForwardRawMapsBodyReadFailureToUpstreamUnavailable(t *testing.T) {
 		t.Fatalf("expected ErrUpstreamUnavailable, got: %v", err)
 	}
 }
+
+func TestForwardStripsHeadersNamedByConnection(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("X-Hop-Debug"); got != "" {
+			t.Fatalf("expected X-Hop-Debug to be stripped, got %q", got)
+		}
+		if got := r.Header.Get("Connection"); got != "" {
+			t.Fatalf("expected Connection to be stripped, got %q", got)
+		}
+		if got := r.Header.Get("X-End-To-End"); got != "request-ok" {
+			t.Fatalf("expected X-End-To-End to be forwarded, got %q", got)
+		}
+
+		w.Header().Set("Connection", "keep-alive, X-Upstream-Hop")
+		w.Header().Set("Keep-Alive", "timeout=5")
+		w.Header().Set("X-Upstream-Hop", "1")
+		w.Header().Set("X-Upstream-End", "response-ok")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("ok"))
+	}))
+	defer upstream.Close()
+
+	svc, err := proxy.NewService(config.ProxyConfig{
+		OpenFGCAPIURL:      upstream.URL,
+		OpenFGCAPITimeout:  2 * time.Second,
+		MaxRequestBytes:    1024,
+		AllowedPassthrough: []string{"GET"},
+	})
+	if err != nil {
+		t.Fatalf("failed to construct service: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
+	req.Header.Set("Connection", "keep-alive, X-Hop-Debug")
+	req.Header.Set("Keep-Alive", "timeout=5")
+	req.Header.Set("X-Hop-Debug", "1")
+	req.Header.Set("X-End-To-End", "request-ok")
+
+	rr := httptest.NewRecorder()
+	err = svc.Forward(rr, req, http.MethodGet, "/api/v1/consents", nil, nil)
+	if err != nil {
+		t.Fatalf("unexpected forward error: %v", err)
+	}
+
+	if got := rr.Header().Get("X-Upstream-Hop"); got != "" {
+		t.Fatalf("expected X-Upstream-Hop to be stripped, got %q", got)
+	}
+	if got := rr.Header().Get("Connection"); got != "" {
+		t.Fatalf("expected Connection to be stripped from response, got %q", got)
+	}
+	if got := rr.Header().Get("X-Upstream-End"); got != "response-ok" {
+		t.Fatalf("expected X-Upstream-End to be forwarded, got %q", got)
+	}
+}

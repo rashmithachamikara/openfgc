@@ -230,8 +230,9 @@ func routeMatches(patternParts, parts []string) bool {
 }
 
 func (s *Service) copyHeaders(src, dst http.Header) {
+	connectionHeaders := connectionHeaderNames(src)
 	for k, vals := range src {
-		if s.skipHeader(k) {
+		if s.skipHeader(k, connectionHeaders) {
 			continue
 		}
 		for _, v := range vals {
@@ -241,8 +242,13 @@ func (s *Service) copyHeaders(src, dst http.Header) {
 }
 
 func (s *Service) copyResponseHeaders(dst, src http.Header) {
+	connectionHeaders := connectionHeaderNames(src)
 	for k, vals := range src {
-		if _, drop := hopByHopHeaders[http.CanonicalHeaderKey(k)]; drop {
+		canonical := http.CanonicalHeaderKey(k)
+		if _, drop := hopByHopHeaders[canonical]; drop {
+			continue
+		}
+		if _, drop := connectionHeaders[canonical]; drop {
 			continue
 		}
 		for _, v := range vals {
@@ -251,9 +257,12 @@ func (s *Service) copyResponseHeaders(dst, src http.Header) {
 	}
 }
 
-func (s *Service) skipHeader(name string) bool {
+func (s *Service) skipHeader(name string, connectionHeaders map[string]struct{}) bool {
 	canonical := http.CanonicalHeaderKey(name)
 	if _, drop := hopByHopHeaders[canonical]; drop {
+		return true
+	}
+	if _, drop := connectionHeaders[canonical]; drop {
 		return true
 	}
 	if strings.EqualFold(canonical, "Org-Id") || strings.EqualFold(canonical, "TPP-Client-Id") {
@@ -263,6 +272,20 @@ func (s *Service) skipHeader(name string) bool {
 		return true
 	}
 	return false
+}
+
+func connectionHeaderNames(headers http.Header) map[string]struct{} {
+	names := make(map[string]struct{})
+	for _, value := range headers.Values("Connection") {
+		for _, token := range strings.Split(value, ",") {
+			name := strings.TrimSpace(token)
+			if name == "" {
+				continue
+			}
+			names[http.CanonicalHeaderKey(name)] = struct{}{}
+		}
+	}
+	return names
 }
 
 func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Request, trustedClientID string) {
