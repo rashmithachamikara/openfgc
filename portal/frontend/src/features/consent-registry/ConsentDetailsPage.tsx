@@ -32,6 +32,7 @@ import {
   DialogTitle,
   Divider,
   Stack,
+  Skeleton,
   Table,
   TableBody,
   TableCell,
@@ -221,8 +222,92 @@ function ConsentDetailsPage(): React.JSX.Element {
 
   if (consentDetailQuery.isLoading) {
     return (
-      <Box component="main" sx={{ p: { xs: 2, md: 4 } }}>
-        <Typography>{t('consentRegistry.messages.loading')}</Typography>
+      <Box
+        component="main"
+        sx={{ p: { xs: 2, md: 4 }, display: 'flex', flexDirection: 'column', gap: 3 }}
+      >
+        <Stack spacing={1}>
+          <HeaderBreadcrumbs />
+          <Skeleton variant="text" width={220} height={48} />
+        </Stack>
+
+        <Card sx={{ boxShadow: 1 }}>
+          <CardHeader
+            title={<Skeleton variant="text" width={280} />}
+            action={
+              <Stack direction="row" spacing={1}>
+                <Skeleton variant="rounded" width={84} height={24} />
+                <Skeleton variant="rounded" width={84} height={24} />
+              </Stack>
+            }
+            sx={{ pb: 2 }}
+          />
+          <Divider />
+          <CardContent sx={{ pt: 3 }}>
+            <Box
+              sx={{
+                display: 'grid',
+                gridTemplateColumns: { xs: '1fr', sm: '1fr 1fr', lg: 'repeat(3, 1fr)' },
+                gap: { xs: 3, md: 4 },
+              }}
+            >
+              {Array.from({ length: 6 }).map((_, index) => (
+                <Box key={`detail-skeleton-${String(index)}`}>
+                  <Skeleton variant="text" width="45%" />
+                  <Skeleton variant="text" width="85%" />
+                </Box>
+              ))}
+            </Box>
+          </CardContent>
+        </Card>
+
+        <Card sx={{ boxShadow: 1 }}>
+          <CardHeader title={<Skeleton variant="text" width={180} />} sx={{ pb: 0 }} />
+          <Divider />
+          <CardContent sx={{ p: 2 }}>
+            {Array.from({ length: 2 }).map((_, index) => (
+              <Box key={`purpose-skeleton-${String(index)}`} sx={{ mb: index === 1 ? 0 : 1 }}>
+                <Skeleton variant="rounded" height={42} />
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card sx={{ boxShadow: 1 }}>
+          <CardHeader title={<Skeleton variant="text" width={180} />} sx={{ pb: 0 }} />
+          <Divider />
+          <CardContent sx={{ p: 2 }}>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Box
+                key={`table-row-skeleton-${String(index)}`}
+                sx={{ display: 'grid', gridTemplateColumns: '1.2fr 1fr 1fr 0.8fr', gap: 2, mb: 1 }}
+              >
+                <Skeleton variant="text" width="85%" />
+                <Skeleton variant="rounded" width={80} height={24} />
+                <Skeleton variant="text" width="75%" />
+                <Skeleton variant="rounded" width={110} height={28} />
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
+
+        <Card sx={{ boxShadow: 1 }}>
+          <CardHeader title={<Skeleton variant="text" width={180} />} sx={{ pb: 0 }} />
+          <Divider />
+          <CardContent sx={{ p: 2 }}>
+            {Array.from({ length: 4 }).map((_, index) => (
+              <Box
+                key={`lifecycle-row-skeleton-${String(index)}`}
+                sx={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr 2fr', gap: 2, mb: 1 }}
+              >
+                <Skeleton variant="text" width="70%" />
+                <Skeleton variant="text" width="80%" />
+                <Skeleton variant="text" width="80%" />
+                <Skeleton variant="text" width="95%" />
+              </Box>
+            ))}
+          </CardContent>
+        </Card>
       </Box>
     )
   }

@@ -17,7 +17,7 @@
  */
 
 import { Box, Stack, Typography } from '@wso2/oxygen-ui'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
@@ -48,6 +48,8 @@ const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
   'Revoked',
   'Expired',
 ]
+
+const TABLE_SKELETON_DEBOUNCE_MS = 50
 
 function isValidFilterStatus(value: string): value is ConsentRegistryFiltersModel['status'] {
   return FILTER_STATUS_VALUES.includes(value as ConsentRegistryFiltersModel['status'])
@@ -97,15 +99,33 @@ function ConsentRegistryPage(): React.JSX.Element {
   const [selectedRevocationConsentID, setSelectedRevocationConsentID] = useState<string | null>(
     null,
   )
+  const [showTableSkeleton, setShowTableSkeleton] = useState<boolean>(false)
 
   const filters = useMemo(() => getFiltersFromSearchParams(searchParams), [searchParams])
   const consentListQuery = useConsentListQuery(filters, page, rowsPerPage)
   const selectedApprovalConsentQuery = useConsentDetailQuery(selectedApprovalConsentID ?? undefined)
   const approveMutation = useApproveConsentMutation()
   const revokeMutation = useRevokeConsentMutation()
+  const isTableFetching = consentListQuery.isFetching
 
   const rows = consentListQuery.data?.rows ?? []
   const totalCount = consentListQuery.data?.total ?? 0
+
+  useEffect(() => {
+    let debounceDelay = 0
+
+    if (!consentListQuery.isLoading && isTableFetching) {
+      debounceDelay = TABLE_SKELETON_DEBOUNCE_MS
+    }
+
+    const skeletonTimer = window.setTimeout(() => {
+      setShowTableSkeleton(isTableFetching)
+    }, debounceDelay)
+
+    return () => {
+      window.clearTimeout(skeletonTimer)
+    }
+  }, [consentListQuery.isLoading, isTableFetching])
 
   return (
     <Box component="main" sx={{ p: { xs: 2, md: 4 } }}>
@@ -133,14 +153,11 @@ function ConsentRegistryPage(): React.JSX.Element {
           <Typography color="error.main">{t('consentRegistry.messages.loadFailed')}</Typography>
         ) : null}
 
-        {consentListQuery.isLoading ? (
-          <Typography>{t('consentRegistry.messages.loading')}</Typography>
-        ) : null}
-
-        {!consentListQuery.isLoading && !consentListQuery.isError && rows.length > 0 ? (
+        {!consentListQuery.isError && (rows.length > 0 || isTableFetching) ? (
           <ConsentRegistryTable
             rows={rows}
             totalCount={totalCount}
+            isLoading={isTableFetching && showTableSkeleton}
             page={page}
             rowsPerPage={rowsPerPage}
             onPageChange={setPage}
@@ -160,7 +177,7 @@ function ConsentRegistryPage(): React.JSX.Element {
           />
         ) : null}
 
-        {!consentListQuery.isLoading && !consentListQuery.isError && rows.length === 0 ? (
+        {!isTableFetching && !consentListQuery.isError && rows.length === 0 ? (
           <Typography>{t('consentRegistry.messages.empty')}</Typography>
         ) : null}
 

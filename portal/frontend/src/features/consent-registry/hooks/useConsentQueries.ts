@@ -17,6 +17,7 @@
  */
 
 import {
+  keepPreviousData,
   type UseMutationResult,
   type UseQueryResult,
   useMutation,
@@ -135,6 +136,7 @@ export function useConsentListQuery(
         total: response.metadata.total,
       }
     },
+    placeholderData: keepPreviousData,
   })
 }
 
