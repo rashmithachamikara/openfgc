@@ -26,9 +26,9 @@ import {
   Typography,
 } from '@wso2/oxygen-ui'
 import { CircleCheckBig, Eye, ShieldX } from '@wso2/oxygen-ui-icons-react'
-import { Fragment, useMemo, useState } from 'react'
+import { Fragment, type MouseEvent, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Link as RouterLink } from 'react-router-dom'
+import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import type { ConsentRecord } from '../../../types/consent'
 import { formatEpochSeconds, formatIsoDateTime } from '../../../utils/dateTime'
 import { getConsentStatusChipColor, getConsentStatusLabelKey } from '../utils/statusChip'
@@ -115,6 +115,7 @@ function ConsentRegistryTable({
   isMutating,
 }: ConsentRegistryTableProps): React.JSX.Element {
   const { t } = useTranslation('common')
+  const navigate = useNavigate()
   const [sortField, setSortField] = useState<SortField>('updatedAt')
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [purposesPopoverAnchor, setPurposesPopoverAnchor] = useState<HTMLElement | null>(null)
@@ -153,6 +154,10 @@ function ConsentRegistryTable({
   const handlePurposesPopoverClose = (): void => {
     setPurposesPopoverAnchor(null)
     setSelectedPurposes([])
+  }
+
+  const handleStopPropagation = (event: MouseEvent<HTMLElement>): void => {
+    event.stopPropagation()
   }
 
   return (
@@ -234,7 +239,15 @@ function ConsentRegistryTable({
                 </ListingTable.Row>
 
                 {group.clientRows.map((row) => (
-                  <ListingTable.Row key={row.id} hover variant="table">
+                  <ListingTable.Row
+                    key={row.id}
+                    hover
+                    variant="table"
+                    onClick={() => {
+                      navigate(`/consents/${row.id}`)
+                    }}
+                    sx={{ cursor: 'pointer' }}
+                  >
                     <ListingTable.Cell
                       sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.purposes, fontWeight: 500 }}
                     >
@@ -264,6 +277,7 @@ function ConsentRegistryTable({
                               defaultValue: '+{{count}} more',
                             })}
                             onClick={(event) => {
+                              event.stopPropagation()
                               setPurposesPopoverAnchor(event.currentTarget)
                               setSelectedPurposes(row.purposes)
                             }}
@@ -311,6 +325,7 @@ function ConsentRegistryTable({
                           component={RouterLink}
                           to={`/consents/${row.id}`}
                           aria-label={t('consentRegistry.actions.view')}
+                          onClick={handleStopPropagation}
                         >
                           <Eye size={16} />
                         </IconButton>
@@ -320,7 +335,8 @@ function ConsentRegistryTable({
                             color="warning"
                             aria-label={t('consentRegistry.actions.approve')}
                             disabled={isMutating}
-                            onClick={() => {
+                            onClick={(event) => {
+                              event.stopPropagation()
                               onApprove(row.id)
                             }}
                           >
@@ -332,7 +348,8 @@ function ConsentRegistryTable({
                             color="error"
                             disabled={!row.canRevoke || isMutating}
                             aria-label={t('consentRegistry.actions.revoke')}
-                            onClick={() => {
+                            onClick={(event) => {
+                              event.stopPropagation()
                               onRevoke(row.id)
                             }}
                           >

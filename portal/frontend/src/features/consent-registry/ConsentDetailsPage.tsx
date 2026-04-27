@@ -297,7 +297,7 @@ function ConsentDetailsPage(): React.JSX.Element {
         <CardHeader
           title={
             <Stack direction="row" spacing={1} alignItems="center">
-              <Typography variant="body2" fontWeight={400} sx={{ fontFamily: 'monospace' }}>
+              <Typography variant="body2" fontWeight={400}>
                 {t('consentRegistry.details.consentId', 'Consent ID')}: {id}
               </Typography>
             </Stack>
@@ -379,7 +379,7 @@ function ConsentDetailsPage(): React.JSX.Element {
               >
                 {t('consentRegistry.details.clientId', 'Client ID')}
               </Typography>
-              <Typography variant="body2" fontWeight={500} sx={{ fontFamily: 'monospace' }}>
+              <Typography variant="body2" fontWeight={500}>
                 {detail.clientId}
               </Typography>
             </Box>

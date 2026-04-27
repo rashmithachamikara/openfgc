@@ -124,7 +124,7 @@ function ConsentApprovalDialog({
           <Typography variant="body2" color="text.secondary">
             {t(
               'consentRegistry.modals.approval.subtitle',
-              'Please review the data sharing permissions before approval.',
+              'Please review the consent elements before approval.',
             )}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 300 }}>
@@ -147,7 +147,7 @@ function ConsentApprovalDialog({
                 textTransform: 'uppercase',
               }}
             >
-              {t('consentRegistry.modals.approval.mandatory', 'Mandatory Data (Required)')}
+              {t('consentRegistry.modals.approval.mandatory', 'Mandatory Elements (Required)')}
             </Typography>
             <Stack spacing={1.25}>
               {mandatoryElements.map((element) => (
@@ -171,7 +171,6 @@ function ConsentApprovalDialog({
                     </Typography>
                     <Typography variant="caption" color="text.secondary">
                       {element.purposeName}
-                      {element.type ? ` • ${element.type}` : ''}
                     </Typography>
                   </Box>
                   <Chip
@@ -210,7 +209,7 @@ function ConsentApprovalDialog({
                     textTransform: 'uppercase',
                   }}
                 >
-                  {t('consentRegistry.modals.approval.optional', 'Optional Permissions')}
+                  {t('consentRegistry.modals.approval.optional', 'Optional Elements')}
                 </Typography>
                 <Stack spacing={1.25}>
                   {optionalElements.map((element) => {
@@ -238,7 +237,6 @@ function ConsentApprovalDialog({
                           </Typography>
                           <Typography variant="caption" color="text.secondary">
                             {element.purposeName}
-                            {element.type ? ` • ${element.type}` : ''}
                           </Typography>
                         </Box>
                         <Switch

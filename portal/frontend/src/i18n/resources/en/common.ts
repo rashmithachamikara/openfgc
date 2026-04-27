@@ -89,13 +89,12 @@ const commonEn = {
       },
       approval: {
         title: 'Review & Approve Consent',
-        subtitle: 'Please review the data sharing permissions before approval.',
-        mandatory: 'Mandatory Data (Required)',
-        optional: 'Optional Permissions',
+        subtitle: 'Please review the consent elements before approval.',
+        mandatory: 'Mandatory Elements (Required)',
+        optional: 'Optional Elements',
         required: 'Required',
         toggle: 'Toggle permission',
         noMandatory: 'No mandatory requirements for this consent.',
-        noOptional: 'No optional permissions available.',
         confirm: 'Approve & Continue',
       },
       revocation: {
