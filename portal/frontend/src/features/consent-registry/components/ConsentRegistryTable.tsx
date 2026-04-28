@@ -24,6 +24,7 @@ import {
   Popover,
   Skeleton,
   TablePagination,
+  Tooltip,
   Typography,
 } from '@wso2/oxygen-ui'
 import { CircleCheckBig, Eye, ShieldX } from '@wso2/oxygen-ui-icons-react'
@@ -356,41 +357,51 @@ function ConsentRegistryTable({
                           sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.actions }}
                         >
                           <ListingTable.RowActions visibility="always">
-                            <IconButton
-                              size="small"
-                              component={RouterLink}
-                              to={`/consents/${row.id}`}
-                              aria-label={t('consentRegistry.actions.view')}
-                              onClick={handleStopPropagation}
-                            >
-                              <Eye size={16} />
-                            </IconButton>
+                            <Tooltip title={t('consentRegistry.actions.view')}>
+                              <IconButton
+                                size="small"
+                                component={RouterLink}
+                                to={`/consents/${row.id}`}
+                                aria-label={t('consentRegistry.actions.view')}
+                                onClick={handleStopPropagation}
+                              >
+                                <Eye size={16} />
+                              </IconButton>
+                            </Tooltip>
                             {row.canApprove ? (
-                              <IconButton
-                                size="small"
-                                color="warning"
-                                aria-label={t('consentRegistry.actions.approve')}
-                                disabled={isMutating}
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  onApprove(row.id)
-                                }}
-                              >
-                                <CircleCheckBig size={16} />
-                              </IconButton>
+                              <Tooltip title={t('consentRegistry.actions.approve')}>
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    color="warning"
+                                    aria-label={t('consentRegistry.actions.approve')}
+                                    disabled={isMutating}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      onApprove(row.id)
+                                    }}
+                                  >
+                                    <CircleCheckBig size={16} />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
                             ) : (
-                              <IconButton
-                                size="small"
-                                color="error"
-                                disabled={!row.canRevoke || isMutating}
-                                aria-label={t('consentRegistry.actions.revoke')}
-                                onClick={(event) => {
-                                  event.stopPropagation()
-                                  onRevoke(row.id)
-                                }}
-                              >
-                                <ShieldX size={16} />
-                              </IconButton>
+                              <Tooltip title={t('consentRegistry.actions.revoke')}>
+                                <span>
+                                  <IconButton
+                                    size="small"
+                                    color="error"
+                                    disabled={!row.canRevoke || isMutating}
+                                    aria-label={t('consentRegistry.actions.revoke')}
+                                    onClick={(event) => {
+                                      event.stopPropagation()
+                                      onRevoke(row.id)
+                                    }}
+                                  >
+                                    <ShieldX size={16} />
+                                  </IconButton>
+                                </span>
+                              </Tooltip>
                             )}
                           </ListingTable.RowActions>
                         </ListingTable.Cell>

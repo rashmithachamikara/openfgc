@@ -138,7 +138,6 @@ function ConsentRegistryFilters({
           onClick={onClear}
           sx={{
             width: { xs: '100%', lg: 'auto' },
-            justifyContent: { xs: 'center', lg: 'flex-start' },
           }}
         >
           {t('consentRegistry.filters.clear')}
