@@ -1,15 +1,37 @@
+/*
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
+
 import { Box, Stack, Typography } from '@wso2/oxygen-ui'
-import { useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRegistryFilters from './components/ConsentRegistryFilters'
 import ConsentRegistryTable from './components/ConsentRegistryTable'
-import { CONSENT_REGISTRY_MOCK_DATA } from './data/consents'
-import type {
-  ConsentRegistryFilters as ConsentRegistryFiltersModel,
-  ConsentRecord,
-} from '../../types/consent'
+import ConsentRevocationDialog from './components/ConsentRevocationDialog'
+import type { ConsentRegistryFilters as ConsentRegistryFiltersModel } from '../../types/consent'
+import {
+  useApproveConsentMutation,
+  useConsentDetailQuery,
+  useConsentListQuery,
+  useRevokeConsentMutation,
+} from './hooks/useConsentQueries'
 
 const DEFAULT_FILTERS: ConsentRegistryFiltersModel = {
   status: 'All',
@@ -22,9 +44,12 @@ const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
   'All',
   'Active',
   'Pending',
+  'Rejected',
   'Revoked',
   'Expired',
 ]
+
+const TABLE_SKELETON_DEBOUNCE_MS = 50
 
 function isValidFilterStatus(value: string): value is ConsentRegistryFiltersModel['status'] {
   return FILTER_STATUS_VALUES.includes(value as ConsentRegistryFiltersModel['status'])
@@ -63,43 +88,44 @@ function toSearchParams(filters: ConsentRegistryFiltersModel): URLSearchParams {
   return params
 }
 
-function isWithinDateRange(record: ConsentRecord, startDate: string, endDate: string): boolean {
-  const createdAtDate = new Date(record.createdAt)
-
-  if (startDate) {
-    const normalizedStartDate = new Date(`${startDate}T00:00:00`)
-
-    if (createdAtDate < normalizedStartDate) {
-      return false
-    }
-  }
-
-  if (endDate) {
-    const normalizedEndDate = new Date(`${endDate}T23:59:59`)
-
-    if (createdAtDate > normalizedEndDate) {
-      return false
-    }
-  }
-
-  return true
-}
-
 function ConsentRegistryPage(): React.JSX.Element {
   const { t } = useTranslation('common')
   const [searchParams, setSearchParams] = useSearchParams()
+  const [page, setPage] = useState<number>(0)
+  const [rowsPerPage, setRowsPerPage] = useState<number>(10)
+  const [approvalDialogOpen, setApprovalDialogOpen] = useState<boolean>(false)
+  const [revocationDialogOpen, setRevocationDialogOpen] = useState<boolean>(false)
+  const [selectedApprovalConsentID, setSelectedApprovalConsentID] = useState<string | null>(null)
+  const [selectedRevocationConsentID, setSelectedRevocationConsentID] = useState<string | null>(
+    null,
+  )
+  const [showTableSkeleton, setShowTableSkeleton] = useState<boolean>(false)
 
   const filters = useMemo(() => getFiltersFromSearchParams(searchParams), [searchParams])
+  const consentListQuery = useConsentListQuery(filters, page, rowsPerPage)
+  const selectedApprovalConsentQuery = useConsentDetailQuery(selectedApprovalConsentID ?? undefined)
+  const approveMutation = useApproveConsentMutation()
+  const revokeMutation = useRevokeConsentMutation()
+  const isTableFetching = consentListQuery.isFetching
 
-  const filteredRows = useMemo(() => {
-    return CONSENT_REGISTRY_MOCK_DATA.filter((record) => {
-      const statusMatch = filters.status === 'All' || record.status === filters.status
-      const typeMatch = record.type.toLowerCase().includes(filters.consentType.trim().toLowerCase())
-      const dateRangeMatch = isWithinDateRange(record, filters.startDate, filters.endDate)
+  const rows = consentListQuery.data?.rows ?? []
+  const totalCount = consentListQuery.data?.total ?? 0
 
-      return statusMatch && typeMatch && dateRangeMatch
-    })
-  }, [filters])
+  useEffect(() => {
+    let debounceDelay = 0
+
+    if (!consentListQuery.isLoading && isTableFetching) {
+      debounceDelay = TABLE_SKELETON_DEBOUNCE_MS
+    }
+
+    const skeletonTimer = window.setTimeout(() => {
+      setShowTableSkeleton(isTableFetching)
+    }, debounceDelay)
+
+    return () => {
+      window.clearTimeout(skeletonTimer)
+    }
+  }, [consentListQuery.isLoading, isTableFetching])
 
   return (
     <Box component="main" sx={{ p: { xs: 2, md: 4 } }}>
@@ -114,14 +140,99 @@ function ConsentRegistryPage(): React.JSX.Element {
         <ConsentRegistryFilters
           filters={filters}
           onFilterChange={(nextFilters) => {
+            setPage(0)
             setSearchParams(toSearchParams(nextFilters), { replace: true })
           }}
           onClear={() => {
+            setPage(0)
             setSearchParams({}, { replace: true })
           }}
         />
 
-        <ConsentRegistryTable rows={filteredRows} />
+        {consentListQuery.isError ? (
+          <Typography color="error.main">{t('consentRegistry.messages.loadFailed')}</Typography>
+        ) : null}
+
+        {!consentListQuery.isError && (rows.length > 0 || isTableFetching) ? (
+          <ConsentRegistryTable
+            rows={rows}
+            totalCount={totalCount}
+            isLoading={isTableFetching && showTableSkeleton}
+            page={page}
+            rowsPerPage={rowsPerPage}
+            onPageChange={setPage}
+            onRowsPerPageChange={(nextRowsPerPage) => {
+              setRowsPerPage(nextRowsPerPage)
+              setPage(0)
+            }}
+            onApprove={(consentID) => {
+              setSelectedApprovalConsentID(consentID)
+              setApprovalDialogOpen(true)
+            }}
+            onRevoke={(consentID) => {
+              setSelectedRevocationConsentID(consentID)
+              setRevocationDialogOpen(true)
+            }}
+            isMutating={approveMutation.isPending || revokeMutation.isPending}
+          />
+        ) : null}
+
+        {!isTableFetching && !consentListQuery.isError && rows.length === 0 ? (
+          <Typography>{t('consentRegistry.messages.empty')}</Typography>
+        ) : null}
+
+        {selectedApprovalConsentID ? (
+          <ConsentApprovalDialog
+            key={`registry-approval-${selectedApprovalConsentID}-${String(approvalDialogOpen)}`}
+            open={approvalDialogOpen}
+            consentId={selectedApprovalConsentID}
+            purposes={selectedApprovalConsentQuery.data?.purposes ?? []}
+            loading={
+              approveMutation.isPending ||
+              selectedApprovalConsentQuery.isLoading ||
+              !selectedApprovalConsentQuery.data
+            }
+            onClose={() => {
+              setApprovalDialogOpen(false)
+              setSelectedApprovalConsentID(null)
+            }}
+            onConfirm={(selectedOptionalElements) => {
+              approveMutation.mutate(
+                {
+                  consentID: selectedApprovalConsentID,
+                  selectedOptionalElements,
+                },
+                {
+                  onSuccess: () => {
+                    setApprovalDialogOpen(false)
+                    setSelectedApprovalConsentID(null)
+                  },
+                },
+              )
+            }}
+          />
+        ) : null}
+
+        {selectedRevocationConsentID ? (
+          <ConsentRevocationDialog
+            key={`registry-revocation-${selectedRevocationConsentID}-${String(revocationDialogOpen)}`}
+            open={revocationDialogOpen}
+            consentId={selectedRevocationConsentID}
+            loading={revokeMutation.isPending}
+            onClose={() => {
+              setRevocationDialogOpen(false)
+              setSelectedRevocationConsentID(null)
+            }}
+            onConfirm={() => {
+              revokeMutation.mutate(selectedRevocationConsentID, {
+                onSuccess: () => {
+                  setRevocationDialogOpen(false)
+                  setSelectedRevocationConsentID(null)
+                },
+              })
+            }}
+          />
+        ) : null}
       </Stack>
     </Box>
   )

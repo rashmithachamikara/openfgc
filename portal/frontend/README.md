@@ -1,3 +1,21 @@
+<!--
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ *
+ * WSO2 LLC. licenses this file to you under the Apache License,
+ * Version 2.0 (the "License"); you may not use this file except
+ * in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ * http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ -->
+
 # openfgc-portal
 
 The OpenFGC Portal project is designed to create a comprehensive Consent Management Portal, leveraging the [OpenFGC Consent Management API](https://github.com/wso2/openfgc).
@@ -50,7 +68,7 @@ Tests are written with [Vitest](https://vitest.dev/) and [React Testing Library]
 
 ## Project Structure
 
-```
+```text
 src/
 ├── components/       # Reusable UI components
 ├── features/         # Feature-level modules (pages, domains)
@@ -68,17 +86,20 @@ src/
 
 This repository uses VS Code Copilot instruction files to keep AI-generated changes aligned with project and organization standards.
 
-- Canonical cross-agent project rules: `AGENTS.md`
-- Copilot always-on workspace instructions: `.github/copilot-instructions.md`
+Paths below are relative to the repository root.
+
+- Frontend standards: `portal/frontend/AGENTS.md`
+- Copilot workspace entrypoint: `.github/copilot-instructions.md`
 - Scoped instructions folder: `.github/instructions/`
-- Oxygen UI generated reference: `.ai/oxygen-ui/AGENTS.md`
+- Frontend scope mapping: `portal/frontend/**` -> `.github/instructions/portal-frontend.instructions.md`
+- Oxygen UI generated reference: `portal/frontend/.ai/oxygen-ui/AGENTS.md`
 
 Recommended precedence:
 
-1. `AGENTS.md` for shared project standards
+1. `portal/frontend/AGENTS.md` for shared frontend standards
 2. `.github/copilot-instructions.md` for Copilot-specific defaults
-3. `.github/instructions/*.instructions.md` for task and file-type specific rules
-4. `.ai/oxygen-ui/AGENTS.md` for Oxygen component catalog/examples
+3. `.github/instructions/*.instructions.md` for task and file-type-specific rules
+4. `portal/frontend/.ai/oxygen-ui/AGENTS.md` for Oxygen component catalog/examples
 
 Copilot instruction files are automatically discovered by Copilot Chat and applied based on their `applyTo` patterns.
 
@@ -105,4 +126,4 @@ function Example(): React.JSX.Element {
 
 ## CI
 
-GitHub Actions CI runs pnpm-based install, lint, and build checks on every push and pull request.
+GitHub Actions CI runs pnpm-based install, lint, and build checks on every push and pull request on portal/frontend directory.
