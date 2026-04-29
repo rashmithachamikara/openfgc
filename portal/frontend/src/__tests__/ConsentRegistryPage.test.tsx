@@ -20,12 +20,22 @@ import { cleanup, render, screen } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AcrylicOrangeTheme, CssBaseline, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
 import { I18nextProvider } from 'react-i18next'
-import { MemoryRouter } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ConsentRegistryPage from '../features/consent-registry/ConsentRegistryPage'
 import i18n from '../i18n/i18n'
 
 const fetchMock = vi.fn()
+
+function PendingConsentsLink(): React.JSX.Element {
+  const navigate = useNavigate()
+
+  return (
+    <button type="button" onClick={() => navigate('/consents?status=Pending')}>
+      Pending Consents
+    </button>
+  )
+}
 
 function createQueryClient(): QueryClient {
   return new QueryClient({
@@ -43,8 +53,18 @@ function renderConsentRegistryPage(queryClient: QueryClient): void {
       <CssBaseline />
       <I18nextProvider i18n={i18n}>
         <QueryClientProvider client={queryClient}>
-          <MemoryRouter>
-            <ConsentRegistryPage />
+          <MemoryRouter initialEntries={['/consents']}>
+            <Routes>
+              <Route
+                path="*"
+                element={
+                  <>
+                    <PendingConsentsLink />
+                    <ConsentRegistryPage />
+                  </>
+                }
+              />
+            </Routes>
           </MemoryRouter>
         </QueryClientProvider>
       </I18nextProvider>

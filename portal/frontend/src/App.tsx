@@ -16,18 +16,25 @@
  * under the License.
  */
 
-import { Navigate, Route, Routes } from 'react-router-dom'
+import { Navigate, Route, Routes, useLocation } from 'react-router-dom'
 import MainLayout from './components/layout/main-layout/MainLayout'
 import ConsentDetailsPage from './features/consent-registry/ConsentDetailsPage'
 import ConsentRegistryPage from './features/consent-registry/ConsentRegistryPage'
 import DashboardPage from './features/dashboard/DashboardPage'
+
+function ConsentRegistryRoute(): React.JSX.Element {
+  const location = useLocation()
+  const status = new URLSearchParams(location.search).get('status') ?? 'All'
+
+  return <ConsentRegistryPage key={status} />
+}
 
 function App(): React.JSX.Element {
   return (
     <Routes>
       <Route element={<MainLayout />}>
         <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/consents" element={<ConsentRegistryPage />} />
+        <Route path="/consents" element={<ConsentRegistryRoute />} />
         <Route path="/consents/:id" element={<ConsentDetailsPage />} />
         <Route path="*" element={<Navigate to="/consents" replace />} />
       </Route>
