@@ -93,6 +93,14 @@ PRODUCT_FOLDER="${BINARY_NAME}-${PACKAGE_VERSION}-${PACKAGE_OS}-${PACKAGE_ARCH}"
 # Functions
 # ============================================================================
 
+function get_output_binary() {
+    if [ "$GO_OS" = "windows" ]; then
+        echo "${BINARY_NAME}.exe"
+    else
+        echo "$BINARY_NAME"
+    fi
+}
+
 function clean_all() {
     echo "================================================================"
     echo "Cleaning all build artifacts..."
@@ -109,11 +117,8 @@ function build_binary() {
     echo "================================================================"
     echo "Building Consent Management API Server..."
 
-    # Set binary name with .exe extension for Windows
-    local output_binary="$BINARY_NAME"
-    if [ "$GO_OS" = "windows" ]; then
-        output_binary="${BINARY_NAME}.exe"
-    fi
+    local output_binary
+    output_binary=$(get_output_binary)
 
     # Clean previous build
     if [ -d "$OUTPUT_DIR" ]; then
@@ -244,14 +249,17 @@ function run_server() {
     echo "================================================================"
     echo "Running Consent Management API Server..."
 
+    local output_binary
+    output_binary=$(get_output_binary)
+
     # Build first if binary doesn't exist
-    if [ ! -f "$OUTPUT_DIR/$BINARY_NAME" ]; then
+    if [ ! -f "$OUTPUT_DIR/$output_binary" ]; then
         echo "Binary not found. Building first..."
         build_binary
     fi
 
     echo "Starting server..."
-    cd "$OUTPUT_DIR" && "./$BINARY_NAME"
+    cd "$OUTPUT_DIR" && "./$output_binary"
     echo "================================================================"
 }
 
@@ -270,12 +278,15 @@ function test_integration() {
     echo "================================================================"
     echo "Running integration tests..."
 
+    local output_binary
+    output_binary=$(get_output_binary)
+
     # Clean test cache to ensure tests run with latest changes
     echo "Cleaning test cache..."
     go clean -testcache
 
     # Build the server first if binary doesn't exist
-    if [ ! -f "$OUTPUT_DIR/$BINARY_NAME" ]; then
+    if [ ! -f "$OUTPUT_DIR/$output_binary" ]; then
         echo "Binary not found. Building first..."
         build_binary
     fi

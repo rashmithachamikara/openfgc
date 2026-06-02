@@ -23,6 +23,8 @@ import (
 	"net/http"
 	"os"
 	"os/exec"
+	"path/filepath"
+	"runtime"
 	"syscall"
 	"time"
 
@@ -30,8 +32,8 @@ import (
 )
 
 const (
-	ServerBinary = "../../target/server/consent-server"
-	ConfigPath   = "repository/conf/deployment.yaml" // Relative to tests/integration
+	ServerDir  = "../../target/server"
+	ConfigPath = "repository/conf/deployment.yaml" // Relative to tests/integration
 )
 
 var serverCmd *exec.Cmd
@@ -41,6 +43,21 @@ type ServerConfig struct {
 		Hostname string `yaml:"hostname"`
 		Port     int    `yaml:"port"`
 	} `yaml:"server"`
+}
+
+func serverBinaryName() string {
+	if runtime.GOOS == "windows" {
+		return "consent-server.exe"
+	}
+	return "consent-server"
+}
+
+func serverBinaryPath() string {
+	return filepath.Join(ServerDir, serverBinaryName())
+}
+
+func serverCommandPath() string {
+	return "." + string(os.PathSeparator) + serverBinaryName()
 }
 
 // GetServerPort reads the port from deployment.yaml
@@ -69,13 +86,14 @@ func GetServerPort() string {
 // The binary should be built using ./build.sh build from the project root
 func BuildServer() error {
 	fmt.Println("Checking for consent server binary...")
+	serverBinary := serverBinaryPath()
 
 	// Check if binary exists
-	if _, err := os.Stat(ServerBinary); os.IsNotExist(err) {
-		return fmt.Errorf("server binary not found at %s. Please run './build.sh build' from project root", ServerBinary)
+	if _, err := os.Stat(serverBinary); os.IsNotExist(err) {
+		return fmt.Errorf("server binary not found at %s. Please run './build.sh build' from project root", serverBinary)
 	}
 
-	fmt.Println("✓ Found server binary at", ServerBinary)
+	fmt.Println("✓ Found server binary at", serverBinary)
 	return nil
 }
 
@@ -139,8 +157,8 @@ func SetupDatabase() error {
 // StartServer starts the consent-server in background
 func StartServer() error {
 	fmt.Println("Starting consent server...")
-	cmd := exec.Command("./consent-server")
-	cmd.Dir = "../../target/server" // Run from target/server directory where config files are located
+	cmd := exec.Command(serverCommandPath())
+	cmd.Dir = ServerDir // Run from target/server directory where config files are located
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 
