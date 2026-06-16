@@ -46,8 +46,17 @@ if [ -z "$DEFAULT_ARCH" ]; then
   esac
 fi
 
-GO_OS=${2:-$DEFAULT_OS}
-GO_ARCH=${3:-$DEFAULT_ARCH}
+COMMAND="$1"
+case "$COMMAND" in
+    build|package|run)
+        GO_OS=${2:-$DEFAULT_OS}
+        GO_ARCH=${3:-$DEFAULT_ARCH}
+        ;;
+    *)
+        GO_OS=$DEFAULT_OS
+        GO_ARCH=$DEFAULT_ARCH
+        ;;
+esac
 
 echo "================================================================"
 echo "Using GO OS: $GO_OS and ARCH: $GO_ARCH"
@@ -66,12 +75,17 @@ BINARY_NAME="consent-server"
 TARGET_DIR="target"
 OUTPUT_DIR="$TARGET_DIR/server"
 INTEGRATION_OUTPUT_DIR="${INTEGRATION_OUTPUT_DIR:-$TARGET_DIR/server-integration}"
+PERF_OUTPUT_DIR="${PERF_OUTPUT_DIR:-$TARGET_DIR/server-performance}"
 DIST_DIR="$TARGET_DIR/dist"
 SOURCE_DIR="consent-server/cmd/server"
 CONFIG_SOURCE="consent-server/cmd/server/repository/conf/deployment.yaml"
 CONFIG_TARGET="$OUTPUT_DIR/repository/conf/deployment.yaml"
 TEST_CONFIG_SOURCE_MYSQL="tests/integration/repository/conf/deployment.yaml"
 TEST_CONFIG_SOURCE_SQLITE="tests/integration/repository/conf/deployment-sqlite.yaml"
+PERF_CONFIG_SOURCE="tests/performance/repository/conf/deployment.yaml"
+PERF_SEED_DIR="tests/performance/seed"
+PERF_K6_DIR="tests/performance/k6"
+PERF_REPORTS_DIR="tests/performance/reports"
 
 # Package naming
 PACKAGE_OS=$GO_OS
@@ -330,6 +344,165 @@ function test_all() {
     test_integration
 }
 
+function perf_mysql_args() {
+    perf_set_db_env_defaults
+    local host="$PERF_DB_HOST"
+    local port="$PERF_DB_PORT"
+    local user="$PERF_DB_USER"
+    local password="$PERF_DB_PASSWORD"
+    local database="$PERF_DB_NAME"
+
+    MYSQL_ARGS=(-h "$host" -P "$port" -u "$user")
+    if [ -n "$password" ]; then
+        MYSQL_ARGS+=("-p$password")
+    fi
+    MYSQL_DB_ARGS=("${MYSQL_ARGS[@]}" "$database")
+}
+
+function perf_config_value() {
+    local key="$1"
+    local fallback="$2"
+    local line value
+    local in_database=false
+    local in_consent=false
+
+    while IFS= read -r line; do
+        if [[ "$line" != " "* && "$line" != $'\t'* ]]; then
+            in_database=false
+            in_consent=false
+            if [ "$line" = "database:" ]; then
+                in_database=true
+            fi
+            continue
+        fi
+
+        if [ "$in_database" = true ] && [[ "$line" = "  consent:"* ]]; then
+            in_consent=true
+            continue
+        fi
+
+        if [ "$in_consent" = true ] && [[ "$line" = "  "* ]] && [[ "$line" != "    "* ]]; then
+            in_consent=false
+            continue
+        fi
+
+        if [ "$in_consent" = true ] && [[ "$line" = "    $key:"* ]]; then
+            value="${line#*:}"
+            value="${value#"${value%%[![:space:]]*}"}"
+            value="${value%\"}"
+            value="${value#\"}"
+            echo "$value"
+            return
+        fi
+    done < "$PERF_CONFIG_SOURCE"
+
+    echo "$fallback"
+}
+
+function perf_set_db_env_defaults() {
+    export PERF_DB_HOST="${PERF_DB_HOST:-$(perf_config_value hostname 127.0.0.1)}"
+    export PERF_DB_PORT="${PERF_DB_PORT:-$(perf_config_value port 3306)}"
+    export PERF_DB_USER="${PERF_DB_USER:-$(perf_config_value user root)}"
+    export PERF_DB_PASSWORD="${PERF_DB_PASSWORD:-$(perf_config_value password password)}"
+    export PERF_DB_NAME="${PERF_DB_NAME:-$(perf_config_value database consent_mgt_perf)}"
+}
+
+function perf_setup() {
+    local db_type="${2:-mysql}"
+    if [ "$db_type" != "mysql" ]; then
+        echo "Only MySQL performance setup is supported."
+        exit 1
+    fi
+
+    echo "================================================================"
+    echo "Preparing MySQL performance database and server output..."
+    OUTPUT_DIR="$PERF_OUTPUT_DIR"
+    CONFIG_TARGET="$OUTPUT_DIR/repository/conf/deployment.yaml"
+    build_binary
+
+    echo "Copying performance configuration..."
+    cp "$PERF_CONFIG_SOURCE" "$CONFIG_TARGET"
+
+    perf_set_db_env_defaults
+    bash "$PERF_SEED_DIR/setup-db.sh"
+    rm -f "$PERF_SEED_DIR/templates.json"
+
+    echo "✓ Performance setup completed"
+    echo "Server output: $PERF_OUTPUT_DIR"
+    echo "Start it with: cd $PERF_OUTPUT_DIR && ./start.sh"
+    echo "================================================================"
+}
+
+function perf_seed() {
+    local db_type="${2:-mysql}"
+    local count="${3:-1000000}"
+    if [ "$db_type" != "mysql" ]; then
+        echo "Only MySQL performance seeding is supported."
+        exit 1
+    fi
+
+    if [ ! -f "$PERF_SEED_DIR/templates.json" ]; then
+        echo "Performance templates not found. Creating them through the API..."
+        bash "$PERF_SEED_DIR/create-templates.sh"
+    fi
+
+    echo "================================================================"
+    echo "Seeding $count MySQL performance consents..."
+    perf_set_db_env_defaults
+    go run "$PERF_SEED_DIR/bulk-seed-mysql.go" --count "$count"
+    echo "✓ Performance seed completed"
+    echo "================================================================"
+}
+
+function perf_validate() {
+    local db_type="${2:-mysql}"
+    local expected_count="${3:-1000000}"
+    if [ "$db_type" != "mysql" ]; then
+        echo "Only MySQL performance validation is supported."
+        exit 1
+    fi
+
+    perf_mysql_args
+    echo "================================================================"
+    echo "Validating MySQL performance seed..."
+    {
+        printf "SET @expected_count := %s;\n" "$expected_count"
+        printf "SET @perf_org_id := '%s';\n" "${PERF_ORG_ID:-openfgc-perf-org}"
+        cat "$PERF_SEED_DIR/validate-seed.sql"
+    } | mysql "${MYSQL_DB_ARGS[@]}"
+    echo "✓ Performance seed validation passed"
+    echo "================================================================"
+}
+
+function perf_test() {
+    local scenario="${2:-smoke}"
+    local script="$PERF_K6_DIR/$scenario.js"
+
+    if [ ! -f "$script" ]; then
+        echo "Unknown performance scenario: $scenario"
+        echo "Available scenarios: smoke, read, search, validate, mixed"
+        exit 1
+    fi
+
+    mkdir -p "$PERF_REPORTS_DIR"
+    local start_epoch
+    start_epoch=$(date +%s)
+    echo "================================================================"
+    echo "Running k6 performance scenario: $scenario"
+    k6 run "$script"
+    perf_mysql_args
+    local slow_log_report="$PERF_REPORTS_DIR/$scenario-slow-log.tsv"
+    if mysql "${MYSQL_ARGS[@]}" -N -B -e "SELECT start_time, query_time, lock_time, rows_sent, rows_examined, sql_text FROM mysql.slow_log WHERE start_time >= FROM_UNIXTIME($start_epoch) ORDER BY start_time" > "$slow_log_report" 2>/dev/null; then
+        echo "Slow query report: $slow_log_report"
+    else
+        echo "⚠ Could not capture MySQL slow query log. Enable TABLE slow logging or check DB privileges."
+        rm -f "$slow_log_report"
+    fi
+    echo "✓ Performance scenario completed: $scenario"
+    echo "Reports: $PERF_REPORTS_DIR"
+    echo "================================================================"
+}
+
 function show_help() {
     echo "Consent Management API Build Script"
     echo ""
@@ -344,6 +517,13 @@ function show_help() {
     echo "  test_unit        - Run unit tests"
     echo "  test_integration - Run integration tests"
     echo "  test             - Run all tests"
+    echo "  perf_setup mysql - Prepare MySQL DB and dedicated performance server output"
+    echo "  perf_seed mysql [count]"
+    echo "                   - Seed MySQL performance data (default: 1000000)"
+    echo "  perf_validate mysql [count]"
+    echo "                   - Validate seeded MySQL performance data"
+    echo "  perf_test {smoke|read|search|validate|mixed}"
+    echo "                   - Run a k6 performance scenario"
     echo "  help             - Show this help message"
     echo ""
     echo "Optional Arguments:"
@@ -358,6 +538,9 @@ function show_help() {
     echo "  ./build.sh build darwin arm64       # Build for macOS ARM64"
     echo "  ./build.sh package                  # Create distribution package"
     echo "  ./build.sh run                      # Build and run server"
+    echo "  ./build.sh perf_setup mysql         # Prepare performance DB/output"
+    echo "  ./build.sh perf_seed mysql 1000000  # Seed 1M performance consents"
+    echo "  ./build.sh perf_test smoke          # Run smoke performance checks"
     echo ""
 }
 
@@ -389,6 +572,18 @@ case "$1" in
         ;;
     test)
         test_all
+        ;;
+    perf_setup)
+        perf_setup "$@"
+        ;;
+    perf_seed)
+        perf_seed "$@"
+        ;;
+    perf_validate)
+        perf_validate "$@"
+        ;;
+    perf_test)
+        perf_test "$@"
         ;;
     help|--help|-h)
         show_help

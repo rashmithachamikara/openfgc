@@ -1,0 +1,19 @@
+{
+  "baseUrl": "http://localhost:9091",
+  "orgId": "openfgc-perf-org",
+  "groupId": "perf-group-001",
+  "consentType": "accounts",
+  "element": {
+    "id": "e87cc75f-e1f9-4d82-b2b3-765b3693da09",
+    "name": "perf-account-id",
+    "namespace": "default",
+    "version": 1
+  },
+  "purpose": {
+    "id": "a2b4d1a8-f1b6-4dfe-9894-407d42ab4783",
+    "name": "perf-account-access",
+    "version": 1
+  },
+  "templateConsentId": "258c5847-a668-4f30-95c6-19fdd2838ec4",
+  "createdAt": 1781517372361
+}

@@ -1,0 +1,39 @@
+server:
+  hostname: localhost
+  port: 9091
+  readTimeout: 30s
+  writeTimeout: 30s
+  idleTimeout: 120s
+
+database:
+  consent:
+    type: mysql
+    hostname: 127.0.0.1
+    port: 3306
+    database: consent_mgt_perf
+    max_open_conns: 100
+    max_idle_conns: 25
+    conn_max_lifetime: 5m
+    user: root
+    password: password
+
+logging:
+  level: info
+
+consent:
+  periodical_expiration:
+    enabled: false
+    frequency: "1h"
+    eligible_statuses: ["ACTIVE"]
+  status_mappings:
+    active_status: ACTIVE
+    expired_status: EXPIRED
+    revoked_status: REVOKED
+    created_status: CREATED
+    rejected_status: REJECTED
+  auth_status_mappings:
+    approved_state: APPROVED
+    rejected_state: REJECTED
+    created_state: CREATED
+    system_expired_state: SYS_EXPIRED
+    system_revoked_state: SYS_REVOKED
