@@ -63,3 +63,6 @@ consent-api-server
 main
 consent-mgt-v1.code-workspace
 
+# Performance test artifacts
+tests/performance/seed/templates.json
+tests/performance/reports/
