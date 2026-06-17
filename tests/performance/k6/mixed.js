@@ -6,13 +6,26 @@
 
 import http from 'k6/http';
 import { check } from 'k6';
-
-const baseUrl = __ENV.BASE_URL || 'http://localhost:9091';
-const orgId = __ENV.ORG_ID || 'openfgc-perf-org';
-const groupPrefix = __ENV.GROUP_ID || 'perf-group-001';
-const purposeName = __ENV.PURPOSE_NAME || 'perf-account-access';
-const elementName = __ENV.ELEMENT_NAME || 'perf-account-id';
-const consentCount = Number(__ENV.CONSENT_COUNT || '1000000');
+import {
+    baseUrl,
+    consentTypeFor,
+    consentCount,
+    createDefaults,
+    deterministicID,
+    firstElementForPurpose,
+    groupCount,
+    groupIdFor,
+    groupIndexFor,
+    manifest,
+    orgId,
+    randomAttributeQuery,
+    randomElement,
+    randomInt,
+    randomPurposeName,
+    requestParams,
+    selectUserId,
+    textSummary,
+} from './common.js';
 
 export const options = {
     vus: Number(__ENV.VUS || '30'),
@@ -45,83 +58,85 @@ export function handleSummary(data) {
 
 function readConsent() {
     const n = randomInt(1, consentCount);
-    const res = http.get(`${baseUrl}/api/v1/consents/${deterministicID(0xc0, n)}`, {
-        headers: { 'org-id': orgId },
-    });
+    const res = http.get(`${baseUrl}/api/v1/consents/${deterministicID(0xc0, n)}`, requestParams('GET /api/v1/consents/:id', {
+        'org-id': orgId,
+    }));
     check(res, { 'mixed read returns 200': (r) => r.status === 200 });
 }
 
 function searchConsent() {
     const headers = { 'org-id': orgId };
-    const groupId = `${groupPrefix}-${String(randomInt(0, 99)).padStart(3, '0')}`;
+    const groupId = groupIdFor(randomInt(1, groupCount));
+    const purposeName = randomPurposeName();
+    const element = randomElement();
+    const attributeQuery = randomAttributeQuery();
+    const statuses = manifest.searchSamples.statuses || ['ACTIVE', 'CREATED', 'EXPIRED', 'REVOKED'];
     const paths = [
-        `/api/v1/consents?statuses=ACTIVE&limit=25&offset=0`,
+        `/api/v1/consents?statuses=${encodeURIComponent(statuses[randomInt(0, statuses.length - 1)])}&limit=25&offset=0`,
         `/api/v1/consents?groupIds=${encodeURIComponent(groupId)}&limit=25&offset=0`,
         `/api/v1/consents?purposeName=${encodeURIComponent(purposeName)}&limit=25&offset=0`,
-        `/api/v1/consents/attributes?key=channel&value=web`,
+        `/api/v1/consents?elementName=${encodeURIComponent(element.name)}&elementNamespace=${encodeURIComponent(element.namespace)}&limit=25&offset=0`,
+        `/api/v1/consents/attributes?key=${encodeURIComponent(attributeQuery.key)}&value=${encodeURIComponent(attributeQuery.value)}`,
     ];
-    const res = http.get(`${baseUrl}${paths[randomInt(0, paths.length - 1)]}`, { headers });
+    const path = paths[randomInt(0, paths.length - 1)];
+    const requestName = path.includes('/attributes') ? 'GET /api/v1/consents/attributes' : 'GET /api/v1/consents';
+    const res = http.get(`${baseUrl}${path}`, requestParams(requestName, headers));
     check(res, { 'mixed search returns 200': (r) => r.status === 200 });
 }
 
 function validateConsent() {
     const n = randomInt(1, consentCount);
+    const consentType = consentTypeFor(n);
+    const groupIndex = groupIndexFor(n);
     const body = JSON.stringify({
         consentId: deterministicID(0xc0, n),
-        groupId: `${groupPrefix}-${String((n - 1) % 100).padStart(3, '0')}`,
-        userId: `perf-user-${String(n).padStart(9, '0')}`,
+        groupId: groupIdFor(groupIndex),
+        userId: selectUserId(n, consentType, groupIndex, 0),
     });
-    const res = http.post(`${baseUrl}/api/v1/consents/validate`, body, {
-        headers: { 'org-id': orgId, 'Content-Type': 'application/json' },
-    });
+    const res = http.post(`${baseUrl}/api/v1/consents/validate`, body, requestParams('POST /api/v1/consents/validate', {
+        'org-id': orgId,
+        'Content-Type': 'application/json',
+    }));
     check(res, { 'mixed validate returns 200': (r) => r.status === 200 });
 }
 
 function createConsent() {
-    const n = Date.now() * 1000 + __ITER;
-    const groupId = `${groupPrefix}-writes`;
+    const now = Date.now();
+    const purposeName = createDefaults.purposeName || 'account-overview';
+    const element = firstElementForPurpose(purposeName);
     const body = JSON.stringify({
-        type: 'accounts',
-        expirationTime: Date.now() + 31536000000,
+        type: createDefaults.consentType || 'accounts',
+        expirationTime: now + 31536000000,
         attributes: {
-            segment: 'write',
-            channel: 'k6',
-            perf_index: `write-${n}`,
+            segment: 'retail',
+            channel: 'web',
+            region: 'region-01',
+            customer_tier: 'standard',
+            product_line: 'savings',
+            service_plan: 'core',
+            risk_band: 'low',
+            perf_index: `write-${now}-${__ITER}`,
         },
         purposes: [{
             name: purposeName,
             elements: [{
-                name: elementName,
-                namespace: 'default',
+                name: element.name,
+                namespace: element.namespace,
                 approved: true,
-                value: `ACC-WRITE-${n}`,
+                value: `WRITE-${now}-${__ITER}`,
             }],
         }],
         authorizations: [{
-            userId: `perf-write-user-${n}`,
+            userId: `perf-write-user-${now}-${__ITER}`,
             type: 'primary',
             status: 'APPROVED',
             resources: ['accounts'],
         }],
     });
-    const res = http.post(`${baseUrl}/api/v1/consents`, body, {
-        headers: { 'org-id': orgId, 'group-id': groupId, 'Content-Type': 'application/json' },
-    });
+    const res = http.post(`${baseUrl}/api/v1/consents`, body, requestParams('POST /api/v1/consents', {
+        'org-id': orgId,
+        'group-id': groupIdFor(randomInt(1, Math.max(1, Math.min(groupCount, manifest.groupModel.purposeEnabledGroupCount || 1)))),
+        'Content-Type': 'application/json',
+    }));
     check(res, { 'mixed write creates consent': (r) => r.status === 201 || r.status === 200 });
-}
-
-function randomInt(min, max) {
-    return Math.floor(Math.random() * (max - min + 1)) + min;
-}
-
-function deterministicID(kind, n) {
-    const hex = (value, width) => value.toString(16).padStart(width, '0');
-    return `${hex(kind, 8)}-${hex(Math.floor(n / 0x100000000) & 0xffff, 4)}-${hex(Math.floor(n / 0x10000) & 0xffff, 4)}-${hex(n & 0xffff, 4)}-${hex(n, 12)}`;
-}
-
-function textSummary(name, data) {
-    const duration = data.metrics.http_req_duration.values;
-    const failed = data.metrics.http_req_failed.values.rate;
-    const rps = data.metrics.http_reqs.values.rate;
-    return `${name}: p50=${duration.med}ms p95=${duration['p(95)']}ms p99=${duration['p(99)']}ms throughput=${rps}/s error_rate=${failed}\n`;
 }

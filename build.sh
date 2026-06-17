@@ -407,6 +407,39 @@ function perf_set_db_env_defaults() {
     export PERF_DB_NAME="${PERF_DB_NAME:-$(perf_config_value database consent_mgt_perf)}"
 }
 
+function perf_required_group_count() {
+    local count="${1:-1000000}"
+    local group_count=$((count / 1000))
+
+    if [ "$group_count" -lt 100 ]; then
+        group_count=100
+    fi
+    if [ "$group_count" -gt 1000 ]; then
+        group_count=1000
+    fi
+
+    echo "$group_count"
+}
+
+function perf_manifest_group_value() {
+    local key="$1"
+    local manifest_path="$PERF_SEED_DIR/templates.json"
+
+    if [ ! -f "$manifest_path" ]; then
+        echo ""
+        return
+    fi
+
+    local line
+    line=$(grep -m1 "\"$key\"" "$manifest_path" || true)
+    if [ -z "$line" ]; then
+        echo ""
+        return
+    fi
+
+    echo "$line" | sed -E 's/.*: ([0-9]+).*/\1/'
+}
+
 function perf_setup() {
     local db_type="${2:-mysql}"
     if [ "$db_type" != "mysql" ]; then
@@ -436,14 +469,44 @@ function perf_setup() {
 function perf_seed() {
     local db_type="${2:-mysql}"
     local count="${3:-1000000}"
+    local required_groups
+    local manifest_enabled_groups
+    local manifest_max_groups
+    local create_max_groups
+    local create_enabled_groups
     if [ "$db_type" != "mysql" ]; then
         echo "Only MySQL performance seeding is supported."
         exit 1
     fi
 
+    required_groups="$(perf_required_group_count "$count")"
+    create_max_groups="${PERF_MAX_GROUPS:-$required_groups}"
+    if [ "$create_max_groups" -lt "$required_groups" ]; then
+        create_max_groups="$required_groups"
+    fi
+    create_enabled_groups="${PERF_PURPOSE_ENABLED_GROUP_COUNT:-$create_max_groups}"
+    if [ "$create_enabled_groups" -lt "$required_groups" ]; then
+        create_enabled_groups="$required_groups"
+    fi
+
     if [ ! -f "$PERF_SEED_DIR/templates.json" ]; then
         echo "Performance templates not found. Creating them through the API..."
-        bash "$PERF_SEED_DIR/create-templates.sh"
+        PERF_MAX_GROUPS="$create_max_groups" \
+        PERF_PURPOSE_ENABLED_GROUP_COUNT="$create_enabled_groups" \
+            bash "$PERF_SEED_DIR/create-templates.sh"
+    else
+        manifest_enabled_groups="$(perf_manifest_group_value purposeEnabledGroupCount)"
+        manifest_max_groups="$(perf_manifest_group_value maxGroupCount)"
+        if [ -z "$manifest_enabled_groups" ] || [ -z "$manifest_max_groups" ] || \
+           [ "$manifest_enabled_groups" -lt "$required_groups" ] || \
+           [ "$manifest_max_groups" -lt "$required_groups" ]; then
+            echo "Existing performance templates only cover $manifest_enabled_groups enabled groups and $manifest_max_groups max groups."
+            echo "Regenerating templates for $required_groups groups..."
+            rm -f "$PERF_SEED_DIR/templates.json"
+            PERF_MAX_GROUPS="$create_max_groups" \
+            PERF_PURPOSE_ENABLED_GROUP_COUNT="$create_enabled_groups" \
+                bash "$PERF_SEED_DIR/create-templates.sh"
+        fi
     fi
 
     echo "================================================================"

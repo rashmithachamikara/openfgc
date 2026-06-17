@@ -2,6 +2,14 @@
 
 This harness is for local or scheduled performance runs against MySQL. It is separate from the integration tests and does not run as a normal CI gate.
 
+The seed pipeline now creates a realistic manifest in `tests/performance/seed/templates.json` with:
+- a catalog of elements and purposes
+- org-level and group-scoped purpose instances
+- deterministic distribution settings for consent types, groups, users, statuses, and attributes
+- defaults that the k6 scenarios use for realistic reads, searches, validates, and lightweight writes
+
+Template generation now runs through `tests/performance/seed/create-templates.go` via the shell wrapper, so Python is no longer required for manifest generation.
+
 ## Commands
 
 ```bash
@@ -28,11 +36,19 @@ PERF_DB_PASSWORD=password
 PERF_DB_NAME=consent_mgt_perf
 BASE_URL=http://localhost:9091
 ORG_ID=openfgc-perf-org
-GROUP_ID=perf-group-001
+GROUP_PREFIX=perf-group
 CONSENT_COUNT=1000000
 ```
 
 `perf_setup` copies `tests/performance/repository/conf/deployment.yaml` into `target/server-performance` and uses the DB values from that source config as defaults for database setup. Any `PERF_DB_*` environment variable overrides the config value for the setup/validation scripts.
+
+`create-templates.sh` also accepts:
+
+```bash
+PERF_GROUP_PREFIX=perf-group
+PERF_MAX_GROUPS=1000
+PERF_PURPOSE_ENABLED_GROUP_COUNT=120
+```
 
 ## Slow Query Capture
 
