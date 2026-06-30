@@ -367,6 +367,8 @@ function perf_config_value() {
     local in_consent=false
 
     while IFS= read -r line; do
+        line="${line%$'\r'}"
+
         if [[ "$line" != " "* && "$line" != $'\t'* ]]; then
             in_database=false
             in_consent=false
@@ -403,7 +405,7 @@ function perf_set_db_env_defaults() {
     export PERF_DB_HOST="${PERF_DB_HOST:-$(perf_config_value hostname 127.0.0.1)}"
     export PERF_DB_PORT="${PERF_DB_PORT:-$(perf_config_value port 3306)}"
     export PERF_DB_USER="${PERF_DB_USER:-$(perf_config_value user root)}"
-    export PERF_DB_PASSWORD="${PERF_DB_PASSWORD:-$(perf_config_value password password)}"
+    export PERF_DB_PASSWORD="${PERF_DB_PASSWORD-$(perf_config_value password password)}"
     export PERF_DB_NAME="${PERF_DB_NAME:-$(perf_config_value database consent_mgt_perf)}"
 }
 

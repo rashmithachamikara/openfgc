@@ -26,7 +26,7 @@ REPO_ROOT="$(cd "$SCRIPT_DIR/../../.." && pwd)"
 PERF_DB_HOST="${PERF_DB_HOST:-127.0.0.1}"
 PERF_DB_PORT="${PERF_DB_PORT:-3306}"
 PERF_DB_USER="${PERF_DB_USER:-root}"
-PERF_DB_PASSWORD="${PERF_DB_PASSWORD:-password}"
+PERF_DB_PASSWORD="${PERF_DB_PASSWORD-password}"
 PERF_DB_NAME="${PERF_DB_NAME:-consent_mgt_perf}"
 SCHEMA_FILE="$REPO_ROOT/consent-server/dbscripts/db_schema_mysql.sql"
 
