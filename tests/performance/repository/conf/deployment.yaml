@@ -8,14 +8,14 @@ server:
 database:
   consent:
     type: mysql
-    hostname: 127.0.0.1
+    hostname: localhost
     port: 3306
     database: consent_mgt_perf
     max_open_conns: 100
     max_idle_conns: 25
     conn_max_lifetime: 5m
     user: root
-    password: password
+    password:
 
 logging:
   level: info

@@ -16,6 +16,7 @@ Template generation now runs through `tests/performance/seed/create-templates.go
 ./build.sh perf_setup mysql
 cd target/server-performance && ./start.sh
 ./build.sh perf_seed mysql 1000000
+./build.sh perf_seed api 100000
 ./build.sh perf_validate mysql 1000000
 ./build.sh perf_test smoke
 ./build.sh perf_test read
@@ -49,6 +50,18 @@ PERF_GROUP_PREFIX=perf-group
 PERF_MAX_GROUPS=1000
 PERF_PURPOSE_ENABLED_GROUP_COUNT=120
 ```
+
+`perf_seed api` uses `POST /api/v1/consents` (and revoke calls for the revoked slice) instead of direct DB inserts. It expects the performance server to be running first, for example from `target/server-performance`. The API seeder updates `tests/performance/seed/templates.json` with `seedMode`, `seededCount`, and a small pool of created consent references so the k6 read/smoke/validate scenarios can target API-seeded data.
+
+Useful environment variables for the API seed path:
+
+```bash
+BASE_URL=http://localhost:9091
+PERF_SERVER_PORT=9091
+PERF_ORG_ID=openfgc-perf-org
+```
+
+`perf_validate` still validates the MySQL-backed seed shape directly against the database.
 
 ## Slow Query Capture
 

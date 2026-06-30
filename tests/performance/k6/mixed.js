@@ -18,6 +18,8 @@ import {
     groupIndexFor,
     manifest,
     orgId,
+    pickReadConsentReference,
+    pickValidationConsentReference,
     randomAttributeQuery,
     randomElement,
     randomInt,
@@ -57,8 +59,9 @@ export function handleSummary(data) {
 }
 
 function readConsent() {
-    const n = randomInt(1, consentCount);
-    const res = http.get(`${baseUrl}/api/v1/consents/${deterministicID(0xc0, n)}`, requestParams('GET /api/v1/consents/:id', {
+    const seeded = pickReadConsentReference();
+    const consentId = seeded ? seeded.consentId : deterministicID(0xc0, randomInt(1, consentCount));
+    const res = http.get(`${baseUrl}/api/v1/consents/${consentId}`, requestParams('GET /api/v1/consents/:id', {
         'org-id': orgId,
     }));
     check(res, { 'mixed read returns 200': (r) => r.status === 200 });
@@ -85,13 +88,14 @@ function searchConsent() {
 }
 
 function validateConsent() {
+    const seeded = pickValidationConsentReference(false);
     const n = randomInt(1, consentCount);
-    const consentType = consentTypeFor(n);
-    const groupIndex = groupIndexFor(n);
+    const consentType = seeded ? seeded.consentType : consentTypeFor(n);
+    const groupIndex = seeded ? null : groupIndexFor(n);
     const body = JSON.stringify({
-        consentId: deterministicID(0xc0, n),
-        groupId: groupIdFor(groupIndex),
-        userId: selectUserId(n, consentType, groupIndex, 0),
+        consentId: seeded ? seeded.consentId : deterministicID(0xc0, n),
+        groupId: seeded ? seeded.groupId : groupIdFor(groupIndex),
+        userId: seeded ? seeded.userId : selectUserId(n, consentType, groupIndex, 0),
     });
     const res = http.post(`${baseUrl}/api/v1/consents/validate`, body, requestParams('POST /api/v1/consents/validate', {
         'org-id': orgId,

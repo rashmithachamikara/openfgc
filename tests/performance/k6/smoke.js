@@ -15,6 +15,7 @@ import {
     firstElementForPurpose,
     groupIdFor,
     groupIndexFor,
+    pickValidationConsentReference,
     requestParams,
     selectUserId,
     textSummary,
@@ -31,12 +32,13 @@ export const options = {
 };
 
 export default function () {
+    const activeSeed = pickValidationConsentReference(true);
     const activeIndex = findActiveConsentIndex();
-    const consentId = deterministicID(0xc0, activeIndex);
-    const consentType = 'accounts';
-    const groupIndex = groupIndexFor(activeIndex);
-    const groupId = groupIdFor(groupIndex);
-    const userId = selectUserId(activeIndex, consentType, groupIndex, 0);
+    const consentId = activeSeed ? activeSeed.consentId : deterministicID(0xc0, activeIndex);
+    const consentType = activeSeed ? activeSeed.consentType : 'accounts';
+    const groupIndex = activeSeed ? null : groupIndexFor(activeIndex);
+    const groupId = activeSeed ? activeSeed.groupId : groupIdFor(groupIndex);
+    const userId = activeSeed ? activeSeed.userId : selectUserId(activeIndex, consentType, groupIndex, 0);
     const purposeName = firstPurposeNameFor(consentType);
     const element = firstElementForPurpose(purposeName);
     const headers = { 'org-id': orgId, 'Content-Type': 'application/json' };

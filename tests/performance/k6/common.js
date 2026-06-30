@@ -9,11 +9,14 @@ const manifestText = JSON.parse(open('../seed/templates.json'));
 export const manifest = manifestText;
 export const baseUrl = __ENV.BASE_URL || manifest.baseUrl || 'http://localhost:9091';
 export const orgId = __ENV.ORG_ID || manifest.orgId || 'openfgc-perf-org';
-export const consentCount = Number(__ENV.CONSENT_COUNT || '1000000');
+export const consentCount = Number(__ENV.CONSENT_COUNT || String(manifest.seededCount || 1000000));
 export const groupPrefix = __ENV.GROUP_PREFIX || manifest.groupModel.prefix || 'perf-group';
 export const groupCount = effectiveGroupCount(consentCount);
 export const enabledGroupCount = Math.min(groupCount, manifest.groupModel.purposeEnabledGroupCount || 120);
 export const createDefaults = manifest.createDefaults || {};
+export const seedMode = manifest.seedMode || 'db';
+export const seedSamples = Array.isArray(manifest.seedSamples) ? manifest.seedSamples : [];
+const activeSeedSamples = seedSamples.filter((item) => item.status === 'ACTIVE');
 
 export function loadJson(path) {
     return JSON.parse(open(path));
@@ -123,6 +126,14 @@ export function requestParams(name, extraHeaders = {}) {
     };
 }
 
+export function pickReadConsentReference() {
+    return pickSeedSample(false);
+}
+
+export function pickValidationConsentReference(preferActive = false) {
+    return pickSeedSample(preferActive);
+}
+
 export function findActiveConsentIndex() {
     for (let i = 1; i <= 200; i += 1) {
         if (statusFor(i) === 'ACTIVE') {
@@ -202,4 +213,12 @@ function alignedBucketSize(total, groups, ratio) {
     }
     size -= size % groups;
     return size === 0 ? groups : size;
+}
+
+function pickSeedSample(preferActive) {
+    if (seedMode !== 'api' || seedSamples.length === 0) {
+        return null;
+    }
+    const pool = preferActive && activeSeedSamples.length > 0 ? activeSeedSamples : seedSamples;
+    return pool[randomInt(0, pool.length - 1)];
 }

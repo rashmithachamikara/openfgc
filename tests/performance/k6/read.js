@@ -6,7 +6,7 @@
 
 import http from 'k6/http';
 import { check } from 'k6';
-import { baseUrl, consentCount, deterministicID, orgId, randomInt, requestParams, textSummary } from './common.js';
+import { baseUrl, consentCount, deterministicID, orgId, pickReadConsentReference, randomInt, requestParams, textSummary } from './common.js';
 
 export const options = {
     vus: Number(__ENV.VUS || '25'),
@@ -18,8 +18,8 @@ export const options = {
 };
 
 export default function () {
-    const n = randomInt(1, consentCount);
-    const consentId = deterministicID(0xc0, n);
+    const seeded = pickReadConsentReference();
+    const consentId = seeded ? seeded.consentId : deterministicID(0xc0, randomInt(1, consentCount));
     const res = http.get(`${baseUrl}/api/v1/consents/${consentId}`, requestParams('GET /api/v1/consents/:id', { 'org-id': orgId }));
     check(res, {
         'consent read returns 200': (r) => r.status === 200,

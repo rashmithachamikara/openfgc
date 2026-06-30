@@ -14,6 +14,7 @@ import {
     groupIdFor,
     groupIndexFor,
     orgId,
+    pickValidationConsentReference,
     randomInt,
     requestParams,
     selectUserId,
@@ -31,13 +32,14 @@ export const options = {
 };
 
 export default function () {
+    const seeded = pickValidationConsentReference(false);
     const n = pickValidationIndex();
-    const consentType = consentTypeFor(n);
-    const groupIndex = groupIndexFor(n);
+    const consentType = seeded ? seeded.consentType : consentTypeFor(n);
+    const groupIndex = seeded ? null : groupIndexFor(n);
     const body = JSON.stringify({
-        consentId: deterministicID(0xc0, n),
-        groupId: groupIdFor(groupIndex),
-        userId: selectUserId(n, consentType, groupIndex, 0),
+        consentId: seeded ? seeded.consentId : deterministicID(0xc0, n),
+        groupId: seeded ? seeded.groupId : groupIdFor(groupIndex),
+        userId: seeded ? seeded.userId : selectUserId(n, consentType, groupIndex, 0),
     });
     const res = http.post(`${baseUrl}/api/v1/consents/validate`, body, requestParams('POST /api/v1/consents/validate', {
         'org-id': orgId,

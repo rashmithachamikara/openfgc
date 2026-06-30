@@ -411,13 +411,25 @@ function perf_set_db_env_defaults() {
 
 function perf_required_group_count() {
     local count="${1:-1000000}"
+    local min_groups="${PERF_MIN_GROUPS:-100}"
+    local max_groups="${PERF_MAX_GROUPS:-1000}"
     local group_count=$((count / 1000))
 
-    if [ "$group_count" -lt 100 ]; then
-        group_count=100
+    if [ "$min_groups" -lt 1 ]; then
+        min_groups=1
     fi
-    if [ "$group_count" -gt 1000 ]; then
-        group_count=1000
+    if [ "$max_groups" -lt 1 ]; then
+        max_groups=1
+    fi
+    if [ "$min_groups" -gt "$max_groups" ]; then
+        min_groups="$max_groups"
+    fi
+
+    if [ "$group_count" -lt "$min_groups" ]; then
+        group_count="$min_groups"
+    fi
+    if [ "$group_count" -gt "$max_groups" ]; then
+        group_count="$max_groups"
     fi
 
     echo "$group_count"
@@ -469,17 +481,13 @@ function perf_setup() {
 }
 
 function perf_seed() {
-    local db_type="${2:-mysql}"
+    local seed_mode="${2:-mysql}"
     local count="${3:-1000000}"
     local required_groups
     local manifest_enabled_groups
     local manifest_max_groups
     local create_max_groups
     local create_enabled_groups
-    if [ "$db_type" != "mysql" ]; then
-        echo "Only MySQL performance seeding is supported."
-        exit 1
-    fi
 
     required_groups="$(perf_required_group_count "$count")"
     create_max_groups="${PERF_MAX_GROUPS:-$required_groups}"
@@ -511,12 +519,30 @@ function perf_seed() {
         fi
     fi
 
-    echo "================================================================"
-    echo "Seeding $count MySQL performance consents..."
-    perf_set_db_env_defaults
-    go run "$PERF_SEED_DIR/bulk-seed-mysql.go" --count "$count"
-    echo "✓ Performance seed completed"
-    echo "================================================================"
+    case "$seed_mode" in
+        mysql)
+            echo "================================================================"
+            echo "Seeding $count MySQL performance consents..."
+            perf_set_db_env_defaults
+            go run "$PERF_SEED_DIR/bulk-seed-mysql.go" --count "$count"
+            echo "✓ Performance seed completed"
+            echo "================================================================"
+            ;;
+        api)
+            echo "================================================================"
+            echo "Seeding $count performance consents through the API..."
+            go run "$PERF_SEED_DIR/bulk-seed-api.go" \
+                --count "$count" \
+                --base-url "${BASE_URL:-http://localhost:${PERF_SERVER_PORT:-9091}}"
+            echo "✓ Performance API seed completed"
+            echo "================================================================"
+            ;;
+        *)
+            echo "Unsupported performance seed mode: $seed_mode"
+            echo "Supported modes: mysql, api"
+            exit 1
+            ;;
+    esac
 }
 
 function perf_validate() {
@@ -584,7 +610,9 @@ function show_help() {
     echo "  test             - Run all tests"
     echo "  perf_setup mysql - Prepare MySQL DB and dedicated performance server output"
     echo "  perf_seed mysql [count]"
-    echo "                   - Seed MySQL performance data (default: 1000000)"
+    echo "                   - Seed performance data with direct MySQL inserts (default: 1000000)"
+    echo "  perf_seed api [count]"
+    echo "                   - Seed performance data through POST /api/v1/consents"
     echo "  perf_validate mysql [count]"
     echo "                   - Validate seeded MySQL performance data"
     echo "  perf_test {smoke|read|search|validate|mixed}"
@@ -604,7 +632,8 @@ function show_help() {
     echo "  ./build.sh package                  # Create distribution package"
     echo "  ./build.sh run                      # Build and run server"
     echo "  ./build.sh perf_setup mysql         # Prepare performance DB/output"
-    echo "  ./build.sh perf_seed mysql 1000000  # Seed 1M performance consents"
+    echo "  ./build.sh perf_seed mysql 1000000  # Seed 1M performance consents with MySQL"
+    echo "  ./build.sh perf_seed api 100000     # Seed 100k performance consents through the API"
     echo "  ./build.sh perf_test smoke          # Run smoke performance checks"
     echo ""
 }
