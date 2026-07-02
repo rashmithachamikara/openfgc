@@ -24,6 +24,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strconv"
 	"strings"
 
@@ -43,6 +44,7 @@ type errorResponse struct {
 }
 
 var errRequestBodyTooLarge = errors.New("request body too large")
+var consentIDPattern = regexp.MustCompile(`(?i)^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$`)
 
 type consentRetrievalResponse struct {
 	ID                         string                      `json:"id"`
@@ -209,8 +211,12 @@ func (h *Handler) MeConsentByID(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
 		return
 	}
+	if !isValidConsentID(consentID) {
+		writeJSONError(w, http.StatusBadRequest, "INVALID_CONSENT_ID", "invalid consent id")
+		return
+	}
 
-	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+consentID, nil, nil)
+	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+url.PathEscape(consentID), nil, nil)
 	if err != nil {
 		h.writeProxyError(w, err)
 		return
@@ -247,6 +253,10 @@ func (h *Handler) MeConsentApprove(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
 		return
 	}
+	if !isValidConsentID(consentID) {
+		writeJSONError(w, http.StatusBadRequest, "INVALID_CONSENT_ID", "invalid consent id")
+		return
+	}
 	body, err := h.readBoundedBody(r)
 	if err != nil {
 		writeBodyReadError(w, err)
@@ -257,7 +267,7 @@ func (h *Handler) MeConsentApprove(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
-	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+consentID, nil, nil)
+	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+url.PathEscape(consentID), nil, nil)
 	if err != nil {
 		h.writeProxyError(w, err)
 		return
@@ -276,7 +286,7 @@ func (h *Handler) MeConsentApprove(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
-	if err := h.svc.ForwardWithClientID(w, r, http.MethodPut, "/api/v1/consents/"+consentID, nil, payload, trustedClientID); err != nil {
+	if err := h.svc.ForwardWithClientID(w, r, http.MethodPut, "/api/v1/consents/"+url.PathEscape(consentID), nil, payload, trustedClientID); err != nil {
 		h.writeProxyError(w, err)
 	}
 }
@@ -297,6 +307,10 @@ func (h *Handler) MeConsentRevoke(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
 		return
 	}
+	if !isValidConsentID(consentID) {
+		writeJSONError(w, http.StatusBadRequest, "INVALID_CONSENT_ID", "invalid consent id")
+		return
+	}
 	body, err := h.readBoundedBody(r)
 	if err != nil {
 		writeBodyReadError(w, err)
@@ -307,9 +321,13 @@ func (h *Handler) MeConsentRevoke(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
-	if err := h.svc.Forward(w, r, http.MethodPut, "/api/v1/consents/"+consentID+"/revoke", nil, payload); err != nil {
+	if err := h.svc.Forward(w, r, http.MethodPut, "/api/v1/consents/"+url.PathEscape(consentID)+"/revoke", nil, payload); err != nil {
 		h.writeProxyError(w, err)
 	}
+}
+
+func isValidConsentID(id string) bool {
+	return consentIDPattern.MatchString(strings.TrimSpace(id))
 }
 
 func (h *Handler) writeProxyError(w http.ResponseWriter, err error) {
@@ -754,4 +772,3 @@ func findAuthorizationIndexToUpdate(authorizations []consentAuthorizationEntry, 
 
 	return -1, false
 }
-

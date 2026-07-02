@@ -229,7 +229,7 @@ func TestMeConsentByIDStripsHopByHopHeadersFromUpstreamError(t *testing.T) {
 	bff := newPhase2Server(t, upstream.URL)
 	defer bff.Close()
 
-	resp, err := http.Get(bff.URL + "/me/consents/missing")
+	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440999")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -259,11 +259,11 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 
 		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			switch {
-			case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/consent-123":
+			case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
 				w.Header().Set("Content-Type", "application/json")
 				w.WriteHeader(http.StatusOK)
 				_, _ = w.Write([]byte(`{
-					"id":"consent-123",
+					"id":"550e8400-e29b-41d4-a716-446655440000",
 					"clientId":"TPP-CLIENT-001",
 					"type":"accounts",
 					"status":"CREATED",
@@ -295,7 +295,7 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 						]}
 					]
 				}`))
-			case r.Method == http.MethodPut && r.URL.Path == "/api/v1/consents/consent-123":
+			case r.Method == http.MethodPut && r.URL.Path == "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
 				gotMethod = r.Method
 				gotPath = r.URL.Path
 				gotTPPClientID = r.Header.Get("TPP-client-id")
@@ -326,7 +326,7 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		defer bff.Close()
 
 		payload := []byte(`[{"purposeName":"profile_access","elementName":"last_name"}]`)
-		resp, err := http.Post(bff.URL+"/me/consents/consent-123/approve", "application/json", bytes.NewReader(payload))
+		resp, err := http.Post(bff.URL+"/me/consents/550e8400-e29b-41d4-a716-446655440000/approve", "application/json", bytes.NewReader(payload))
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
@@ -340,7 +340,7 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		if gotMethod != http.MethodPut {
 			t.Fatalf("expected PUT, got %s", gotMethod)
 		}
-		if gotPath != "/api/v1/consents/consent-123" {
+		if gotPath != "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000" {
 			t.Fatalf("unexpected path: %s", gotPath)
 		}
 		if gotTPPClientID != "TPP-CLIENT-001" {
@@ -439,7 +439,7 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		bff := newPhase2Server(t, upstream.URL)
 		defer bff.Close()
 
-		req, err := http.NewRequest(http.MethodPut, bff.URL+"/me/consents/consent-123/revoke", bytes.NewReader([]byte(`{"revocationReason":"test"}`)))
+		req, err := http.NewRequest(http.MethodPut, bff.URL+"/me/consents/550e8400-e29b-41d4-a716-446655440000/revoke", bytes.NewReader([]byte(`{"revocationReason":"test"}`)))
 		if err != nil {
 			t.Fatalf("request creation failed: %v", err)
 		}
@@ -458,7 +458,7 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		if gotMethod != http.MethodPut {
 			t.Fatalf("expected PUT, got %s", gotMethod)
 		}
-		if gotPath != "/api/v1/consents/consent-123/revoke" {
+		if gotPath != "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000/revoke" {
 			t.Fatalf("unexpected path: %s", gotPath)
 		}
 		if gotBody["actionBy"] != "user@example.com" {
@@ -486,7 +486,7 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		bff := newPhase2Server(t, upstream.URL)
 		defer bff.Close()
 
-		req, err := http.NewRequest(http.MethodPut, bff.URL+"/me/consents/consent-123/revoke", bytes.NewReader([]byte(`null`)))
+		req, err := http.NewRequest(http.MethodPut, bff.URL+"/me/consents/550e8400-e29b-41d4-a716-446655440000/revoke", bytes.NewReader([]byte(`null`)))
 		if err != nil {
 			t.Fatalf("request creation failed: %v", err)
 		}
@@ -505,7 +505,7 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		if gotMethod != http.MethodPut {
 			t.Fatalf("expected PUT, got %s", gotMethod)
 		}
-		if gotPath != "/api/v1/consents/consent-123/revoke" {
+		if gotPath != "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000/revoke" {
 			t.Fatalf("unexpected path: %s", gotPath)
 		}
 		if gotBody["actionBy"] != "user@example.com" {
@@ -646,7 +646,7 @@ func TestRequestBodySizeLimitReturns413(t *testing.T) {
 
 	t.Run("me approve returns 413 with json error", func(t *testing.T) {
 		big := bytes.Repeat([]byte("b"), 64)
-		resp, err := http.Post(bff.URL+"/me/consents/c-1/approve", "application/json", bytes.NewReader(big))
+		resp, err := http.Post(bff.URL+"/me/consents/550e8400-e29b-41d4-a716-446655440001/approve", "application/json", bytes.NewReader(big))
 		if err != nil {
 			t.Fatalf("request failed: %v", err)
 		}
@@ -750,9 +750,9 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 		body   string
 	}{
 		{name: "me consents", method: http.MethodGet, path: "/me/consents"},
-		{name: "me consent by id", method: http.MethodGet, path: "/me/consents/consent-123"},
-		{name: "me approve", method: http.MethodPost, path: "/me/consents/consent-123/approve", body: "[]"},
-		{name: "me revoke", method: http.MethodPut, path: "/me/consents/consent-123/revoke", body: "{}"},
+		{name: "me consent by id", method: http.MethodGet, path: "/me/consents/550e8400-e29b-41d4-a716-446655440000"},
+		{name: "me approve", method: http.MethodPost, path: "/me/consents/550e8400-e29b-41d4-a716-446655440000/approve", body: "[]"},
+		{name: "me revoke", method: http.MethodPut, path: "/me/consents/550e8400-e29b-41d4-a716-446655440000/revoke", body: "{}"},
 	}
 
 	for _, tc := range testCases {
@@ -802,11 +802,11 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 func TestMeConsentByIDAggregatesPurposeAndElementDetails(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/api/v1/consents/consent-123":
+		case "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{
-				"id":"consent-123",
+				"id":"550e8400-e29b-41d4-a716-446655440000",
 				"clientId":"TPP-CLIENT-001",
 				"type":"accounts",
 				"status":"ACTIVE",
@@ -857,7 +857,7 @@ func TestMeConsentByIDAggregatesPurposeAndElementDetails(t *testing.T) {
 	bff := newPhase2Server(t, upstream.URL)
 	defer bff.Close()
 
-	resp, err := http.Get(bff.URL + "/me/consents/consent-123")
+	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440000")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -908,11 +908,11 @@ func TestMeConsentByIDAggregatesPurposeAndElementDetails(t *testing.T) {
 func TestMeConsentByIDFailsClosedWhenPurposeMetadataMissing(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/api/v1/consents/consent-123":
+		case "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{
-				"id":"consent-123",
+				"id":"550e8400-e29b-41d4-a716-446655440000",
 				"clientId":"TPP-CLIENT-001",
 				"type":"accounts",
 				"status":"ACTIVE",
@@ -933,7 +933,7 @@ func TestMeConsentByIDFailsClosedWhenPurposeMetadataMissing(t *testing.T) {
 	bff := newPhase2Server(t, upstream.URL)
 	defer bff.Close()
 
-	resp, err := http.Get(bff.URL + "/me/consents/consent-123")
+	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440000")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -957,11 +957,11 @@ func TestMeConsentByIDFailsClosedWhenPurposeMetadataMissing(t *testing.T) {
 func TestMeConsentByIDHandlesNullableAndMixedProperties(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/api/v1/consents/consent-123":
+		case "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{
-				"id":"consent-123",
+				"id":"550e8400-e29b-41d4-a716-446655440000",
 				"clientId":"TPP-CLIENT-001",
 				"type":"accounts",
 				"status":"ACTIVE",
@@ -996,7 +996,7 @@ func TestMeConsentByIDHandlesNullableAndMixedProperties(t *testing.T) {
 	bff := newPhase2Server(t, upstream.URL)
 	defer bff.Close()
 
-	resp, err := http.Get(bff.URL + "/me/consents/consent-123")
+	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440000")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -1039,11 +1039,11 @@ func TestMeConsentByIDHandlesNullableAndMixedProperties(t *testing.T) {
 func TestMeConsentByIDPurposeLookupFallsBackWithoutClientFilter(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/api/v1/consents/consent-123":
+		case "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
 			w.Header().Set("Content-Type", "application/json")
 			w.WriteHeader(http.StatusOK)
 			_, _ = w.Write([]byte(`{
-				"id":"consent-123",
+				"id":"550e8400-e29b-41d4-a716-446655440000",
 				"clientId":"TPP-CLIENT-003",
 				"type":"accounts",
 				"status":"ACTIVE",
@@ -1074,7 +1074,7 @@ func TestMeConsentByIDPurposeLookupFallsBackWithoutClientFilter(t *testing.T) {
 	bff := newPhase2Server(t, upstream.URL)
 	defer bff.Close()
 
-	resp, err := http.Get(bff.URL + "/me/consents/consent-123")
+	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440000")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
