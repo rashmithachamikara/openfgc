@@ -574,7 +574,7 @@ func TestAPIDenyByDefault(t *testing.T) {
 	})
 }
 
-func TestProxyTimeoutMapsTo503(t *testing.T) {
+func TestProxyTimeoutMapsTo504(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		time.Sleep(120 * time.Millisecond)
 		w.WriteHeader(http.StatusOK)
@@ -592,8 +592,8 @@ func TestProxyTimeoutMapsTo503(t *testing.T) {
 		_ = resp.Body.Close()
 	}()
 
-	if resp.StatusCode != http.StatusServiceUnavailable {
-		t.Fatalf("expected 503, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusGatewayTimeout {
+		t.Fatalf("expected 504, got %d", resp.StatusCode)
 	}
 
 	var payload map[string]any

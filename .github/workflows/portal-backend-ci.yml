@@ -34,11 +34,11 @@ jobs:
         run: |
           test -z "$(gofmt -l . | tee /dev/stderr)"
 
-      - name: Run tests
-        run: go test ./... -v
-
       - name: golangci-lint
         uses: golangci/golangci-lint-action@v9
         with:
           working-directory: portal/backend
           version: v2.12.2
+
+      - name: Run tests
+        run: go test ./... -v

@@ -203,6 +203,7 @@ func (h *Handler) MeConsentByID(w http.ResponseWriter, r *http.Request) {
 	if _, ok := h.resolveUserID(w, r); !ok {
 		return
 	}
+	// TODO(Phase 3): verify the fetched consent belongs to the authenticated user before returning it.
 	consentID := r.PathValue("consentId")
 	if consentID == "" {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
@@ -240,6 +241,7 @@ func (h *Handler) MeConsentApprove(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// TODO(Phase 3): verify the fetched consent belongs to the authenticated user before approving it.
 	consentID := r.PathValue("consentId")
 	if consentID == "" {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
@@ -289,6 +291,7 @@ func (h *Handler) MeConsentRevoke(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		return
 	}
+	// TODO(Phase 3): verify the targeted consent belongs to the authenticated user before revoking it.
 	consentID := r.PathValue("consentId")
 	if consentID == "" {
 		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
@@ -311,7 +314,7 @@ func (h *Handler) MeConsentRevoke(w http.ResponseWriter, r *http.Request) {
 
 func (h *Handler) writeProxyError(w http.ResponseWriter, err error) {
 	if errors.Is(err, ErrUpstreamTimeout) {
-		writeJSONError(w, http.StatusServiceUnavailable, "UPSTREAM_TIMEOUT", "upstream timeout")
+		writeJSONError(w, http.StatusGatewayTimeout, "UPSTREAM_TIMEOUT", "upstream timeout")
 		return
 	}
 	if errors.Is(err, ErrUpstreamResponseTooLarge) {
@@ -335,6 +338,8 @@ func (h *Handler) buildAggregatedConsentResponse(r *http.Request, baseBody []byt
 		return nil, ErrUpstreamUnavailable
 	}
 
+	// TODO: Metadata enrichment currently performs serial upstream lookups.
+	// Backend API will support enrichment in a single request in the future, which will eliminate the need for this logic.
 	purposeMetadataByName := make(map[string]purposeMetadata, len(consent.Purposes))
 	for _, purpose := range consent.Purposes {
 		if _, exists := purposeMetadataByName[purpose.Name]; exists {
@@ -577,9 +582,7 @@ func (h *Handler) buildRevokePayload(in []byte, userID string) ([]byte, error) {
 		return nil, errors.New("missing actionBy")
 	}
 
-	payload := map[string]any{
-		"actionBy": userID,
-	}
+	payload := map[string]any{}
 	if len(in) > 0 {
 		if err := json.Unmarshal(in, &payload); err != nil {
 			return nil, err
@@ -695,6 +698,8 @@ func (h *Handler) buildApprovalUpdatePayload(r *http.Request, baseBody []byte, s
 }
 
 func (h *Handler) enrichMandatoryFlags(r *http.Request, consent *consentRetrievalResponse) error {
+	// TODO: Metadata enrichment currently performs serial upstream lookups.
+	// Backend API will support enrichment in a single request in the future, which will eliminate the need for this logic.
 	purposeMetadataByName := make(map[string]purposeMetadata, len(consent.Purposes))
 	for _, purpose := range consent.Purposes {
 		if _, exists := purposeMetadataByName[purpose.Name]; exists {
@@ -749,3 +754,4 @@ func findAuthorizationIndexToUpdate(authorizations []consentAuthorizationEntry, 
 
 	return -1, false
 }
+

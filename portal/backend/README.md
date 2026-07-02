@@ -73,7 +73,7 @@ Proxy hardening:
 - Hop-by-hop header stripping and trusted-header override prevention (`org-id`, `TPP-client-id`)
 - Correlation ID propagation/generation via `X-Correlation-ID`
 - Request body limit enforcement (`BFF_PROXY__MAX_REQUEST_BYTES`) with `413`
-- Deterministic upstream error mapping: timeout -> `503`, other connectivity failures -> `502`
+- Deterministic upstream error mapping: timeout -> `504`, other connectivity failures -> `502`
 
 Error contract for proxy-originated failures:
 

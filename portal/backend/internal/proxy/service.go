@@ -23,20 +23,16 @@ import (
 	"bytes"
 	"context"
 	"crypto/rand"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
 	"net"
 	"net/http"
 	"net/url"
-	"os"
-	"strconv"
 	"strings"
-	"sync/atomic"
-	"time"
 
 	"github.com/wso2/openfgc/portal/backend/internal/config"
+	"github.com/wso2/openfgc/portal/backend/internal/correlation"
 )
 
 var hopByHopHeaders = toCanonicalHeaderSet(
@@ -373,24 +369,7 @@ func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Reque
 	}
 	correlationID := incoming.Header.Get("X-Correlation-ID")
 	if correlationID == "" {
-		correlationID = newCorrelationID()
+		correlationID = correlation.NewID(rand.Read, &proxyFallbackSequence)
 	}
 	outgoing.Header.Set("X-Correlation-ID", correlationID)
-}
-
-func newCorrelationID() string {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return fallbackCorrelationID()
-	}
-	return hex.EncodeToString(buf)
-}
-
-func fallbackCorrelationID() string {
-	sequence := atomic.AddUint64(&proxyFallbackSequence, 1)
-	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano(), 36)
-	pid := strconv.Itoa(os.Getpid())
-	seq := strconv.FormatUint(sequence, 36)
-
-	return "fb-" + timestamp + "-" + pid + "-" + seq
 }

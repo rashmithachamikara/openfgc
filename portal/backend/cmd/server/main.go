@@ -89,6 +89,7 @@ func main() {
 		exitCode = 1
 	}
 
+	// Give the logger a brief window to flush the final shutdown line.
 	time.Sleep(50 * time.Millisecond)
 	log.Info("OpenFGC portal backend server stopped")
 

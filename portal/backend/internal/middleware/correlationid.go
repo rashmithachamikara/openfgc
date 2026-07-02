@@ -21,13 +21,10 @@ package middleware
 
 import (
 	"crypto/rand"
-	"encoding/hex"
 	"log/slog"
 	"net/http"
-	"os"
-	"strconv"
-	"sync/atomic"
-	"time"
+
+	"github.com/wso2/openfgc/portal/backend/internal/correlation"
 )
 
 const correlationHeader = "X-Correlation-ID"
@@ -75,18 +72,5 @@ func isValidCorrelationID(id string) bool {
 }
 
 func newCorrelationID() string {
-	buf := make([]byte, 16)
-	if _, err := randomRead(buf); err != nil {
-		return fallbackCorrelationID()
-	}
-	return hex.EncodeToString(buf)
-}
-
-func fallbackCorrelationID() string {
-	sequence := atomic.AddUint64(&fallbackSequence, 1)
-	timestamp := strconv.FormatInt(time.Now().UTC().UnixNano(), 36)
-	pid := strconv.Itoa(os.Getpid())
-	seq := strconv.FormatUint(sequence, 36)
-
-	return "fb-" + timestamp + "-" + pid + "-" + seq
+	return correlation.NewID(randomRead, &fallbackSequence)
 }
