@@ -331,11 +331,11 @@ go build -o bin/consent-server cmd/server/main.go
 # Run unit tests
 ./build.sh test_unit
 
-# Run integration tests (MySQL by default)
+# Run integration tests (SQLite by default)
 ./build.sh test_integration
 
-# Run integration tests against SQLite or PostgreSQL 
-DB_TYPE=sqlite ./build.sh test_integration
+# Run integration tests against MySQL or PostgreSQL 
+DB_TYPE=mysql ./build.sh test_integration
 DB_TYPE=postgres ./build.sh test_integration
 
 # Run all tests

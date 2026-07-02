@@ -70,7 +70,7 @@ DIST_DIR="$TARGET_DIR/dist"
 SOURCE_DIR="consent-server/cmd/server"
 CONFIG_SOURCE="consent-server/cmd/server/repository/conf/deployment.yaml"
 CONFIG_TARGET="$OUTPUT_DIR/repository/conf/deployment.yaml"
-TEST_CONFIG_SOURCE_MYSQL="tests/integration/repository/conf/deployment.yaml"
+TEST_CONFIG_SOURCE_MYSQL="tests/integration/repository/conf/deployment-mysql.yaml"
 TEST_CONFIG_SOURCE_SQLITE="tests/integration/repository/conf/deployment-sqlite.yaml"
 TEST_CONFIG_SOURCE_POSTGRES="tests/integration/repository/conf/deployment-postgres.yaml"
 
@@ -280,8 +280,8 @@ function test_integration() {
     local test_server_dir="../../$OUTPUT_DIR"
     echo "Integration server output: $OUTPUT_DIR"
 
-    # Select database type: default mysql, override with DB_TYPE env var
-    local db_type="${DB_TYPE:-mysql}"
+    # Select database type: default sqlite, override with DB_TYPE env var
+    local db_type="${DB_TYPE:-sqlite}"
     echo "Database type: $db_type"
 
     # Validate DB_TYPE before doing any build work.

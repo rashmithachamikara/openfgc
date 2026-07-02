@@ -34,12 +34,12 @@ import (
 )
 
 // dbType holds the database type for the current test run ("sqlite", "mysql", or "postgres").
-// Populated from the DB_TYPE environment variable; defaults to "mysql".
+// Populated from the DB_TYPE environment variable; defaults to "sqlite".
 var dbType = func() string {
 	if t := os.Getenv("DB_TYPE"); t != "" {
 		return t
 	}
-	return "mysql"
+	return "sqlite"
 }()
 
 const (
@@ -49,7 +49,7 @@ const (
 )
 
 var integrationConfigPaths = map[string]string{
-	"mysql":    "repository/conf/deployment.yaml",
+	"mysql":    "repository/conf/deployment-mysql.yaml",
 	"sqlite":   "repository/conf/deployment-sqlite.yaml",
 	"postgres": "repository/conf/deployment-postgres.yaml",
 }
