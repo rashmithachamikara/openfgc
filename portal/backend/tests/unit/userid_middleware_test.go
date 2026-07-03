@@ -24,14 +24,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/wso2/openfgc/portal/backend/internal/middleware"
+	systemcontext "github.com/wso2/openfgc/portal/backend/internal/system/context"
+	"github.com/wso2/openfgc/portal/backend/internal/system/middleware"
 )
 
 func TestUserIDMiddleware_InsertsUserIDIntoContext(t *testing.T) {
 	nextCalled := false
 	next := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		nextCalled = true
-		userID, ok := middleware.UserIDFromContext(r.Context())
+		userID, ok := systemcontext.UserIDFromContext(r.Context())
 		if !ok {
 			t.Fatal("expected user id in context")
 		}
@@ -172,7 +173,7 @@ func TestUserIDMiddleware_Returns503WhenUserIDMissing(t *testing.T) {
 
 func TestUserIDFromContext_ReturnsFalseWhenMissing(t *testing.T) {
 	req := httptest.NewRequest(http.MethodGet, "/me/consents", nil)
-	if _, ok := middleware.UserIDFromContext(req.Context()); ok {
+	if _, ok := systemcontext.UserIDFromContext(req.Context()); ok {
 		t.Fatal("expected false for missing user id")
 	}
 }

@@ -16,8 +16,8 @@
  * under the License.
  */
 
-// Package logger provides logger construction for the BFF service.
-package logger
+// Package log provides logger construction for the BFF service.
+package log
 
 import (
 	"log/slog"

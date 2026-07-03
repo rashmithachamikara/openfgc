@@ -16,8 +16,8 @@
  * under the License.
  */
 
-// Package health provides readiness and liveness HTTP handlers.
-package health
+// Package healthcheck provides readiness and liveness HTTP handlers.
+package healthcheck
 
 import (
 	"encoding/json"

@@ -29,9 +29,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wso2/openfgc/portal/backend/internal/config"
-	"github.com/wso2/openfgc/portal/backend/internal/logger"
-	"github.com/wso2/openfgc/portal/backend/internal/router"
+	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
 func newPhase2Server(t *testing.T, upstreamURL string) *httptest.Server {
@@ -46,9 +44,9 @@ func newPhase2Server(t *testing.T, upstreamURL string) *httptest.Server {
 	cfg.Proxy.PlaceholderOrgID = "ORG-001"
 	cfg.Proxy.PlaceholderClientID = "TPP-CLIENT-001"
 
-	h, err := router.New(logger.New("error"), *cfg)
+	h, err := newIntegrationHandler(*cfg)
 	if err != nil {
-		t.Fatalf("failed to create router: %v", err)
+		t.Fatalf("failed to create handler: %v", err)
 	}
 	return httptest.NewServer(h)
 }
@@ -66,9 +64,9 @@ func newPhase2ServerWithTimeout(t *testing.T, upstreamURL string, timeout time.D
 	cfg.Proxy.PlaceholderOrgID = "ORG-001"
 	cfg.Proxy.PlaceholderClientID = "TPP-CLIENT-001"
 
-	h, err := router.New(logger.New("error"), *cfg)
+	h, err := newIntegrationHandler(*cfg)
 	if err != nil {
-		t.Fatalf("failed to create router: %v", err)
+		t.Fatalf("failed to create handler: %v", err)
 	}
 	return httptest.NewServer(h)
 }
@@ -86,9 +84,9 @@ func newPhase2ServerWithMaxBytes(t *testing.T, upstreamURL string, maxBytes int6
 	cfg.Proxy.PlaceholderOrgID = "ORG-001"
 	cfg.Proxy.PlaceholderClientID = "TPP-CLIENT-001"
 
-	h, err := router.New(logger.New("error"), *cfg)
+	h, err := newIntegrationHandler(*cfg)
 	if err != nil {
-		t.Fatalf("failed to create router: %v", err)
+		t.Fatalf("failed to create handler: %v", err)
 	}
 	return httptest.NewServer(h)
 }
@@ -105,9 +103,9 @@ func newPhase2ServerPlaceholderDisabled(t *testing.T, upstreamURL string) *httpt
 	cfg.Proxy.PlaceholderOrgID = "ORG-001"
 	cfg.Proxy.PlaceholderClientID = "TPP-CLIENT-001"
 
-	h, err := router.New(logger.New("error"), *cfg)
+	h, err := newIntegrationHandler(*cfg)
 	if err != nil {
-		t.Fatalf("failed to create router: %v", err)
+		t.Fatalf("failed to create handler: %v", err)
 	}
 	return httptest.NewServer(h)
 }
@@ -318,9 +316,9 @@ func TestApproveAndRevokeMappings(t *testing.T) {
 		cfg.Proxy.PlaceholderOrgID = "ORG-001"
 		cfg.Proxy.PlaceholderClientID = "PLACEHOLDER-CLIENT-999"
 
-		h, err := router.New(logger.New("error"), *cfg)
+		h, err := newIntegrationHandler(*cfg)
 		if err != nil {
-			t.Fatalf("failed to create router: %v", err)
+			t.Fatalf("failed to create handler: %v", err)
 		}
 		bff := httptest.NewServer(h)
 		defer bff.Close()
@@ -681,9 +679,9 @@ func TestRequestBodyReadFailureReturnsBadRequest(t *testing.T) {
 	}
 	cfg.Proxy.OpenFGCAPIURL = upstream.URL
 
-	h, err := router.New(logger.New("error"), *cfg)
+	h, err := newIntegrationHandler(*cfg)
 	if err != nil {
-		t.Fatalf("failed to create router: %v", err)
+		t.Fatalf("failed to create handler: %v", err)
 	}
 
 	req := httptest.NewRequest(http.MethodPost, "/api/consents", nil)

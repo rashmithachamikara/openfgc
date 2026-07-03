@@ -16,39 +16,21 @@
  * under the License.
  */
 
-package integration
+package proxy
 
 import (
 	"net/http"
-	"net/http/httptest"
-	"testing"
 
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
-func TestLivenessEndpoint(t *testing.T) {
-	cfg, err := config.Load()
+// Initialize sets up the proxy module and registers routes.
+func Initialize(mux *http.ServeMux, cfg config.ProxyConfig) error {
+	handler, err := NewHandler(cfg)
 	if err != nil {
-		t.Fatalf("failed to load config: %v", err)
+		return err
 	}
-	h, err := newIntegrationHandler(*cfg)
-	if err != nil {
-		t.Fatalf("failed to create handler: %v", err)
-	}
-	ts := httptest.NewServer(h)
-	defer ts.Close()
 
-	resp, err := http.Get(ts.URL + "/health/liveness")
-	if err != nil {
-		t.Fatalf("unexpected request error: %v", err)
-	}
-	defer func() {
-		if err := resp.Body.Close(); err != nil {
-			t.Fatalf("failed to close response body: %v", err)
-		}
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
+	mux.HandleFunc("/api/{path...}", handler.API)
+	return nil
 }

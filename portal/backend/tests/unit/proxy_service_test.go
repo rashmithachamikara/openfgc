@@ -27,8 +27,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wso2/openfgc/portal/backend/internal/config"
 	"github.com/wso2/openfgc/portal/backend/internal/proxy"
+	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
 func TestNewServiceRejectsInvalidUpstreamURL(t *testing.T) {

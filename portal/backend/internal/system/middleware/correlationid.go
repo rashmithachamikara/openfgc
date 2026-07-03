@@ -24,7 +24,7 @@ import (
 	"log/slog"
 	"net/http"
 
-	"github.com/wso2/openfgc/portal/backend/internal/correlation"
+	"github.com/wso2/openfgc/portal/backend/internal/system/correlation"
 )
 
 const correlationHeader = "X-Correlation-ID"

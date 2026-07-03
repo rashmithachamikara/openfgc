@@ -24,7 +24,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wso2/openfgc/portal/backend/internal/middleware"
+	"github.com/wso2/openfgc/portal/backend/internal/system/middleware"
 )
 
 func TestCORSMiddleware_AllowsConfiguredOrigin(t *testing.T) {

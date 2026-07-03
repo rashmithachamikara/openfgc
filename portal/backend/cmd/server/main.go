@@ -23,15 +23,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log/slog"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/wso2/openfgc/portal/backend/internal/config"
-	"github.com/wso2/openfgc/portal/backend/internal/logger"
-	"github.com/wso2/openfgc/portal/backend/internal/router"
+	"github.com/wso2/openfgc/portal/backend/internal/system/config"
+	systemlog "github.com/wso2/openfgc/portal/backend/internal/system/log"
+	"github.com/wso2/openfgc/portal/backend/internal/system/middleware"
 )
 
 func main() {
@@ -41,13 +42,13 @@ func main() {
 		os.Exit(1)
 	}
 
-	log := logger.New(cfg.Log.Level)
+	log := systemlog.New(cfg.Log.Level)
 	if cfg.Proxy.PlaceholderModeEnabled {
 		log.Warn("placeholder identity mode is enabled; do not use in production")
 	}
-	handler, err := router.New(log, *cfg)
+	handler, err := newHTTPHandler(log, *cfg)
 	if err != nil {
-		fmt.Fprintf(os.Stderr, "failed to initialize router: %v\n", err)
+		fmt.Fprintf(os.Stderr, "failed to initialize handler: %v\n", err)
 		os.Exit(1)
 	}
 
@@ -96,4 +97,21 @@ func main() {
 	if exitCode != 0 {
 		os.Exit(exitCode)
 	}
+}
+
+func newHTTPHandler(log *slog.Logger, cfg config.Config) (http.Handler, error) {
+	mux := http.NewServeMux()
+
+	if err := registerServices(mux, log, cfg); err != nil {
+		return nil, err
+	}
+
+	withCORS := middleware.CORS(mux, middleware.CORSOptions{
+		AllowedOrigins:   cfg.CORS.AllowedOrigins,
+		AllowedMethods:   cfg.CORS.AllowedMethods,
+		AllowedHeaders:   cfg.CORS.AllowedHeaders,
+		AllowCredentials: cfg.CORS.AllowCredentials,
+	})
+
+	return middleware.CorrelationID(log, withCORS), nil
 }

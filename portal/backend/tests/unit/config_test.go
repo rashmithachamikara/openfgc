@@ -23,7 +23,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/wso2/openfgc/portal/backend/internal/config"
+	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
 func TestLoadFromEnv(t *testing.T) {

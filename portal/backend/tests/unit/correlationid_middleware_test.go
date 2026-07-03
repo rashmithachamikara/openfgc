@@ -25,7 +25,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/wso2/openfgc/portal/backend/internal/middleware"
+	"github.com/wso2/openfgc/portal/backend/internal/system/middleware"
 )
 
 func TestCorrelationIDMiddleware_UsesValidClientID(t *testing.T) {

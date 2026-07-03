@@ -31,8 +31,8 @@ import (
 	"net/url"
 	"strings"
 
-	"github.com/wso2/openfgc/portal/backend/internal/config"
-	"github.com/wso2/openfgc/portal/backend/internal/correlation"
+	"github.com/wso2/openfgc/portal/backend/internal/system/config"
+	"github.com/wso2/openfgc/portal/backend/internal/system/correlation"
 )
 
 var hopByHopHeaders = toCanonicalHeaderSet(
@@ -226,6 +226,17 @@ func (s *Service) ForwardRawWithClientID(r *http.Request, upstreamMethod, upstre
 		Headers:    resp.Header.Clone(),
 		Body:       respBody,
 	}, nil
+}
+
+// WriteUpstreamResponse copies a previously fetched upstream response to the caller.
+func (s *Service) WriteUpstreamResponse(w http.ResponseWriter, resp *UpstreamResponse) error {
+	s.copyResponseHeaders(w.Header(), resp.Headers)
+	w.WriteHeader(resp.StatusCode)
+	if len(resp.Body) == 0 {
+		return nil
+	}
+	_, err := w.Write(resp.Body)
+	return err
 }
 
 func joinURLPaths(basePath string, upstreamPath string) string {

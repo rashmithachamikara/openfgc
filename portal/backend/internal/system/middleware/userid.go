@@ -20,10 +20,11 @@
 package middleware
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
+
+	systemcontext "github.com/wso2/openfgc/portal/backend/internal/system/context"
 )
 
 // UserIDOptions configures placeholder-based user ID resolution for /me routes.
@@ -32,8 +33,6 @@ type UserIDOptions struct {
 	PlaceholderUserID      string
 	Environment            string
 }
-
-type userIDContextKey struct{}
 
 type userIDErrorResponse struct {
 	Code    string `json:"code"`
@@ -58,26 +57,8 @@ func UserID(next http.Handler, opts UserIDOptions) http.Handler {
 			return
 		}
 
-		next.ServeHTTP(w, r.WithContext(context.WithValue(r.Context(), userIDContextKey{}, userID)))
+		next.ServeHTTP(w, r.WithContext(systemcontext.WithUserID(r.Context(), userID)))
 	})
-}
-
-// UserIDFromContext returns the effective user ID previously resolved by middleware.
-func UserIDFromContext(ctx context.Context) (string, bool) {
-	if ctx == nil {
-		return "", false
-	}
-
-	value, ok := ctx.Value(userIDContextKey{}).(string)
-	if !ok {
-		return "", false
-	}
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "", false
-	}
-
-	return value, true
 }
 
 func writeUserIDError(w http.ResponseWriter, status int, code, message string) {
