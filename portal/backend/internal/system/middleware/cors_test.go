@@ -16,15 +16,13 @@
  * under the License.
  */
 
-package unit
+package middleware
 
 import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
 	"testing"
-
-	"github.com/wso2/openfgc/portal/backend/internal/system/middleware"
 )
 
 func TestCORSMiddleware_AllowsConfiguredOrigin(t *testing.T) {
@@ -34,7 +32,7 @@ func TestCORSMiddleware_AllowsConfiguredOrigin(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := middleware.CORS(next, middleware.CORSOptions{
+	handler := CORS(next, CORSOptions{
 		AllowedOrigins:   []string{"http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "X-Correlation-ID"},
@@ -66,7 +64,7 @@ func TestCORSMiddleware_BlocksUnknownOrigin(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := middleware.CORS(next, middleware.CORSOptions{
+	handler := CORS(next, CORSOptions{
 		AllowedOrigins: []string{"http://localhost:3000"},
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Content-Type", "X-Correlation-ID"},
@@ -90,7 +88,7 @@ func TestCORSMiddleware_AllowsSameOriginWithoutAllowlist(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := middleware.CORS(next, middleware.CORSOptions{
+	handler := CORS(next, CORSOptions{
 		AllowedOrigins: []string{},
 		AllowedMethods: []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders: []string{"Content-Type", "X-Correlation-ID"},
@@ -120,7 +118,7 @@ func TestCORSMiddleware_HandlesPreflight(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	handler := middleware.CORS(next, middleware.CORSOptions{
+	handler := CORS(next, CORSOptions{
 		AllowedOrigins:   []string{"http://localhost:3000"},
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
 		AllowedHeaders:   []string{"Content-Type", "X-Correlation-ID"},
@@ -150,7 +148,7 @@ func TestCORSMiddleware_AppendsVaryOrigin(t *testing.T) {
 		w.WriteHeader(http.StatusOK)
 	})
 
-	corsHandler := middleware.CORS(next, middleware.CORSOptions{
+	corsHandler := CORS(next, CORSOptions{
 		AllowedOrigins: []string{"http://localhost:3000"},
 		AllowedMethods: []string{"GET"},
 		AllowedHeaders: []string{"Content-Type"},

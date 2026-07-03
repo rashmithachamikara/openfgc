@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package unit
+package middleware
 
 import (
 	"encoding/json"
@@ -25,7 +25,6 @@ import (
 	"testing"
 
 	systemcontext "github.com/wso2/openfgc/portal/backend/internal/system/context"
-	"github.com/wso2/openfgc/portal/backend/internal/system/middleware"
 )
 
 func TestUserIDMiddleware_InsertsUserIDIntoContext(t *testing.T) {
@@ -42,7 +41,7 @@ func TestUserIDMiddleware_InsertsUserIDIntoContext(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	handler := middleware.UserID(next, middleware.UserIDOptions{
+	handler := UserID(next, UserIDOptions{
 		PlaceholderModeEnabled: true,
 		PlaceholderUserID:      "user@example.com",
 	})
@@ -67,7 +66,7 @@ func TestUserIDMiddleware_Returns503WhenPlaceholderModeDisabled(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	handler := middleware.UserID(next, middleware.UserIDOptions{
+	handler := UserID(next, UserIDOptions{
 		PlaceholderModeEnabled: false,
 		PlaceholderUserID:      "",
 		Environment:            "development",
@@ -108,7 +107,7 @@ func TestUserIDMiddleware_ProductionModeDoesNotIncludeDevelopmentHint(t *testing
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	handler := middleware.UserID(next, middleware.UserIDOptions{
+	handler := UserID(next, UserIDOptions{
 		PlaceholderModeEnabled: false,
 		PlaceholderUserID:      "",
 		Environment:            "production",
@@ -145,7 +144,7 @@ func TestUserIDMiddleware_Returns503WhenUserIDMissing(t *testing.T) {
 		w.WriteHeader(http.StatusNoContent)
 	})
 
-	handler := middleware.UserID(next, middleware.UserIDOptions{
+	handler := UserID(next, UserIDOptions{
 		PlaceholderModeEnabled: true,
 		PlaceholderUserID:      "  ",
 	})

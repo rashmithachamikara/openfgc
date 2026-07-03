@@ -16,7 +16,7 @@
  * under the License.
  */
 
-package unit
+package proxy
 
 import (
 	"errors"
@@ -27,7 +27,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/wso2/openfgc/portal/backend/internal/proxy"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
@@ -45,7 +44,7 @@ func TestNewServiceRejectsInvalidUpstreamURL(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			_, err := proxy.NewService(config.ProxyConfig{
+			_, err := NewService(config.ProxyConfig{
 				OpenFGCAPIURL:      tt.url,
 				OpenFGCAPITimeout:  2 * time.Second,
 				MaxRequestBytes:    1024,
@@ -63,7 +62,7 @@ func TestNewServiceRejectsInvalidUpstreamURL(t *testing.T) {
 }
 
 func TestCheckAPIAccess(t *testing.T) {
-	svc, err := proxy.NewService(config.ProxyConfig{
+	svc, err := NewService(config.ProxyConfig{
 		OpenFGCAPIURL:       "http://localhost:9090",
 		OpenFGCAPITimeout:   2 * time.Second,
 		MaxRequestBytes:     1024,
@@ -102,7 +101,7 @@ func TestCheckAPIAccess(t *testing.T) {
 }
 
 func TestIsAllowedPassthroughMethod(t *testing.T) {
-	svc, err := proxy.NewService(config.ProxyConfig{
+	svc, err := NewService(config.ProxyConfig{
 		OpenFGCAPIURL:      "http://localhost:9090",
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
@@ -128,7 +127,7 @@ func TestForwardRawMapsBodyReadFailureToUpstreamUnavailable(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc, err := proxy.NewService(config.ProxyConfig{
+	svc, err := NewService(config.ProxyConfig{
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
@@ -141,7 +140,7 @@ func TestForwardRawMapsBodyReadFailureToUpstreamUnavailable(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
 	_, err = svc.ForwardRaw(req, http.MethodGet, "/api/v1/consents", nil, nil)
-	if !errors.Is(err, proxy.ErrUpstreamUnavailable) {
+	if !errors.Is(err, ErrUpstreamUnavailable) {
 		t.Fatalf("expected ErrUpstreamUnavailable, got: %v", err)
 	}
 }
@@ -152,7 +151,7 @@ func TestForwardRawRejectsOversizedUpstreamResponse(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc, err := proxy.NewService(config.ProxyConfig{
+	svc, err := NewService(config.ProxyConfig{
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
@@ -165,7 +164,7 @@ func TestForwardRawRejectsOversizedUpstreamResponse(t *testing.T) {
 
 	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
 	_, err = svc.ForwardRaw(req, http.MethodGet, "/api/v1/consents", nil, nil)
-	if !errors.Is(err, proxy.ErrUpstreamResponseTooLarge) {
+	if !errors.Is(err, ErrUpstreamResponseTooLarge) {
 		t.Fatalf("expected ErrUpstreamResponseTooLarge, got: %v", err)
 	}
 }
@@ -180,7 +179,7 @@ func TestForwardRawPreservesConfiguredBasePath(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc, err := proxy.NewService(config.ProxyConfig{
+	svc, err := NewService(config.ProxyConfig{
 		OpenFGCAPIURL:      upstream.URL + "/openfgc/",
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
@@ -232,7 +231,7 @@ func TestForwardStripsHeadersNamedByConnection(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc, err := proxy.NewService(config.ProxyConfig{
+	svc, err := NewService(config.ProxyConfig{
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
@@ -289,7 +288,7 @@ func TestForwardStripsClientForwardingHeaders(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc, err := proxy.NewService(config.ProxyConfig{
+	svc, err := NewService(config.ProxyConfig{
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
@@ -327,7 +326,7 @@ func TestForwardStripsClientCredentialHeaders(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc, err := proxy.NewService(config.ProxyConfig{
+	svc, err := NewService(config.ProxyConfig{
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
@@ -356,7 +355,7 @@ func TestForwardGeneratesCorrelationIDWhenMissing(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	svc, err := proxy.NewService(config.ProxyConfig{
+	svc, err := NewService(config.ProxyConfig{
 		OpenFGCAPIURL:      upstream.URL,
 		OpenFGCAPITimeout:  2 * time.Second,
 		MaxRequestBytes:    1024,
