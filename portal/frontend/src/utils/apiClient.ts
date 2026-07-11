@@ -16,6 +16,8 @@
  * under the License.
  */
 
+import { getAccessToken } from '../auth/accessToken'
+
 export interface APIErrorPayload {
   code?: string
   message?: string
@@ -38,11 +40,16 @@ interface RequestOptions extends RequestInit {
   query?: Record<string, string | number | boolean | undefined>
 }
 
-function buildHeaders(headers?: HeadersInit): Headers {
+async function buildHeaders(headers?: HeadersInit): Promise<Headers> {
   const normalizedHeaders = new Headers(headers)
 
   if (!normalizedHeaders.has('Accept')) {
     normalizedHeaders.set('Accept', 'application/json')
+  }
+
+  const accessToken = await getAccessToken()
+  if (accessToken) {
+    normalizedHeaders.set('Authorization', `Bearer ${accessToken}`)
   }
 
   return normalizedHeaders
@@ -86,9 +93,9 @@ function buildURL(path: string, query?: RequestOptions['query']): string {
 export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
   const { query, headers, ...requestInit } = options
   const response = await fetch(buildURL(path, query), {
-    credentials: 'include',
+    credentials: 'omit',
     ...requestInit,
-    headers: buildHeaders(headers),
+    headers: await buildHeaders(headers),
   })
 
   if (!response.ok) {
@@ -129,9 +136,9 @@ export async function apiRequestNoContent(
 ): Promise<void> {
   const { query, headers, ...requestInit } = options
   const response = await fetch(buildURL(path, query), {
-    credentials: 'include',
+    credentials: 'omit',
     ...requestInit,
-    headers: buildHeaders(headers),
+    headers: await buildHeaders(headers),
   })
 
   if (!response.ok) {

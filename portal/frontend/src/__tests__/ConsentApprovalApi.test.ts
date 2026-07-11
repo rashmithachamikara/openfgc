@@ -17,6 +17,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { clearAccessTokenProvider, setAccessTokenProvider } from '../auth/accessToken'
 import { approveMyConsent } from '../features/consent-registry/api/consentsApi'
 import { apiRequest } from '../utils/apiClient'
 
@@ -47,7 +48,7 @@ describe('approveMyConsent', () => {
     expect(String(requestUrl)).toContain('/me/consents/consent%2F123%3Fdraft/approve')
     expect(requestInit).toMatchObject({
       method: 'POST',
-      credentials: 'include',
+      credentials: 'omit',
       body: JSON.stringify(selectedOptionalElements),
     })
     expect(requestHeaders.get('Accept')).toBe('application/json')
@@ -73,5 +74,26 @@ describe('apiRequest', () => {
       'apiClient path must be relative',
     )
     expect(fetchMock).not.toHaveBeenCalled()
+  })
+
+  it('attaches the SDK-managed bearer token when an auth provider is registered', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    })
+    const provider = vi.fn(async () => 'access-token')
+    setAccessTokenProvider(provider)
+
+    await apiRequest<unknown>('/protected')
+
+    const [, requestInit] = fetchMock.mock.calls[0] ?? []
+    const requestHeaders = new Headers((requestInit?.headers as HeadersInit | undefined) ?? {})
+
+    expect(provider).toHaveBeenCalledTimes(1)
+    expect(requestHeaders.get('Authorization')).toBe('Bearer access-token')
+
+    clearAccessTokenProvider(provider)
   })
 })

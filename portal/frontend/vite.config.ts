@@ -17,6 +17,7 @@
  */
 
 import react from '@vitejs/plugin-react'
+import basicSsl from '@vitejs/plugin-basic-ssl'
 import { loadEnv } from 'vite'
 import { defineConfig } from 'vitest/config'
 
@@ -29,7 +30,12 @@ export default defineConfig(({ mode }) => {
   }
 
   return {
-    plugins: [react()],
+    plugins: [react(), basicSsl()],
+    server: {
+      host: 'localhost',
+      port: 5173,
+      strictPort: true,
+    },
     test: {
       environment: 'jsdom',
       setupFiles: './vitest.setup.ts',
