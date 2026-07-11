@@ -21,6 +21,7 @@ import { AcrylicOrangeTheme, CssBaseline, OxygenUIThemeProvider } from '@wso2/ox
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
+import { PortalAuthContext } from '../auth/PortalAuthContext'
 import HeaderBreadcrumbs from '../components/layout/main-layout/HeaderBreadcrumbs'
 import MainLayout from '../components/layout/main-layout/MainLayout'
 import i18n from '../i18n/i18n'
@@ -40,17 +41,30 @@ afterEach(() => {
 })
 
 function renderMainLayout(initialRoute = '/'): void {
+  const signOut = vi.fn().mockResolvedValue(undefined)
+
   render(
     <OxygenUIThemeProvider theme={AcrylicOrangeTheme}>
       <CssBaseline />
       <I18nextProvider i18n={i18n}>
-        <MemoryRouter initialEntries={[initialRoute]}>
-          <Routes>
-            <Route path="/" element={<MainLayout />}>
-              <Route index element={<h1>Nested route content</h1>} />
-            </Route>
-          </Routes>
-        </MemoryRouter>
+        <PortalAuthContext.Provider
+          value={{
+            isAuthenticated: true,
+            isInitialized: true,
+            isLoading: false,
+            signIn: vi.fn(),
+            signOut,
+            user: { email: 'alex@example.com', name: 'Alex Morgan' },
+          }}
+        >
+          <MemoryRouter initialEntries={[initialRoute]}>
+            <Routes>
+              <Route path="/" element={<MainLayout />}>
+                <Route index element={<h1>Nested route content</h1>} />
+              </Route>
+            </Routes>
+          </MemoryRouter>
+        </PortalAuthContext.Provider>
       </I18nextProvider>
     </OxygenUIThemeProvider>,
   )
@@ -72,11 +86,11 @@ function renderHeaderBreadcrumbs(initialRoute: string): void {
 }
 
 describe('MainLayout', () => {
-  it('renders translated header title and avatar aria label', () => {
+  it('renders translated header title and signed-in user menu', () => {
     renderMainLayout()
 
     expect(screen.getByText('Consent Portal')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Signed-in user avatar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Account' })).toBeInTheDocument()
   })
 
   it('toggles sidebar collapsed state when header toggle is clicked', () => {

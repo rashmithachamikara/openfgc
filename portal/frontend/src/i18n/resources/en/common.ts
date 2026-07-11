@@ -31,6 +31,11 @@ const commonEn = {
     home: 'Home',
     breadcrumbAriaLabel: 'Breadcrumb',
     userAvatarAriaLabel: 'Signed-in user avatar',
+    userMenu: {
+      noEmail: 'Email unavailable',
+      signOut: 'Sign out',
+      unknownUser: 'User',
+    },
   },
   dashboard: {
     title: 'Dashboard',

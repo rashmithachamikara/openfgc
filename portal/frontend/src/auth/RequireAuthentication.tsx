@@ -17,16 +17,17 @@
  */
 
 import { useEffect, useRef } from 'react'
-import type { PropsWithChildren } from 'react'
+import type { PropsWithChildren, ReactNode } from 'react'
+import { Box, CircularProgress } from '@wso2/oxygen-ui'
 import { usePortalAuth } from './PortalAuthContext'
 
 function hasPendingOAuthCallback(): boolean {
   const params = new URLSearchParams(window.location.search)
 
-  return params.has('code') || params.has('state') || params.has('error')
+  return params.has('code') || params.has('error')
 }
 
-export default function RequireAuthentication({ children }: PropsWithChildren): React.JSX.Element {
+export default function RequireAuthentication({ children }: PropsWithChildren): ReactNode {
   const auth = usePortalAuth()
   const hasStartedSignIn = useRef(false)
   const isProcessingOAuthCallback = hasPendingOAuthCallback()
@@ -43,12 +44,25 @@ export default function RequireAuthentication({ children }: PropsWithChildren): 
     }
 
     hasStartedSignIn.current = true
-    void auth.signIn()
+    auth.signIn().catch(() => undefined)
   }, [auth, isProcessingOAuthCallback])
 
   if (!auth.isInitialized || auth.isLoading || isProcessingOAuthCallback || !auth.isAuthenticated) {
-    return <main aria-busy="true">Loading authentication…</main>
+    return (
+      <Box
+        component="main"
+        aria-busy="true"
+        sx={{
+          alignItems: 'center',
+          display: 'flex',
+          justifyContent: 'center',
+          minHeight: '100vh',
+        }}
+      >
+        <CircularProgress />
+      </Box>
+    )
   }
 
-  return <>{children}</>
+  return children
 }

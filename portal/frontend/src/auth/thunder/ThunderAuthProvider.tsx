@@ -17,7 +17,7 @@
  */
 
 import { ThunderIDProvider, useThunderID } from '@thunderid/react'
-import { useEffect, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import type { PropsWithChildren } from 'react'
 import { clearAccessTokenProvider, setAccessTokenProvider } from '../accessToken'
 import { PortalAuthContext } from '../PortalAuthContext'
@@ -42,7 +42,7 @@ function getThunderAuthConfiguration(): ThunderAuthConfiguration | undefined {
     return undefined
   }
 
-  const scopes = (import.meta.env.VITE_AUTH_SCOPES ?? 'openid profile')
+  const scopes = (import.meta.env.VITE_AUTH_SCOPES ?? 'openid profile email')
     .split(/\s+/)
     .map((scope: string) => scope.trim())
     .filter(Boolean)
@@ -68,15 +68,40 @@ function getThunderAuthConfiguration(): ThunderAuthConfiguration | undefined {
 
 function ThunderAuthBridge({ children }: PropsWithChildren): React.JSX.Element {
   const thunder = useThunderID()
+  const [idTokenUser, setIdTokenUser] = useState<unknown>()
+  const { getAccessToken, getDecodedIdToken, isSignedIn, user: sdkUser } = thunder
+  const user = isSignedIn ? (idTokenUser ?? sdkUser) : sdkUser
 
   useEffect(() => {
-    const provider = thunder.getAccessToken
-    setAccessTokenProvider(provider)
+    setAccessTokenProvider(getAccessToken)
 
     return () => {
-      clearAccessTokenProvider(provider)
+      clearAccessTokenProvider(getAccessToken)
     }
-  }, [thunder.getAccessToken])
+  }, [getAccessToken])
+
+  useEffect(() => {
+    let active = true
+
+    if (!isSignedIn) {
+      return undefined
+    }
+
+    getDecodedIdToken()
+      .then((idToken) => {
+        if (!active) {
+          return
+        }
+
+        const userClaims = sdkUser && typeof sdkUser === 'object' ? sdkUser : {}
+        setIdTokenUser({ ...userClaims, ...idToken })
+      })
+      .catch(() => undefined)
+
+    return () => {
+      active = false
+    }
+  }, [getDecodedIdToken, isSignedIn, sdkUser])
 
   const value = useMemo<PortalAuth>(
     () => ({
@@ -85,7 +110,7 @@ function ThunderAuthBridge({ children }: PropsWithChildren): React.JSX.Element {
       isLoading: thunder.isLoading,
       signIn: thunder.signIn,
       signOut: thunder.signOut,
-      user: thunder.user,
+      user,
     }),
     [
       thunder.isInitialized,
@@ -93,7 +118,7 @@ function ThunderAuthBridge({ children }: PropsWithChildren): React.JSX.Element {
       thunder.isSignedIn,
       thunder.signIn,
       thunder.signOut,
-      thunder.user,
+      user,
     ],
   )
 

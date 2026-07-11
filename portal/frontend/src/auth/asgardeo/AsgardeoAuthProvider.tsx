@@ -48,7 +48,7 @@ function getAsgardeoAuthConfiguration(): AsgardeoAuthConfiguration | undefined {
     afterSignOutUrl: window.location.origin,
     baseUrl,
     clientId,
-    scopes: (import.meta.env.VITE_AUTH_SCOPES ?? 'openid profile')
+    scopes: (import.meta.env.VITE_AUTH_SCOPES ?? 'openid profile email')
       .split(/\s+/)
       .map((scope: string) => scope.trim())
       .filter(Boolean),
