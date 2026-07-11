@@ -16,26 +16,34 @@
  * under the License.
  */
 
-import { createContext, useContext } from 'react'
-
-export interface PortalAuth {
+export interface AuthBridge {
   getAccessToken: () => Promise<string | undefined>
-  isAuthenticated: boolean
-  isInitialized: boolean
-  isLoading: boolean
-  signIn: () => Promise<unknown>
-  signOut: () => Promise<unknown>
-  user: unknown
+  handleUnauthorized: () => Promise<unknown>
 }
 
-export const PortalAuthContext = createContext<PortalAuth | undefined>(undefined)
+let activeBridge: AuthBridge | undefined
+let unauthorizedHandled = false
 
-export function usePortalAuth(): PortalAuth {
-  const auth = useContext(PortalAuthContext)
+export function registerAuthBridge(bridge: AuthBridge): void {
+  activeBridge = bridge
+  unauthorizedHandled = false
+}
 
-  if (!auth) {
-    throw new Error('usePortalAuth must be used within a portal authentication provider.')
+export function clearAuthBridge(bridge: AuthBridge): void {
+  if (activeBridge === bridge) {
+    activeBridge = undefined
+  }
+}
+
+export async function getAccessToken(): Promise<string | undefined> {
+  return activeBridge?.getAccessToken()
+}
+
+export async function handleUnauthorized(): Promise<void> {
+  if (!activeBridge || unauthorizedHandled) {
+    return
   }
 
-  return auth
+  unauthorizedHandled = true
+  await activeBridge.handleUnauthorized()
 }
