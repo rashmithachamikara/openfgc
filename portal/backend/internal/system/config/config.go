@@ -43,6 +43,7 @@ type Config struct {
 	Proxy  ProxyConfig  `koanf:"proxy"`
 }
 
+// AuthConfig contains resource-server token validation settings.
 type AuthConfig struct {
 	IssuerURL              string        `koanf:"issuer_url"`
 	ResourceAudience       string        `koanf:"resource_audience"`

@@ -16,13 +16,13 @@ import (
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
-type testIdP struct {
+type testIDP struct {
 	server *httptest.Server
 	key    *rsa.PrivateKey
 }
 
 func TestBearerAuthorizationCoversEveryAllowlistedAPIRoute(t *testing.T) {
-	idp := newTestIdP(t)
+	idp := newTestIDP(t)
 	var gotPath string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
@@ -55,7 +55,7 @@ func TestBearerAuthorizationCoversEveryAllowlistedAPIRoute(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				t.Fatalf("expected 200, got %d", resp.StatusCode)
 			}
@@ -67,7 +67,7 @@ func TestBearerAuthorizationCoversEveryAllowlistedAPIRoute(t *testing.T) {
 }
 
 func TestBearerMeRouteOverwritesUserFilter(t *testing.T) {
-	idp := newTestIdP(t)
+	idp := newTestIDP(t)
 	var gotUserIDs string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotUserIDs = r.URL.Query().Get("userIds")
@@ -82,14 +82,14 @@ func TestBearerMeRouteOverwritesUserFilter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK || gotUserIDs != "user@example.com" {
 		t.Fatalf("expected self-scoped user ID, status=%d userIds=%q", resp.StatusCode, gotUserIDs)
 	}
 }
 
 func TestBearerMeDetailApproveAndRevokeRoutes(t *testing.T) {
-	idp := newTestIdP(t)
+	idp := newTestIDP(t)
 	const consentPath = "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000"
 	mutationCalls := 0
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -125,7 +125,7 @@ func TestBearerMeDetailApproveAndRevokeRoutes(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusOK {
 				t.Fatalf("expected 200, got %d", resp.StatusCode)
 			}
@@ -136,9 +136,9 @@ func TestBearerMeDetailApproveAndRevokeRoutes(t *testing.T) {
 	}
 }
 
-func newTestIdP(t *testing.T) *testIdP {
+func newTestIDP(t *testing.T) *testIDP {
 	t.Helper()
-	idp := &testIdP{}
+	idp := &testIDP{}
 	var err error
 	idp.key, err = rsa.GenerateKey(rand.Reader, 2048)
 	if err != nil {
@@ -149,7 +149,7 @@ func newTestIdP(t *testing.T) *testIdP {
 		case "/.well-known/openid-configuration":
 			_ = json.NewEncoder(w).Encode(map[string]string{"jwks_uri": idp.server.URL + "/keys"})
 		case "/keys":
-			_ = json.NewEncoder(w).Encode(map[string]any{"keys": []map[string]string{{"kid": "test-key", "kty": "RSA", "n": base64.RawURLEncoding.EncodeToString(idp.key.PublicKey.N.Bytes()), "e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(idp.key.PublicKey.E)).Bytes())}}})
+			_ = json.NewEncoder(w).Encode(map[string]any{"keys": []map[string]string{{"kid": "test-key", "kty": "RSA", "n": base64.RawURLEncoding.EncodeToString(idp.key.N.Bytes()), "e": base64.RawURLEncoding.EncodeToString(big.NewInt(int64(idp.key.E)).Bytes())}}})
 		default:
 			http.NotFound(w, r)
 		}
@@ -158,7 +158,7 @@ func newTestIdP(t *testing.T) *testIdP {
 	return idp
 }
 
-func (idp *testIdP) token(t *testing.T, scopes string) string {
+func (idp *testIDP) token(t *testing.T, scopes string) string {
 	t.Helper()
 	now := time.Now()
 	claims := jwt.MapClaims{"iss": idp.server.URL, "aud": "consent-api", "sub": "user@example.com", "org_id": "ORG-001", "scope": scopes, "iat": now.Unix(), "nbf": now.Unix(), "exp": now.Add(time.Hour).Unix()}
@@ -171,7 +171,7 @@ func (idp *testIdP) token(t *testing.T, scopes string) string {
 	return raw
 }
 
-func newBearerBFF(t *testing.T, idp *testIdP, upstreamURL string) *httptest.Server {
+func newBearerBFF(t *testing.T, idp *testIDP, upstreamURL string) *httptest.Server {
 	t.Helper()
 	cfg, err := config.Load()
 	if err != nil {
@@ -193,7 +193,7 @@ func newBearerBFF(t *testing.T, idp *testIdP, upstreamURL string) *httptest.Serv
 }
 
 func TestBearerAuthenticationAndScopeIntegration(t *testing.T) {
-	idp := newTestIdP(t)
+	idp := newTestIDP(t)
 	gotOrg := ""
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotOrg = r.Header.Get("org-id")
@@ -232,7 +232,7 @@ func TestBearerAuthenticationAndScopeIntegration(t *testing.T) {
 }
 
 func TestCORSPreflightAllowsAuthorization(t *testing.T) {
-	idp := newTestIdP(t)
+	idp := newTestIDP(t)
 	upstream := httptest.NewServer(http.NotFoundHandler())
 	defer upstream.Close()
 	bff := newBearerBFF(t, idp, upstream.URL)
@@ -245,7 +245,7 @@ func TestCORSPreflightAllowsAuthorization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusNoContent || resp.Header.Get("Access-Control-Allow-Headers") == "" {
 		t.Fatalf("unexpected preflight response: %d", resp.StatusCode)
 	}

@@ -48,8 +48,8 @@ func newTestValidator(t *testing.T) (*Validator, *testJWKS, func(jwt.MapClaims, 
 			return
 		}
 		if r.URL.Path == "/keys" {
-			n := base64.RawURLEncoding.EncodeToString(state.key.PublicKey.N.Bytes())
-			e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(state.key.PublicKey.E)).Bytes())
+			n := base64.RawURLEncoding.EncodeToString(state.key.N.Bytes())
+			e := base64.RawURLEncoding.EncodeToString(big.NewInt(int64(state.key.E)).Bytes())
 			_ = json.NewEncoder(w).Encode(jwks{Keys: []jwk{{KID: state.kid, KTY: "RSA", N: n, E: e}}})
 			return
 		}

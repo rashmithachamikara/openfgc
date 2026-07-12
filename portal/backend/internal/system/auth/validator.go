@@ -1,3 +1,4 @@
+// Package auth validates IdP-issued JWT access tokens and manages JWKS keys.
 package auth
 
 import (
@@ -16,11 +17,14 @@ import (
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
+// Principal contains normalized claims from a validated access token.
 type Principal struct {
 	Subject string
 	OrgID   string
 	Scopes  []string
 }
+
+// Validator validates JWTs against the configured issuer and audience.
 type Validator struct {
 	cfg     config.AuthConfig
 	client  *http.Client
@@ -42,9 +46,12 @@ type jwk struct {
 	E   string `json:"e"`
 }
 
+// NewValidator creates a JWT validator using the supplied resource-server configuration.
 func NewValidator(cfg config.AuthConfig) *Validator {
 	return &Validator{cfg: cfg, client: &http.Client{Timeout: cfg.JWKSRefreshTimeout}, keys: map[string]*rsa.PublicKey{}}
 }
+
+// Validate verifies a raw bearer JWT and returns its normalized principal.
 func (v *Validator) Validate(ctx context.Context, raw string) (Principal, error) {
 	token, err := jwt.Parse(raw, func(t *jwt.Token) (any, error) {
 		if _, ok := t.Method.(*jwt.SigningMethodRSA); !ok || !contains(v.cfg.AllowedAlgorithms, t.Method.Alg()) {
@@ -113,7 +120,7 @@ func (v *Validator) refresh(ctx context.Context) error {
 		if e != nil {
 			return e
 		}
-		defer resp.Body.Close()
+		defer func() { _ = resp.Body.Close() }()
 		var d discovery
 		if resp.StatusCode != 200 || json.NewDecoder(resp.Body).Decode(&d) != nil || d.JWKSURI == "" {
 			return fmt.Errorf("discovery failed")
@@ -128,7 +135,7 @@ func (v *Validator) refresh(ctx context.Context) error {
 	if e != nil {
 		return e
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 	var set jwks
 	if resp.StatusCode != 200 || json.NewDecoder(resp.Body).Decode(&set) != nil {
 		return fmt.Errorf("jwks fetch failed")

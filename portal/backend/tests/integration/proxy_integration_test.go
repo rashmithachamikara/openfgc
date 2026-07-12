@@ -1178,7 +1178,7 @@ func TestMeEndpointsRejectInvalidConsentID(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			defer resp.Body.Close()
+			defer func() { _ = resp.Body.Close() }()
 			if resp.StatusCode != http.StatusBadRequest {
 				t.Fatalf("expected 400, got %d", resp.StatusCode)
 			}
