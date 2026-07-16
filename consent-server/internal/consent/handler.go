@@ -546,20 +546,22 @@ func consentOutputToResponse(out *model.ConsentOutput) *model.ConsentResponse {
 		elements := make([]model.ConsentPurposeElementApprovalResponse, 0, len(p.Elements))
 		for _, e := range p.Elements {
 			elements = append(elements, model.ConsentPurposeElementApprovalResponse{
-				ElementID: e.ElementID,
-				Name:      e.Name,
-				Namespace: e.Namespace,
-				Version:   formatVersion(e.VersionNum),
-				Mandatory: e.Mandatory,
-				Approved:  e.Approved,
-				Value:     valueStringToInterface(e.Value, e.ElementType),
+				ElementID:   e.ElementID,
+				Name:        e.Name,
+				Namespace:   e.Namespace,
+				Version:     formatVersion(e.VersionNum),
+				DisplayName: e.DisplayName,
+				Mandatory:   e.Mandatory,
+				Approved:    e.Approved,
+				Value:       valueStringToInterface(e.Value, e.ElementType),
 			})
 		}
 		purposes = append(purposes, model.ConsentPurposeResponse{
-			PurposeID: p.PurposeID,
-			Name:      p.Name,
-			Version:   formatVersion(p.VersionNum),
-			Elements:  elements,
+			PurposeID:   p.PurposeID,
+			Name:        p.Name,
+			Version:     formatVersion(p.VersionNum),
+			DisplayName: p.DisplayName,
+			Elements:    elements,
 		})
 	}
 

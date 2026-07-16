@@ -394,21 +394,23 @@ type ConsentValidateRequest struct {
 // ConsentPurposeElementApprovalResponse is one element in a consent purpose response.
 // Combines the element's definition with the user's approval state for this consent.
 type ConsentPurposeElementApprovalResponse struct {
-	ElementID string      `json:"elementId"`
-	Name      string      `json:"name"`
-	Namespace string      `json:"namespace"`
-	Version   string      `json:"version"` // "v1", "v2", ...
-	Mandatory bool        `json:"mandatory"`
-	Approved  bool        `json:"approved"`
-	Value     interface{} `json:"value,omitempty"`
+	ElementID   string      `json:"elementId"`
+	Name        string      `json:"name"`
+	Namespace   string      `json:"namespace"`
+	Version     string      `json:"version"` // "v1", "v2", ...
+	DisplayName *string     `json:"displayName,omitempty"`
+	Mandatory   bool        `json:"mandatory"`
+	Approved    bool        `json:"approved"`
+	Value       interface{} `json:"value,omitempty"`
 }
 
 // ConsentPurposeResponse is one purpose in a consent response (create/get/update).
 type ConsentPurposeResponse struct {
-	PurposeID string                                  `json:"purposeId"`
-	Name      string                                  `json:"name"`
-	Version   string                                  `json:"version"` // "v1", "v2", ...
-	Elements  []ConsentPurposeElementApprovalResponse `json:"elements"`
+	PurposeID   string                                  `json:"purposeId"`
+	Name        string                                  `json:"name"`
+	Version     string                                  `json:"version"` // "v1", "v2", ...
+	DisplayName *string                                 `json:"displayName,omitempty"`
+	Elements    []ConsentPurposeElementApprovalResponse `json:"elements"`
 }
 
 // AuthorizationResponse is one authorization in a consent response.
