@@ -180,12 +180,27 @@ func TestHandlerCreateConsent_ServiceError(t *testing.T) {
 
 func TestHandlerGetConsent_Success(t *testing.T) {
 	mockSvc := NewMockConsentService(t)
+	purposeDisplayName := "Account management"
+	elementDisplayName := "User email address"
 
 	out := &model.ConsentOutput{
 		ConsentID:     handlerTestConsentID,
 		GroupID:       handlerTestGroupID,
 		ConsentType:   "accounts",
 		CurrentStatus: "ACTIVE",
+		Purposes: []model.ConsentPurposeOutput{{
+			PurposeID:   "purpose-1",
+			Name:        "account_management",
+			VersionNum:  1,
+			DisplayName: &purposeDisplayName,
+			Elements: []model.ConsentElementApprovalOutput{{
+				ElementID:   "element-1",
+				Name:        "user_email",
+				Namespace:   "default",
+				VersionNum:  1,
+				DisplayName: &elementDisplayName,
+			}},
+		}},
 	}
 	mockSvc.On("GetConsent", mock.Anything, handlerTestConsentID, handlerTestOrgID).Return(out, nil)
 
@@ -202,6 +217,8 @@ func TestHandlerGetConsent_Success(t *testing.T) {
 	var resp model.ConsentResponse
 	require.NoError(t, json.NewDecoder(rr.Body).Decode(&resp))
 	require.Equal(t, handlerTestConsentID, resp.ConsentID)
+	require.Equal(t, purposeDisplayName, *resp.Purposes[0].DisplayName)
+	require.Equal(t, elementDisplayName, *resp.Purposes[0].Elements[0].DisplayName)
 }
 
 func TestHandlerGetConsent_NotFound(t *testing.T) {
@@ -241,9 +258,25 @@ func TestHandlerGetConsent_MissingOrgID(t *testing.T) {
 
 func TestHandlerListConsents_Success(t *testing.T) {
 	mockSvc := NewMockConsentService(t)
+	purposeDisplayName := "Account management"
+	elementDisplayName := "User email address"
 
 	listOut := &model.ConsentListOutput{
-		Data:   []model.ConsentOutput{{ConsentID: handlerTestConsentID, ConsentType: "accounts", CurrentStatus: "ACTIVE"}},
+		Data: []model.ConsentOutput{{
+			ConsentID:     handlerTestConsentID,
+			ConsentType:   "accounts",
+			CurrentStatus: "ACTIVE",
+			Purposes: []model.ConsentPurposeOutput{{
+				Name:        "account_management",
+				VersionNum:  1,
+				DisplayName: &purposeDisplayName,
+				Elements: []model.ConsentElementApprovalOutput{{
+					Name:        "user_email",
+					VersionNum:  1,
+					DisplayName: &elementDisplayName,
+				}},
+			}},
+		}},
 		Total:  1,
 		Count:  1,
 		Offset: 0,
@@ -263,6 +296,8 @@ func TestHandlerListConsents_Success(t *testing.T) {
 	var resp model.ConsentListResponse
 	require.NoError(t, json.NewDecoder(rr.Body).Decode(&resp))
 	require.Len(t, resp.Data, 1)
+	require.Equal(t, purposeDisplayName, *resp.Data[0].Purposes[0].DisplayName)
+	require.Equal(t, elementDisplayName, *resp.Data[0].Purposes[0].Elements[0].DisplayName)
 }
 
 func TestHandlerListConsents_MissingOrgID(t *testing.T) {

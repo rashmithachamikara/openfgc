@@ -341,12 +341,17 @@ paths:
                     purposes:
                       - name: "Account management"
                         version: "v1"
+                        displayName: "Account management"
                         elements:
                           - name: "User email"
                             namespace: "default"
+                            version: "v1"
+                            displayName: "User email address"
                             approved: false
                           - name: "User address"
                             namespace: "default"
+                            version: "v1"
+                            displayName: "User postal address"
                             approved: false
                     createdTime: 1702900000000
                     updatedTime: 1702900000000
@@ -377,9 +382,12 @@ paths:
                     purposes:
                       - name: "Account management"
                         version: "v1"
+                        displayName: "Account management"
                         elements:
                           - name: "User email"
                             namespace: "default"
+                            version: "v1"
+                            displayName: "User email address"
                             approved: false
                     createdTime: 1702900000000
                     updatedTime: 1702900000000
@@ -2666,6 +2674,11 @@ components:
             The specific version of the purpose to bind this consent to (e.g., v1, v2).
             If not specified, the latest version is used.
           example: "v1"
+        displayName:
+          type: string
+          nullable: true
+          description: Human-readable display name of the purpose version. Present in responses; omitted in requests.
+          example: "Marketing Communication Preferences"
         elements:
           type: array
           description: |
@@ -2708,6 +2721,15 @@ components:
             Combined with `name`, uniquely identifies the element within the organization.
             If not provided, the `default` namespace is used.
           example: "personal"
+        version:
+          type: string
+          description: The version identifier of the consent element. Present in responses; omitted in requests.
+          example: "v1"
+        displayName:
+          type: string
+          nullable: true
+          description: Human-readable display name of the element version. Present in responses; omitted in requests.
+          example: "User email address"
         approved:
           type: boolean
           description: |
@@ -3078,15 +3100,20 @@ components:
           - purposeId: "550e8400-e29b-41d4-a716-446655440000"
             name: "marketing_communication_preferences"
             version: "v1"
+            displayName: "Marketing Communication Preferences"
             elements:
               - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 name: "user_email"
                 namespace: "personal"
+                version: "v1"
+                displayName: "User email address"
                 approved: true
                 value: {}
               - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                 name: "user_mobile"
                 namespace: "personal"
+                version: "v1"
+                displayName: "User mobile number"
                 approved: true
                 value: {}
         createdTime: 1702800000000
