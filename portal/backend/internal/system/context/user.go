@@ -24,27 +24,28 @@ import (
 	"strings"
 )
 
-type userIDKey struct{}
+type principalKey struct{}
 
-// WithUserID stores the effective user ID in request context.
-func WithUserID(ctx context.Context, userID string) context.Context {
-	return context.WithValue(ctx, userIDKey{}, userID)
+// Principal contains identity and authorization data derived from a validated token.
+type Principal struct {
+	UserID string
+	OrgID  string
+	Scopes map[string]struct{}
 }
 
-// UserIDFromContext returns the effective user ID previously resolved by middleware.
-func UserIDFromContext(ctx context.Context) (string, bool) {
+// WithPrincipal stores an authenticated principal in request context.
+func WithPrincipal(ctx context.Context, principal Principal) context.Context {
+	return context.WithValue(ctx, principalKey{}, principal)
+}
+
+// PrincipalFromContext returns the authenticated principal.
+func PrincipalFromContext(ctx context.Context) (Principal, bool) {
 	if ctx == nil {
-		return "", false
+		return Principal{}, false
 	}
-
-	value, ok := ctx.Value(userIDKey{}).(string)
-	if !ok {
-		return "", false
+	principal, ok := ctx.Value(principalKey{}).(Principal)
+	if !ok || strings.TrimSpace(principal.UserID) == "" || strings.TrimSpace(principal.OrgID) == "" {
+		return Principal{}, false
 	}
-	value = strings.TrimSpace(value)
-	if value == "" {
-		return "", false
-	}
-
-	return value, true
+	return principal, true
 }

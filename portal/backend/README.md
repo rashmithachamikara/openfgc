@@ -61,7 +61,7 @@ When credentials are enabled, origins must be explicitly allowlisted (wildcard o
 
 Portal-facing user endpoints:
 
-- `GET /me/consents` -> upstream `GET /api/v1/consents` with forced `userIds=<placeholder>` and `details=true`
+- `GET /me/consents` -> upstream `GET /api/v1/consents` with forced `userIds=<validated subject>` and `details=true`
 - `GET /me/consents/{consentId}` -> one upstream `GET /api/v1/consents/{consentId}?details=true`; the detailed consent snapshot is returned unchanged
 - `POST /me/consents/{consentId}/approve` -> BFF fetches the current consent with `details=true`, validates selected optional elements against its embedded stable IDs and versions, automatically approves mandatory elements, preserves existing approvals, and sends a full upstream consent update with the consent's immutable `groupId` as the trusted `group-id` header
 - `POST /me/consents/{consentId}/revoke` -> upstream `POST /api/v1/consents/{consentId}/revoke`
@@ -74,6 +74,16 @@ Proxy hardening:
 - Correlation ID propagation/generation via `X-Correlation-ID`
 - Request body limit enforcement (`BFF_PROXY__MAX_REQUEST_BYTES`) with `413`
 - Deterministic upstream error mapping: timeout -> `504`, other connectivity failures -> `502`
+
+Authentication endpoints:
+
+- `GET /auth/login` starts confidential-client OIDC login
+- `GET /auth/callback` validates returned tokens through discovery/JWKS and issues split cookies
+- `POST /auth/refresh` reconstructs the split refresh token and returns `204`
+- `POST /auth/logout` clears cookies and returns the configured or discovered logout URL
+
+Set `BFF_AUTH__ENABLED=true` to use OIDC authentication. The client secret is read only from
+`BFF_AUTH__CLIENT_SECRET`; see `.env.example` for the complete configuration contract.
 
 Error contract for proxy-originated failures:
 
@@ -98,7 +108,6 @@ Common error codes:
 - `BFF_PROXY__PLACEHOLDER_MODE_ENABLED=true` is blocked when `BFF_ENV=production`
 - `BFF_PROXY__PLACEHOLDER_USER_ID` must be empty if placeholder mode is disabled
 - `BFF_PROXY__PLACEHOLDER_ORG_ID` must be empty if placeholder mode is disabled
-- `BFF_PROXY__PLACEHOLDER_GROUP_ID` must be empty if placeholder mode is disabled
 
 ## AI Instructions
 
