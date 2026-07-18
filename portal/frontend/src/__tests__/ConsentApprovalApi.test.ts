@@ -17,7 +17,7 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { approveMyConsent } from '../features/consent-registry/api/consentsApi'
+import { approveMyConsent, revokeMyConsent } from '../features/consent-registry/api/consentsApi'
 import { apiRequest } from '../utils/apiClient'
 
 const fetchMock = vi.fn()
@@ -36,7 +36,14 @@ describe('approveMyConsent', () => {
       json: async () => ({}),
     })
 
-    const selectedOptionalElements = [{ purposeName: 'profile_access', elementName: 'last_name' }]
+    const selectedOptionalElements = [
+      {
+        purposeId: 'purpose-profile',
+        purposeVersion: 'v2',
+        elementId: 'element-last-name',
+        elementVersion: 'v3',
+      },
+    ]
 
     await approveMyConsent('consent/123?draft', selectedOptionalElements)
 
@@ -52,6 +59,25 @@ describe('approveMyConsent', () => {
     })
     expect(requestHeaders.get('Accept')).toBe('application/json')
     expect(requestHeaders.get('Content-Type')).toBe('application/json')
+  })
+
+  it('revokes consent with POST', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    })
+
+    await revokeMyConsent('consent-123')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [, requestInit] = fetchMock.mock.calls[0] ?? []
+    expect(requestInit).toMatchObject({
+      method: 'POST',
+      credentials: 'include',
+      body: JSON.stringify({}),
+    })
   })
 })
 

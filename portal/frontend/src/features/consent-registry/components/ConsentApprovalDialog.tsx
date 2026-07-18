@@ -42,8 +42,13 @@ interface ConsentApprovalDialogProps {
   onConfirm: (selectedOptionalElements: ConsentApprovalSelection[]) => void
 }
 
-function toElementKey(purposeName: string, elementName: string): string {
-  return `${purposeName}::${elementName}`
+function toElementKey(
+  purposeId: string,
+  purposeVersion: string,
+  elementId: string,
+  elementVersion: string,
+): string {
+  return `${purposeId}::${purposeVersion}::${elementId}::${elementVersion}`
 }
 
 function ConsentApprovalDialog({
@@ -60,10 +65,14 @@ function ConsentApprovalDialog({
     () =>
       purposes.flatMap((purpose) =>
         purpose.elements
-          .filter((element) => element.isMandatory)
+          .filter((element) => element.mandatory)
           .map((element) => ({
-            purposeName: purpose.name,
-            elementName: element.name,
+            purposeId: purpose.purposeId,
+            purposeVersion: purpose.version,
+            purposeLabel: purpose.displayName ?? purpose.name,
+            elementId: element.elementId,
+            elementVersion: element.version,
+            elementLabel: element.displayName ?? element.name,
             type: element.type,
           })),
       ),
@@ -74,11 +83,15 @@ function ConsentApprovalDialog({
     () =>
       purposes.flatMap((purpose) =>
         purpose.elements
-          .filter((element) => !element.isMandatory)
+          .filter((element) => !element.mandatory)
           .map((element) => ({
-            purposeName: purpose.name,
-            elementName: element.name,
-            isUserApproved: element.isUserApproved,
+            purposeId: purpose.purposeId,
+            purposeVersion: purpose.version,
+            purposeLabel: purpose.displayName ?? purpose.name,
+            elementId: element.elementId,
+            elementVersion: element.version,
+            elementLabel: element.displayName ?? element.name,
+            approved: element.approved,
             type: element.type,
           })),
       ),
@@ -88,8 +101,15 @@ function ConsentApprovalDialog({
   const initialOptionalKeys = useMemo(
     () =>
       optionalElements
-        .filter((element) => element.isUserApproved)
-        .map((element) => toElementKey(element.purposeName, element.elementName)),
+        .filter((element) => element.approved)
+        .map((element) =>
+          toElementKey(
+            element.purposeId,
+            element.purposeVersion,
+            element.elementId,
+            element.elementVersion,
+          ),
+        ),
     [optionalElements],
   )
 
@@ -157,7 +177,12 @@ function ConsentApprovalDialog({
               <Stack spacing={1.25}>
                 {mandatoryElements.map((element) => (
                   <Stack
-                    key={toElementKey(element.purposeName, element.elementName)}
+                    key={toElementKey(
+                      element.purposeId,
+                      element.purposeVersion,
+                      element.elementId,
+                      element.elementVersion,
+                    )}
                     direction="row"
                     alignItems="center"
                     justifyContent="space-between"
@@ -172,10 +197,10 @@ function ConsentApprovalDialog({
                   >
                     <Box>
                       <Typography variant="body2" fontWeight={600}>
-                        {element.elementName}
+                        {element.elementLabel}
                       </Typography>
                       <Typography variant="caption" color="text.secondary">
-                        {element.purposeName}
+                        {element.purposeLabel}
                       </Typography>
                     </Box>
                     <Chip
@@ -218,7 +243,12 @@ function ConsentApprovalDialog({
                   </Typography>
                   <Stack spacing={1.25}>
                     {optionalElements.map((element) => {
-                      const key = toElementKey(element.purposeName, element.elementName)
+                      const key = toElementKey(
+                        element.purposeId,
+                        element.purposeVersion,
+                        element.elementId,
+                        element.elementVersion,
+                      )
                       const checked = selectedOptionalKeys.includes(key)
 
                       return (
@@ -238,10 +268,10 @@ function ConsentApprovalDialog({
                         >
                           <Box>
                             <Typography variant="body2" fontWeight={600}>
-                              {element.elementName}
+                              {element.elementLabel}
                             </Typography>
                             <Typography variant="caption" color="text.secondary">
-                              {element.purposeName}
+                              {element.purposeLabel}
                             </Typography>
                           </Box>
                           <Switch
@@ -259,10 +289,10 @@ function ConsentApprovalDialog({
                               input: {
                                 'aria-label': t(
                                   'consentRegistry.modals.approval.toggleWithDetails',
-                                  'Toggle permission for {{elementName}} in {{purposeName}}',
+                                  'Toggle permission for {{elementLabel}} in {{purposeLabel}}',
                                   {
-                                    elementName: element.elementName,
-                                    purposeName: element.purposeName,
+                                    elementLabel: element.elementLabel,
+                                    purposeLabel: element.purposeLabel,
                                   },
                                 ),
                               },
@@ -302,12 +332,19 @@ function ConsentApprovalDialog({
             const selectedOptionalElements: ConsentApprovalSelection[] = optionalElements
               .filter((element) =>
                 selectedOptionalKeys.includes(
-                  toElementKey(element.purposeName, element.elementName),
+                  toElementKey(
+                    element.purposeId,
+                    element.purposeVersion,
+                    element.elementId,
+                    element.elementVersion,
+                  ),
                 ),
               )
               .map((element) => ({
-                purposeName: element.purposeName,
-                elementName: element.elementName,
+                purposeId: element.purposeId,
+                purposeVersion: element.purposeVersion,
+                elementId: element.elementId,
+                elementVersion: element.elementVersion,
               }))
 
             onConfirm(selectedOptionalElements)

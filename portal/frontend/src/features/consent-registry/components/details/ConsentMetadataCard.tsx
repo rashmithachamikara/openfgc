@@ -90,7 +90,7 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
   const hasFrequency = detail.frequency != null && detail.frequency !== 0
   const hasDuration =
     detail.dataAccessValidityDuration != null && detail.dataAccessValidityDuration !== 0
-  const hasValidityTime = detail.validityTime != null && detail.validityTime !== 0
+  const hasExpirationTime = detail.expirationTime != null && detail.expirationTime !== 0
   const durationDisplay = getDurationDisplayParts(detail.dataAccessValidityDuration)
   const durationUnitLabel = durationDisplay
     ? t(getDurationUnitLabelKey(durationDisplay.unit, durationDisplay.value === 1))
@@ -166,10 +166,10 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
             <Typography variant="body2" fontWeight={500}>
               <Box
                 component="span"
-                sx={{ color: hasValidityTime ? 'text.primary' : 'text.disabled' }}
+                sx={{ color: hasExpirationTime ? 'text.primary' : 'text.disabled' }}
               >
-                {hasValidityTime
-                  ? formatEpochTimestamp(detail.validityTime)
+                {hasExpirationTime
+                  ? formatEpochTimestamp(detail.expirationTime)
                   : t('consentRegistry.table.notApplicable', 'Not applicable')}
               </Box>
             </Typography>
@@ -181,10 +181,10 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
               fontWeight={700}
               sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
             >
-              {t('consentRegistry.details.clientId', 'Client ID')}
+              {t('consentRegistry.details.groupId', 'Group ID')}
             </Typography>
             <Typography variant="body2" fontWeight={500}>
-              {detail.clientId}
+              {detail.groupId}
             </Typography>
           </Box>
           <Box>

@@ -91,12 +91,12 @@ function toConsentRow(consent: ConsentDetailAPI): ConsentRecord {
 
   return {
     id: consent.id,
-    clientName: consent.clientId,
+    groupId: consent.groupId,
     type: consent.type,
     status: normalizedStatus,
-    purposes: consent.purposes.map((purpose) => purpose.name),
+    purposes: consent.purposes.map((purpose) => purpose.displayName ?? purpose.name),
     updatedAt: new Date(toEpochMilliseconds(consent.updatedTime) ?? 0).toISOString(),
-    expirationTime: consent.validityTime ?? 0,
+    expirationTime: consent.expirationTime ?? 0,
     canRevoke: isConsentRevokableStatus(normalizedStatus),
     canApprove: isConsentApprovableStatus(normalizedStatus),
   }

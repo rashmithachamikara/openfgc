@@ -70,11 +70,38 @@ describe('consent registry dialogs', () => {
         loading={false}
         purposes={[
           {
+            purposeId: 'purpose-accounts',
             name: 'Accounts',
+            version: 'v2',
+            displayName: 'Accounts',
             elements: [
-              { name: 'Account Number', isUserApproved: true, isMandatory: true },
-              { name: 'Transaction History', isUserApproved: true, isMandatory: false },
-              { name: 'Marketing Messages', isUserApproved: false, isMandatory: false },
+              {
+                elementId: 'element-account-number',
+                name: 'account_number',
+                namespace: 'accounts',
+                version: 'v1',
+                displayName: 'Account Number',
+                approved: true,
+                mandatory: true,
+              },
+              {
+                elementId: 'element-transactions',
+                name: 'transaction_history',
+                namespace: 'accounts',
+                version: 'v3',
+                displayName: 'Transaction History',
+                approved: true,
+                mandatory: false,
+              },
+              {
+                elementId: 'element-marketing',
+                name: 'marketing_messages',
+                namespace: 'accounts',
+                version: 'v2',
+                displayName: 'Marketing Messages',
+                approved: false,
+                mandatory: false,
+              },
             ],
           },
         ]}
@@ -89,8 +116,18 @@ describe('consent registry dialogs', () => {
     fireEvent.click(screen.getByRole('button', { name: /approve & continue/i }))
 
     expect(onConfirm).toHaveBeenCalledWith([
-      { purposeName: 'Accounts', elementName: 'Transaction History' },
-      { purposeName: 'Accounts', elementName: 'Marketing Messages' },
+      {
+        purposeId: 'purpose-accounts',
+        purposeVersion: 'v2',
+        elementId: 'element-transactions',
+        elementVersion: 'v3',
+      },
+      {
+        purposeId: 'purpose-accounts',
+        purposeVersion: 'v2',
+        elementId: 'element-marketing',
+        elementVersion: 'v2',
+      },
     ])
   })
 

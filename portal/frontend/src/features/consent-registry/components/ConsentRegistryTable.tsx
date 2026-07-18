@@ -135,19 +135,19 @@ function ConsentRegistryTable({
     const groupedMap = new Map<string, ConsentRecord[]>()
 
     sortedRows.forEach((row) => {
-      const existingRows = groupedMap.get(row.clientName)
+      const existingRows = groupedMap.get(row.groupId)
 
       if (existingRows) {
-        groupedMap.set(row.clientName, [...existingRows, row])
+        groupedMap.set(row.groupId, [...existingRows, row])
         return
       }
 
-      groupedMap.set(row.clientName, [row])
+      groupedMap.set(row.groupId, [row])
     })
 
-    return Array.from(groupedMap.entries()).map(([clientName, clientRows]) => ({
-      clientName,
-      clientRows,
+    return Array.from(groupedMap.entries()).map(([groupId, groupRows]) => ({
+      groupId,
+      groupRows,
     }))
   }, [sortedRows])
 
@@ -295,7 +295,7 @@ function ConsentRegistryTable({
                   </ListingTable.Row>
                 ))
               : groupedRows.map((group) => (
-                  <Fragment key={group.clientName}>
+                  <Fragment key={group.groupId}>
                     <ListingTable.Row
                       variant="table"
                       sx={{
@@ -303,11 +303,11 @@ function ConsentRegistryTable({
                       }}
                     >
                       <ListingTable.Cell colSpan={6} sx={{ fontWeight: 700 }}>
-                        {t('consentRegistry.table.clientLabel', { client: group.clientName })}
+                        {t('consentRegistry.table.groupLabel', { groupId: group.groupId })}
                       </ListingTable.Cell>
                     </ListingTable.Row>
 
-                    {group.clientRows.map((row) => (
+                    {group.groupRows.map((row) => (
                       <ListingTable.Row
                         key={row.id}
                         hover

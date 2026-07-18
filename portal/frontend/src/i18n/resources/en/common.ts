@@ -39,7 +39,6 @@ const commonEn = {
     title: 'All Consents',
     details: {
       title: 'Consent Details',
-      clientName: 'Client Name',
       consentId: 'Consent ID',
       status: 'Status',
       type: 'Consent Type',
@@ -60,7 +59,7 @@ const commonEn = {
       created: 'Created',
       updated: 'Updated',
       validUntil: 'Valid Until',
-      clientId: 'Client ID',
+      groupId: 'Group ID',
       recurring: 'Recurring',
       back: 'Back to Registry',
       notFound: 'Consent record not found',
@@ -119,7 +118,7 @@ const commonEn = {
         optional: 'Optional Elements',
         required: 'Required',
         toggle: 'Toggle permission',
-        toggleWithDetails: 'Toggle permission for {{elementName}} in {{purposeName}}',
+        toggleWithDetails: 'Toggle permission for {{elementLabel}} in {{purposeLabel}}',
         loading: 'Loading consent details...',
         noMandatory: 'No mandatory requirements for this consent.',
         confirm: 'Approve & Continue',
@@ -162,7 +161,7 @@ const commonEn = {
     },
     table: {
       tableAriaLabel: 'Consent registry table',
-      clientLabel: 'Client: {{client}}',
+      groupLabel: 'Group ID: {{groupId}}',
       notApplicable: 'Not applicable',
       purposes: {
         more: '+{{count}} more',
