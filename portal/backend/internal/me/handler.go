@@ -154,7 +154,7 @@ func (h *Handler) ConsentApprove(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	payload, trustedClientID, err := h.svc.BuildApprovalUpdatePayload(r, baseResp.Body, selections, userID)
+	payload, trustedGroupID, err := h.svc.BuildApprovalUpdatePayload(r, baseResp.Body, selections, userID)
 	if err != nil {
 		if errors.Is(err, proxy.ErrUpstreamTimeout) || errors.Is(err, proxy.ErrUpstreamUnavailable) || errors.Is(err, proxy.ErrUpstreamResponseTooLarge) {
 			writeProxyError(w, err)
@@ -163,14 +163,14 @@ func (h *Handler) ConsentApprove(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
-	if err := h.svc.ForwardWithClientID(w, r, http.MethodPut, "/api/v1/consents/"+url.PathEscape(consentID), nil, payload, trustedClientID); err != nil {
+	if err := h.svc.ForwardWithGroupID(w, r, http.MethodPut, "/api/v1/consents/"+url.PathEscape(consentID), nil, payload, trustedGroupID); err != nil {
 		writeProxyError(w, err)
 	}
 }
 
-// ConsentRevoke handles PUT /me/consents/{consentId}/revoke.
+// ConsentRevoke handles POST /me/consents/{consentId}/revoke.
 func (h *Handler) ConsentRevoke(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPut {
+	if r.Method != http.MethodPost {
 		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
 		return
 	}
@@ -198,7 +198,7 @@ func (h *Handler) ConsentRevoke(w http.ResponseWriter, r *http.Request) {
 		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
 		return
 	}
-	if err := h.svc.Forward(w, r, http.MethodPut, "/api/v1/consents/"+url.PathEscape(consentID)+"/revoke", nil, payload); err != nil {
+	if err := h.svc.Forward(w, r, http.MethodPost, "/api/v1/consents/"+url.PathEscape(consentID)+"/revoke", nil, payload); err != nil {
 		writeProxyError(w, err)
 	}
 }

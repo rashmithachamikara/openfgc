@@ -1,11 +1,11 @@
 openapi: 3.0.3
 info:
-  title: OpenFGC Portal BFF API
-  version: 0.2.0
+  title: OpenFGC Portal Backend API
+  version: 0.3.0
   description: >-
-    Stateless portal BFF endpoints, including health checks, portal-facing
-    user routes, and explicit passthrough routes to consent-server. For proxied
-    endpoints in this spec, response payload shape is inherited from the
+    Stateless portal backend endpoints, including health checks, portal-facing
+    user routes, and explicit passthrough routes to Consent Management API v0.3.0.
+    For proxied endpoints in this spec, response payload shape is inherited from the
     consent-management API.
 servers:
   - url: http://localhost:8080
@@ -17,354 +17,450 @@ paths:
   /health:
     get:
       tags: [Health]
-      summary: Liveness check
+      summary: Service health
       responses:
-        '200':
-          description: Service healthy
+        '200': { description: Service healthy }
   /health/liveness:
     get:
       tags: [Health]
       summary: Liveness check
       responses:
-        '200':
-          description: Service healthy
+        '200': { description: Service live }
   /health/readiness:
     get:
       tags: [Health]
       summary: Readiness check
       responses:
-        '200':
-          description: Service ready
+        '200': { description: Service ready }
 
   /me/consents:
     get:
       tags: [User]
-      summary: List current user consents
+      summary: List current-user consents
       description: >-
-        Proxies to consent-server GET /api/v1/consents and always overwrites
-        userIds with trusted identity context. Response payload shape is
-        inherited from consent-management API.
+        Proxies to `GET /api/v1/consents`, preserving supported search filters
+        while replacing any browser-supplied `userIds` with the trusted current
+        user. Response payload shape is inherited from consent-management API.
       parameters:
         - in: query
+          name: consentStatuses
+          description: Comma-separated consent statuses.
+          schema: { type: string }
+        - in: query
+          name: consentTypes
+          description: Comma-separated consent types.
+          schema: { type: string }
+        - in: query
+          name: fromTime
+          description: Inclusive lower bound for updated time, in Unix milliseconds.
+          schema: { type: integer, format: int64 }
+        - in: query
+          name: toTime
+          description: Inclusive upper bound for updated time, in Unix milliseconds.
+          schema: { type: integer, format: int64 }
+        - in: query
           name: limit
-          schema:
-            type: integer
+          description: Maximum number of consents to return.
+          schema: { type: integer }
         - in: query
           name: offset
-          schema:
-            type: integer
+          description: Zero-based result offset.
+          schema: { type: integer }
       responses:
         '200':
-          description: Upstream response
+          description: Consent search response
           content:
             application/json:
-              schema:
-                type: object
-        '502':
-          $ref: '#/components/responses/ProxyError'
-        '503':
-          $ref: '#/components/responses/ProxyError'
-
+              schema: { $ref: '#/components/schemas/ConsentSearchResponse' }
+        '502': { $ref: '#/components/responses/ProxyError' }
+        '503': { $ref: '#/components/responses/ProxyError' }
   /me/consents/{consentId}:
     get:
       tags: [User]
-      summary: Get consent by id for current user flow
+      summary: Get enriched current-user consent details
       description: >-
-        Aggregates consent details from consent-server by combining
-        GET /api/v1/consents/{consentId} with consent purpose and consent
-        element metadata lookups. Response includes purpose descriptions and
-        enriched element fields such as isMandatory, type, description, and
-        properties.
+        Fetches the consent from `GET /api/v1/consents/{consentId}` and enriches
+        its purposes and elements using their exact bound version endpoints.
+        Purpose descriptions/properties and element type, description, schema,
+        and properties are added without falling back to newer definitions.
+        Status audit history is not exposed by this `/me` route.
       parameters:
-        - in: path
-          name: consentId
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/ConsentID'
       responses:
         '200':
-          description: Aggregated consent detail response
+          description: Enriched consent
           content:
             application/json:
-              schema:
-                $ref: '#/components/schemas/MeConsentDetailAggregatedResponse'
-        '404':
-          $ref: '#/components/responses/ProxyError'
-        '502':
-          $ref: '#/components/responses/ProxyError'
-        '503':
-          $ref: '#/components/responses/ProxyError'
-
+              schema: { $ref: '#/components/schemas/ConsentDetail' }
+        '400': { $ref: '#/components/responses/ProxyError' }
+        '404': { $ref: '#/components/responses/ProxyError' }
+        '502': { $ref: '#/components/responses/ProxyError' }
+        '503': { $ref: '#/components/responses/ProxyError' }
   /me/consents/{consentId}/approve:
     post:
       tags: [User]
-      summary: Approve consent for current user flow
+      summary: Approve selected optional elements
       description: >-
-        Accepts the selected optional purpose/element approvals, fetches the
-        current consent, builds a full consent update payload, and forwards it
-        as PUT /api/v1/consents/{consentId}. The upstream TPP-client-id header
-        is derived from the fetched consent's clientId, mandatory elements are
-        always set to approved, and an existing authorization is updated to
-        APPROVED for the trusted current user identity (falls back to creating
-        one if none exist).
+        Fetches the current consent and exact bound metadata, validates selected
+        optional elements by purpose/element ID and version, and builds a full
+        `PUT /api/v1/consents/{consentId}` update. Mandatory and selected
+        elements are approved, existing approvals and consent fields are
+        preserved, and the trusted user's authorization is set to `APPROVED`.
+        The consent's immutable `groupId` is sent as the trusted upstream
+        `group-id` header, and the update response is returned unchanged.
       parameters:
-        - in: path
-          name: consentId
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/ConsentID'
       requestBody:
         required: false
+        description: |
+          Optional elements to approve. An omitted or empty array still causes
+          mandatory elements to be approved and updates the trusted user's
+          authorization.
         content:
           application/json:
             schema:
               type: array
-              items:
-                type: object
-                required: [purposeName, elementName]
-                properties:
-                  purposeName:
-                    type: string
-                  elementName:
-                    type: string
+              items: { $ref: '#/components/schemas/ConsentApprovalSelection' }
       responses:
         '200':
-          description: Upstream response
+          description: Consent server update response, returned without additional enrichment.
           content:
             application/json:
-              schema:
-                type: object
-        '400':
-          $ref: '#/components/responses/ProxyError'
-        '404':
-          $ref: '#/components/responses/ProxyError'
-        '413':
-          $ref: '#/components/responses/ProxyError'
-        '502':
-          $ref: '#/components/responses/ProxyError'
-        '503':
-          $ref: '#/components/responses/ProxyError'
-
+              schema: { $ref: '#/components/schemas/ConsentDetail' }
+        '400': { $ref: '#/components/responses/ProxyError' }
+        '404': { $ref: '#/components/responses/ProxyError' }
+        '413': { $ref: '#/components/responses/ProxyError' }
+        '502': { $ref: '#/components/responses/ProxyError' }
+        '503': { $ref: '#/components/responses/ProxyError' }
   /me/consents/{consentId}/revoke:
-    put:
+    post:
       tags: [User]
-      summary: Revoke consent for current user flow
+      summary: Revoke current-user consent
       description: >-
-        Response payload shape is inherited from consent-management API.
+        Injects the trusted current user as `actionBy`, preserves an optional
+        `revocationReason`, and forwards the request to
+        `POST /api/v1/consents/{consentId}/revoke`. The upstream response is
+        returned unchanged.
       parameters:
-        - in: path
-          name: consentId
-          required: true
-          schema:
-            type: string
+        - $ref: '#/components/parameters/ConsentID'
       requestBody:
         required: false
+        description: Optional revocation details. `actionBy` is controlled by the BFF.
         content:
           application/json:
             schema:
               type: object
+              properties:
+                revocationReason: { type: string }
       responses:
         '200':
-          description: Upstream response
+          description: Consent server revocation response, returned unchanged.
           content:
             application/json:
               schema:
                 type: object
-        '400':
-          $ref: '#/components/responses/ProxyError'
-        '404':
-          $ref: '#/components/responses/ProxyError'
-        '413':
-          $ref: '#/components/responses/ProxyError'
-        '502':
-          $ref: '#/components/responses/ProxyError'
-        '503':
-          $ref: '#/components/responses/ProxyError'
+        '400': { $ref: '#/components/responses/ProxyError' }
+        '404': { $ref: '#/components/responses/ProxyError' }
+        '413': { $ref: '#/components/responses/ProxyError' }
+        '502': { $ref: '#/components/responses/ProxyError' }
+        '503': { $ref: '#/components/responses/ProxyError' }
 
   /api/consents:
     get:
       tags: [Passthrough]
-      summary: Passthrough search consents
-      description: >-
-        Response payload shape is inherited from consent-management API.
+      summary: Search consents
       responses:
-        '200':
-          description: Upstream response
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/ProxyError'
-        '405':
-          $ref: '#/components/responses/ProxyError'
-        '502':
-          $ref: '#/components/responses/ProxyError'
-        '503':
-          $ref: '#/components/responses/ProxyError'
+        '200': { description: Upstream response }
     post:
       tags: [Passthrough]
-      summary: Passthrough create consent
-      description: >-
-        Response payload shape is inherited from consent-management API.
-      requestBody:
-        required: false
-        content:
-          application/json:
-            schema:
-              type: object
+      summary: Create consent
       responses:
-        '200':
-          description: Upstream response
-          content:
-            application/json:
-              schema:
-                type: object
-        '404':
-          $ref: '#/components/responses/ProxyError'
-        '405':
-          $ref: '#/components/responses/ProxyError'
-        '413':
-          $ref: '#/components/responses/ProxyError'
-        '502':
-          $ref: '#/components/responses/ProxyError'
-        '503':
-          $ref: '#/components/responses/ProxyError'
+        '200': { description: Upstream response }
+  /api/consents/attributes:
+    get:
+      tags: [Passthrough]
+      summary: Search consent attributes
+      responses:
+        '200': { description: Upstream response }
+  /api/consents/validate:
+    post:
+      tags: [Passthrough]
+      summary: Validate consent
+      responses:
+        '200': { description: Upstream response }
+  /api/consents/{consentId}:
+    get:
+      tags: [Passthrough]
+      summary: Get consent
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+      responses:
+        '200': { description: Upstream response }
+    put:
+      tags: [Passthrough]
+      summary: Update consent
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+      responses:
+        '200': { description: Upstream response }
+  /api/consents/{consentId}/history:
+    get:
+      tags: [Passthrough]
+      summary: Get consent history
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+      responses:
+        '200': { description: Upstream response }
+  /api/consents/{consentId}/revoke:
+    post:
+      tags: [Passthrough]
+      summary: Revoke consent
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+      responses:
+        '200': { description: Upstream response }
+  /api/consents/{consentId}/authorizations:
+    get:
+      tags: [Passthrough]
+      summary: List consent authorizations
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+      responses:
+        '200': { description: Upstream response }
+    post:
+      tags: [Passthrough]
+      summary: Create consent authorization
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+      responses:
+        '200': { description: Upstream response }
+  /api/consents/{consentId}/authorizations/{authorizationId}:
+    get:
+      tags: [Passthrough]
+      summary: Get consent authorization
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+        - { in: path, name: authorizationId, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Upstream response }
+    put:
+      tags: [Passthrough]
+      summary: Update consent authorization
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+        - { in: path, name: authorizationId, required: true, schema: { type: string } }
+      responses:
+        '200': { description: Upstream response }
+
+  /api/consent-elements:
+    get:
+      tags: [Passthrough]
+      summary: List consent elements
+      responses:
+        '200': { description: Upstream response }
+    post:
+      tags: [Passthrough]
+      summary: Create consent elements
+      responses:
+        '200': { description: Upstream response }
+  /api/consent-elements/{elementId}:
+    get:
+      tags: [Passthrough]
+      summary: Get latest consent element
+      parameters:
+        - $ref: '#/components/parameters/ElementID'
+      responses:
+        '200': { description: Upstream response }
+  /api/consent-elements/{elementId}/versions:
+    get:
+      tags: [Passthrough]
+      summary: List consent element versions
+      parameters:
+        - $ref: '#/components/parameters/ElementID'
+      responses:
+        '200': { description: Upstream response }
+    post:
+      tags: [Passthrough]
+      summary: Create consent element version
+      parameters:
+        - $ref: '#/components/parameters/ElementID'
+      responses:
+        '200': { description: Upstream response }
+  /api/consent-elements/{elementId}/versions/{version}:
+    get:
+      tags: [Passthrough]
+      summary: Get consent element version
+      parameters:
+        - $ref: '#/components/parameters/ElementID'
+        - $ref: '#/components/parameters/Version'
+      responses:
+        '200': { description: Upstream response }
+    delete:
+      tags: [Passthrough]
+      summary: Delete consent element version
+      parameters:
+        - $ref: '#/components/parameters/ElementID'
+        - $ref: '#/components/parameters/Version'
+      responses:
+        '204': { description: Version deleted }
+
+  /api/consent-purposes:
+    get:
+      tags: [Passthrough]
+      summary: List consent purposes
+      responses:
+        '200': { description: Upstream response }
+    post:
+      tags: [Passthrough]
+      summary: Create consent purpose
+      responses:
+        '200': { description: Upstream response }
+  /api/consent-purposes/{purposeId}:
+    get:
+      tags: [Passthrough]
+      summary: Get latest consent purpose
+      parameters:
+        - $ref: '#/components/parameters/PurposeID'
+      responses:
+        '200': { description: Upstream response }
+  /api/consent-purposes/{purposeId}/versions:
+    get:
+      tags: [Passthrough]
+      summary: List consent purpose versions
+      parameters:
+        - $ref: '#/components/parameters/PurposeID'
+      responses:
+        '200': { description: Upstream response }
+    post:
+      tags: [Passthrough]
+      summary: Create consent purpose version
+      parameters:
+        - $ref: '#/components/parameters/PurposeID'
+      responses:
+        '200': { description: Upstream response }
+  /api/consent-purposes/{purposeId}/versions/{version}:
+    get:
+      tags: [Passthrough]
+      summary: Get consent purpose version
+      parameters:
+        - $ref: '#/components/parameters/PurposeID'
+        - $ref: '#/components/parameters/Version'
+      responses:
+        '200': { description: Upstream response }
+    delete:
+      tags: [Passthrough]
+      summary: Delete consent purpose version
+      parameters:
+        - $ref: '#/components/parameters/PurposeID'
+        - $ref: '#/components/parameters/Version'
+      responses:
+        '204': { description: Version deleted }
 
 components:
+  parameters:
+    ConsentID: { in: path, name: consentId, required: true, schema: { type: string } }
+    PurposeID: { in: path, name: purposeId, required: true, schema: { type: string } }
+    ElementID: { in: path, name: elementId, required: true, schema: { type: string } }
+    Version: { in: path, name: version, required: true, schema: { type: string, pattern: '^v[1-9][0-9]*$' } }
   schemas:
-    MeConsentDetailAggregatedResponse:
+    ConsentSearchResponse:
       type: object
-      required:
-        - id
-        - clientId
-        - type
-        - status
-        - createdTime
-        - updatedTime
-        - purposes
+      required: [data, metadata]
       properties:
-        id:
-          type: string
-        clientId:
-          type: string
-        type:
-          type: string
-        status:
-          type: string
-        createdTime:
-          type: integer
-          format: int64
-        updatedTime:
-          type: integer
-          format: int64
-        frequency:
-          type: integer
-        validityTime:
-          type: integer
-          format: int64
-        recurringIndicator:
-          type: boolean
-        dataAccessValidityDuration:
-          type: integer
-          format: int64
+        data:
+          type: array
+          items: { $ref: '#/components/schemas/ConsentDetail' }
+        metadata:
+          type: object
+          required: [total, offset, count, limit]
+          properties:
+            total: { type: integer }
+            offset: { type: integer }
+            count: { type: integer }
+            limit: { type: integer }
+    ConsentDetail:
+      type: object
+      required: [id, groupId, type, status, createdTime, updatedTime, purposes]
+      properties:
+        id: { type: string }
+        groupId: { type: string }
+        type: { type: string }
+        status: { type: string }
+        createdTime: { type: integer, format: int64 }
+        updatedTime: { type: integer, format: int64 }
+        expirationTime: { type: integer, format: int64 }
+        frequency: { type: integer }
+        recurringIndicator: { type: boolean }
+        dataAccessValidityDuration: { type: integer, format: int64 }
         attributes:
           type: object
-          additionalProperties:
-            type: string
+          additionalProperties: { type: string }
         authorizations:
           type: array
-          items:
-            $ref: '#/components/schemas/ConsentAuthorizationItem'
+          items: { $ref: '#/components/schemas/ConsentAuthorization' }
         purposes:
           type: array
-          items:
-            $ref: '#/components/schemas/MeConsentPurposeItem'
-
-    MeConsentPurposeItem:
+          items: { $ref: '#/components/schemas/ConsentPurpose' }
+    ConsentPurpose:
       type: object
-      required:
-        - name
-        - description
-        - elements
+      required: [purposeId, name, version, elements]
       properties:
-        name:
-          type: string
-        description:
-          type: string
-        elements:
-          type: array
-          items:
-            $ref: '#/components/schemas/MeConsentElementItem'
-
-    MeConsentElementItem:
-      type: object
-      required:
-        - name
-        - isUserApproved
-        - isMandatory
-      properties:
-        name:
-          type: string
-        isUserApproved:
-          type: boolean
-        isMandatory:
-          type: boolean
-        type:
-          type: string
-        description:
-          type: string
+        purposeId: { type: string }
+        name: { type: string }
+        version: { type: string }
+        displayName: { type: string }
+        description: { type: string }
         properties:
           type: object
-          additionalProperties:
-            type: string
-        value:
-          oneOf:
-            - type: string
-            - type: object
-            - type: array
-              items: {}
-          nullable: true
-
-    ConsentAuthorizationItem:
+          additionalProperties: { type: string }
+        elements:
+          type: array
+          items: { $ref: '#/components/schemas/ConsentElement' }
+    ConsentElement:
       type: object
-      required:
-        - id
-        - type
-        - status
-        - updatedTime
+      required: [elementId, name, namespace, version, approved, mandatory]
       properties:
-        id:
-          type: string
-        userId:
-          type: string
-        type:
-          type: string
-        status:
-          type: string
-        updatedTime:
-          type: integer
-          format: int64
-        resources:
+        elementId: { type: string }
+        name: { type: string }
+        namespace: { type: string }
+        version: { type: string }
+        displayName: { type: string }
+        approved: { type: boolean }
+        mandatory: { type: boolean }
+        type: { type: string }
+        description: { type: string }
+        schema: { type: string }
+        properties:
           type: object
-          nullable: true
-
+          additionalProperties: { type: string }
+        value: {}
+    ConsentApprovalSelection:
+      type: object
+      required: [purposeId, purposeVersion, elementId, elementVersion]
+      properties:
+        purposeId: { type: string }
+        purposeVersion: { type: string }
+        elementId: { type: string }
+        elementVersion: { type: string }
+    ConsentAuthorization:
+      type: object
+      required: [id, type, status, updatedTime]
+      properties:
+        id: { type: string }
+        userId: { type: string }
+        type: { type: string }
+        status: { type: string }
+        updatedTime: { type: integer, format: int64 }
+        resources: {}
     ProxyError:
       type: object
-      required:
-        - code
-        - message
+      required: [code, message]
       properties:
-        code:
-          type: string
-          example: UPSTREAM_UNAVAILABLE
-        message:
-          type: string
-          example: upstream unavailable
+        code: { type: string, example: UPSTREAM_UNAVAILABLE }
+        message: { type: string, example: upstream unavailable }
   responses:
     ProxyError:
-      description: Proxy-layer error response
+      description: BFF or upstream proxy error
       content:
         application/json:
-          schema:
-            $ref: '#/components/schemas/ProxyError'
+          schema: { $ref: '#/components/schemas/ProxyError' }

@@ -41,7 +41,7 @@ func Initialize(mux *http.ServeMux, cfg config.Config) error {
 	mux.Handle("GET /me/consents", middleware.UserID(http.HandlerFunc(handler.Consents), userIDOptions))
 	mux.Handle("GET /me/consents/{consentId}", middleware.UserID(http.HandlerFunc(handler.ConsentByID), userIDOptions))
 	mux.Handle("POST /me/consents/{consentId}/approve", middleware.UserID(http.HandlerFunc(handler.ConsentApprove), userIDOptions))
-	mux.Handle("PUT /me/consents/{consentId}/revoke", middleware.UserID(http.HandlerFunc(handler.ConsentRevoke), userIDOptions))
+	mux.Handle("POST /me/consents/{consentId}/revoke", middleware.UserID(http.HandlerFunc(handler.ConsentRevoke), userIDOptions))
 
 	return nil
 }

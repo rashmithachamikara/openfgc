@@ -67,14 +67,18 @@ var allowedAPIRoutes = []routeSpec{
 	{pathParts: []string{"consents", "attributes"}, methods: toMethodSet("GET")},
 	{pathParts: []string{"consents", "validate"}, methods: toMethodSet("POST")},
 	{pathParts: []string{"consents", "*"}, methods: toMethodSet("GET", "PUT")},
-	{pathParts: []string{"consents", "*", "revoke"}, methods: toMethodSet("PUT")},
+	{pathParts: []string{"consents", "*", "history"}, methods: toMethodSet("GET")},
+	{pathParts: []string{"consents", "*", "revoke"}, methods: toMethodSet("POST")},
 	{pathParts: []string{"consents", "*", "authorizations"}, methods: toMethodSet("GET", "POST")},
 	{pathParts: []string{"consents", "*", "authorizations", "*"}, methods: toMethodSet("GET", "PUT")},
 	{pathParts: []string{"consent-elements"}, methods: toMethodSet("GET", "POST")},
-	{pathParts: []string{"consent-elements", "validate"}, methods: toMethodSet("POST")},
-	{pathParts: []string{"consent-elements", "*"}, methods: toMethodSet("GET", "PUT", "DELETE")},
+	{pathParts: []string{"consent-elements", "*"}, methods: toMethodSet("GET")},
+	{pathParts: []string{"consent-elements", "*", "versions"}, methods: toMethodSet("GET", "POST")},
+	{pathParts: []string{"consent-elements", "*", "versions", "*"}, methods: toMethodSet("GET", "DELETE")},
 	{pathParts: []string{"consent-purposes"}, methods: toMethodSet("GET", "POST")},
-	{pathParts: []string{"consent-purposes", "*"}, methods: toMethodSet("GET", "PUT", "DELETE")},
+	{pathParts: []string{"consent-purposes", "*"}, methods: toMethodSet("GET")},
+	{pathParts: []string{"consent-purposes", "*", "versions"}, methods: toMethodSet("GET", "POST")},
+	{pathParts: []string{"consent-purposes", "*", "versions", "*"}, methods: toMethodSet("GET", "DELETE")},
 }
 
 // Service proxies requests to consent-server with route-specific transforms.
@@ -158,9 +162,9 @@ func (s *Service) Forward(w http.ResponseWriter, r *http.Request, upstreamMethod
 	return err
 }
 
-// ForwardWithClientID sends a transformed request to upstream using the provided trusted client id.
-func (s *Service) ForwardWithClientID(w http.ResponseWriter, r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte, trustedClientID string) error {
-	resp, err := s.ForwardRawWithClientID(r, upstreamMethod, upstreamPath, queryMutator, body, trustedClientID)
+// ForwardWithGroupID sends a transformed request to upstream using the provided trusted group id.
+func (s *Service) ForwardWithGroupID(w http.ResponseWriter, r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte, trustedGroupID string) error {
+	resp, err := s.ForwardRawWithGroupID(r, upstreamMethod, upstreamPath, queryMutator, body, trustedGroupID)
 	if err != nil {
 		return err
 	}
@@ -176,11 +180,11 @@ func (s *Service) ForwardWithClientID(w http.ResponseWriter, r *http.Request, up
 
 // ForwardRaw sends a transformed request to upstream and returns response status, headers, and body.
 func (s *Service) ForwardRaw(r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte) (*UpstreamResponse, error) {
-	return s.ForwardRawWithClientID(r, upstreamMethod, upstreamPath, queryMutator, body, "")
+	return s.ForwardRawWithGroupID(r, upstreamMethod, upstreamPath, queryMutator, body, "")
 }
 
-// ForwardRawWithClientID sends a transformed request to upstream using the provided trusted client id.
-func (s *Service) ForwardRawWithClientID(r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte, trustedClientID string) (*UpstreamResponse, error) {
+// ForwardRawWithGroupID sends a transformed request to upstream using the provided trusted group id.
+func (s *Service) ForwardRawWithGroupID(r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte, trustedGroupID string) (*UpstreamResponse, error) {
 	ctx, cancel := context.WithTimeout(r.Context(), s.cfg.OpenFGCAPITimeout)
 	defer cancel()
 
@@ -198,7 +202,7 @@ func (s *Service) ForwardRawWithClientID(r *http.Request, upstreamMethod, upstre
 	}
 
 	s.copyHeaders(r.Header, upstreamReq.Header)
-	s.setTrustedHeaders(r, upstreamReq, trustedClientID)
+	s.setTrustedHeaders(r, upstreamReq, trustedGroupID)
 
 	resp, err := s.http.Do(upstreamReq)
 	if err != nil {
@@ -325,7 +329,7 @@ func (s *Service) skipHeader(name string, connectionHeaders map[string]struct{})
 	if _, drop := connectionHeaders[canonical]; drop {
 		return true
 	}
-	if strings.EqualFold(canonical, "Org-Id") || strings.EqualFold(canonical, "TPP-Client-Id") {
+	if strings.EqualFold(canonical, "Org-Id") || strings.EqualFold(canonical, "Group-Id") || strings.EqualFold(canonical, "TPP-Client-Id") {
 		return true
 	}
 	if strings.EqualFold(canonical, "Cookie") || strings.EqualFold(canonical, "Authorization") {
@@ -369,14 +373,14 @@ func connectionHeaderNames(headers http.Header) map[string]struct{} {
 	return names
 }
 
-func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Request, trustedClientID string) {
+func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Request, trustedGroupID string) {
 	if s.cfg.PlaceholderOrgID != "" {
 		outgoing.Header.Set("org-id", s.cfg.PlaceholderOrgID)
 	}
-	if trustedClientID != "" {
-		outgoing.Header.Set("TPP-client-id", trustedClientID)
-	} else if s.cfg.PlaceholderClientID != "" {
-		outgoing.Header.Set("TPP-client-id", s.cfg.PlaceholderClientID)
+	if trustedGroupID != "" {
+		outgoing.Header.Set("group-id", trustedGroupID)
+	} else if s.cfg.PlaceholderGroupID != "" {
+		outgoing.Header.Set("group-id", s.cfg.PlaceholderGroupID)
 	}
 	correlationID := incoming.Header.Get("X-Correlation-ID")
 	if correlationID == "" {

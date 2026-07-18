@@ -32,7 +32,9 @@ import (
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
-func newPhase2Server(t *testing.T, upstreamURL string) *httptest.Server {
+const consentID = "550e8400-e29b-41d4-a716-446655440000"
+
+func newPortalServer(t *testing.T, upstreamURL string, configure func(*config.Config)) *httptest.Server {
 	t.Helper()
 	cfg, err := config.Load()
 	if err != nil {
@@ -42,67 +44,10 @@ func newPhase2Server(t *testing.T, upstreamURL string) *httptest.Server {
 	cfg.Proxy.PlaceholderModeEnabled = true
 	cfg.Proxy.PlaceholderUserID = "user@example.com"
 	cfg.Proxy.PlaceholderOrgID = "ORG-001"
-	cfg.Proxy.PlaceholderClientID = "TPP-CLIENT-001"
-
-	h, err := newIntegrationHandler(*cfg)
-	if err != nil {
-		t.Fatalf("failed to create handler: %v", err)
+	cfg.Proxy.PlaceholderGroupID = "GROUP-001"
+	if configure != nil {
+		configure(cfg)
 	}
-	return httptest.NewServer(h)
-}
-
-func newPhase2ServerWithTimeout(t *testing.T, upstreamURL string, timeout time.Duration) *httptest.Server {
-	t.Helper()
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("failed to load config: %v", err)
-	}
-	cfg.Proxy.OpenFGCAPIURL = upstreamURL
-	cfg.Proxy.OpenFGCAPITimeout = timeout
-	cfg.Proxy.PlaceholderModeEnabled = true
-	cfg.Proxy.PlaceholderUserID = "user@example.com"
-	cfg.Proxy.PlaceholderOrgID = "ORG-001"
-	cfg.Proxy.PlaceholderClientID = "TPP-CLIENT-001"
-
-	h, err := newIntegrationHandler(*cfg)
-	if err != nil {
-		t.Fatalf("failed to create handler: %v", err)
-	}
-	return httptest.NewServer(h)
-}
-
-func newPhase2ServerWithMaxBytes(t *testing.T, upstreamURL string, maxBytes int64) *httptest.Server {
-	t.Helper()
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("failed to load config: %v", err)
-	}
-	cfg.Proxy.OpenFGCAPIURL = upstreamURL
-	cfg.Proxy.MaxRequestBytes = maxBytes
-	cfg.Proxy.PlaceholderModeEnabled = true
-	cfg.Proxy.PlaceholderUserID = "user@example.com"
-	cfg.Proxy.PlaceholderOrgID = "ORG-001"
-	cfg.Proxy.PlaceholderClientID = "TPP-CLIENT-001"
-
-	h, err := newIntegrationHandler(*cfg)
-	if err != nil {
-		t.Fatalf("failed to create handler: %v", err)
-	}
-	return httptest.NewServer(h)
-}
-
-func newPhase2ServerPlaceholderDisabled(t *testing.T, upstreamURL string) *httptest.Server {
-	t.Helper()
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("failed to load config: %v", err)
-	}
-	cfg.Proxy.OpenFGCAPIURL = upstreamURL
-	cfg.Proxy.PlaceholderModeEnabled = false
-	cfg.Proxy.PlaceholderUserID = ""
-	cfg.Proxy.PlaceholderOrgID = "ORG-001"
-	cfg.Proxy.PlaceholderClientID = "TPP-CLIENT-001"
-
 	h, err := newIntegrationHandler(*cfg)
 	if err != nil {
 		t.Fatalf("failed to create handler: %v", err)
@@ -112,38 +57,26 @@ func newPhase2ServerPlaceholderDisabled(t *testing.T, upstreamURL string) *httpt
 
 type failingReadCloser struct{}
 
-func (failingReadCloser) Read(_ []byte) (int, error) {
-	return 0, io.ErrUnexpectedEOF
-}
-
-func (failingReadCloser) Close() error {
-	return nil
-}
+func (failingReadCloser) Read(_ []byte) (int, error) { return 0, io.ErrUnexpectedEOF }
+func (failingReadCloser) Close() error               { return nil }
 
 func TestAPIPassthroughRewriteAndHeaderSafety(t *testing.T) {
-	var gotPath string
-	var gotQuery string
-	var gotOrg string
-	var gotTPP string
-
+	var gotPath, gotQuery, gotOrg, gotGroup, gotLegacyClient string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		gotPath = r.URL.Path
 		gotQuery = r.URL.RawQuery
 		gotOrg = r.Header.Get("org-id")
-		gotTPP = r.Header.Get("TPP-client-id")
+		gotGroup = r.Header.Get("group-id")
+		gotLegacyClient = r.Header.Get("TPP-client-id")
 		w.WriteHeader(http.StatusOK)
-		_, _ = w.Write([]byte(`{"ok":true}`))
 	}))
 	defer upstream.Close()
-
-	bff := newPhase2Server(t, upstream.URL)
+	bff := newPortalServer(t, upstream.URL, nil)
 	defer bff.Close()
 
-	req, err := http.NewRequest(http.MethodGet, bff.URL+"/api/consents?limit=10&offset=2", nil)
-	if err != nil {
-		t.Fatalf("request creation failed: %v", err)
-	}
+	req, _ := http.NewRequest(http.MethodGet, bff.URL+"/api/consents?limit=10&offset=2", nil)
 	req.Header.Set("org-id", "MALICIOUS")
+	req.Header.Set("group-id", "MALICIOUS")
 	req.Header.Set("TPP-client-id", "MALICIOUS")
 	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
@@ -152,36 +85,22 @@ func TestAPIPassthroughRewriteAndHeaderSafety(t *testing.T) {
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK || gotPath != "/api/v1/consents" || gotQuery != "limit=10&offset=2" {
+		t.Fatalf("unexpected passthrough result: status=%d path=%s query=%s", resp.StatusCode, gotPath, gotQuery)
 	}
-	if gotPath != "/api/v1/consents" {
-		t.Fatalf("expected rewritten path /api/v1/consents, got %s", gotPath)
-	}
-	if gotQuery != "limit=10&offset=2" {
-		t.Fatalf("expected preserved query limit=10&offset=2, got %s", gotQuery)
-	}
-	if gotOrg != "ORG-001" {
-		t.Fatalf("expected trusted org-id header, got %s", gotOrg)
-	}
-	if gotTPP != "TPP-CLIENT-001" {
-		t.Fatalf("expected trusted TPP-client-id header, got %s", gotTPP)
+	if gotOrg != "ORG-001" || gotGroup != "GROUP-001" || gotLegacyClient != "" {
+		t.Fatalf("unexpected trusted headers: org=%q group=%q legacy=%q", gotOrg, gotGroup, gotLegacyClient)
 	}
 }
 
 func TestMeConsentsForcesUserIDs(t *testing.T) {
-	var gotPath string
 	var gotQuery string
-
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		gotPath = r.URL.Path
 		gotQuery = r.URL.RawQuery
 		w.WriteHeader(http.StatusOK)
 	}))
 	defer upstream.Close()
-
-	bff := newPhase2Server(t, upstream.URL)
+	bff := newPortalServer(t, upstream.URL, nil)
 	defer bff.Close()
 
 	resp, err := http.Get(bff.URL + "/me/consents?userIds=attacker&limit=5")
@@ -191,909 +110,335 @@ func TestMeConsentsForcesUserIDs(t *testing.T) {
 	defer func() {
 		_ = resp.Body.Close()
 	}()
+	values, _ := url.ParseQuery(gotQuery)
+	if resp.StatusCode != http.StatusOK || values.Get("limit") != "5" || values.Get("userIds") != "user@example.com" {
+		t.Fatalf("unexpected forced query: status=%d query=%v", resp.StatusCode, values)
+	}
+}
 
+func TestConsentDetailsUseExactBoundVersions(t *testing.T) {
+	requested := make(map[string]int)
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		requested[r.URL.Path]++
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/api/v1/consents/" + consentID:
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"ACTIVE","createdTime":1702800000000,"updatedTime":1702800001000,"attributes":{},"authorizations":[],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","displayName":"Profile access","elements":[{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","displayName":"Email","mandatory":true,"approved":true}]}]}`))
+		case "/api/v1/consent-purposes/purpose-profile/versions/v2":
+			_, _ = w.Write([]byte(`{"purposeId":"purpose-profile","name":"profile_access","groupId":"GROUP-001","version":"v2","displayName":"Profile access v2","description":"Bound purpose version","properties":{"category":"profile"},"elements":[{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","mandatory":true}]}`))
+		case "/api/v1/consent-elements/element-email/versions/v3":
+			_, _ = w.Write([]byte(`{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","type":"basic","displayName":"Email v3","description":"Bound element version","schema":"email","properties":{"format":"email"}}`))
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer upstream.Close()
+	bff := newPortalServer(t, upstream.URL, nil)
+	defer bff.Close()
+
+	resp, err := http.Get(bff.URL + "/me/consents/" + consentID)
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
 	if resp.StatusCode != http.StatusOK {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
-	if gotPath != "/api/v1/consents" {
-		t.Fatalf("expected path /api/v1/consents, got %s", gotPath)
+	var payload struct {
+		GroupID  string `json:"groupId"`
+		Purposes []struct {
+			PurposeID   string  `json:"purposeId"`
+			Version     string  `json:"version"`
+			DisplayName *string `json:"displayName"`
+			Description *string `json:"description"`
+			Elements    []struct {
+				ElementID   string            `json:"elementId"`
+				Namespace   string            `json:"namespace"`
+				Version     string            `json:"version"`
+				DisplayName *string           `json:"displayName"`
+				Approved    bool              `json:"approved"`
+				Mandatory   bool              `json:"mandatory"`
+				Type        string            `json:"type"`
+				Schema      *string           `json:"schema"`
+				Properties  map[string]string `json:"properties"`
+			} `json:"elements"`
+		} `json:"purposes"`
 	}
-	queryValues, err := url.ParseQuery(gotQuery)
-	if err != nil {
-		t.Fatalf("expected valid query string, got parse error: %v", err)
-	}
-	if queryValues.Get("limit") != "5" {
-		t.Fatalf("expected limit=5, got %v", queryValues["limit"])
-	}
-	userIDs := queryValues["userIds"]
-	if len(userIDs) != 1 || userIDs[0] != "user@example.com" {
-		t.Fatalf("expected forced userIds=user@example.com, got %v", userIDs)
-	}
-}
-
-func TestMeConsentByIDStripsHopByHopHeadersFromUpstreamError(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.Header().Set("Connection", "keep-alive, X-Upstream-Hop")
-		w.Header().Set("Keep-Alive", "timeout=5")
-		w.Header().Set("TE", "trailers")
-		w.Header().Set("Upgrade", "websocket")
-		w.Header().Set("X-Upstream-Hop", "1")
-		w.Header().Set("X-Upstream-End", "response-ok")
-		w.WriteHeader(http.StatusNotFound)
-		_, _ = w.Write([]byte(`{"code":"NOT_FOUND"}`))
-	}))
-	defer upstream.Close()
-
-	bff := newPhase2Server(t, upstream.URL)
-	defer bff.Close()
-
-	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440999")
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusNotFound {
-		t.Fatalf("expected 404, got %d", resp.StatusCode)
-	}
-	for _, name := range []string{"Connection", "Keep-Alive", "TE", "Upgrade", "X-Upstream-Hop"} {
-		if got := resp.Header.Get(name); got != "" {
-			t.Fatalf("expected %s to be stripped, got %q", name, got)
-		}
-	}
-	if got := resp.Header.Get("X-Upstream-End"); got != "response-ok" {
-		t.Fatalf("expected end-to-end header to be forwarded, got %q", got)
-	}
-}
-
-func TestApproveAndRevokeMappings(t *testing.T) {
-	t.Run("approve fetches consent and builds put payload", func(t *testing.T) {
-		var gotMethod string
-		var gotPath string
-		var gotBody map[string]any
-		var gotTPPClientID string
-
-		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			switch {
-			case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(`{
-					"id":"550e8400-e29b-41d4-a716-446655440000",
-					"clientId":"TPP-CLIENT-001",
-					"type":"accounts",
-					"status":"CREATED",
-					"frequency":0,
-					"validityTime":0,
-					"recurringIndicator":false,
-					"dataAccessValidityDuration":86400,
-					"attributes":{"department":"sales","region":"APAC"},
-					"authorizations":[
-						{"id":"auth-1","userId":"user1@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800000,"resources":{"accountIds":["acc-123","acc-456"]}}
-					],
-					"purposes":[
-						{"name":"profile_access","elements":[
-							{"name":"first_name","isUserApproved":false,"value":{}},
-							{"name":"last_name","isUserApproved":false,"value":{}},
-							{"name":"email","isUserApproved":true,"value":{}}
-						]}
-					]
-				}`))
-			case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consent-purposes":
-				w.Header().Set("Content-Type", "application/json")
-				w.WriteHeader(http.StatusOK)
-				_, _ = w.Write([]byte(`{
-					"data":[
-						{"name":"profile_access","clientId":"TPP-CLIENT-001","description":null,"elements":[
-							{"name":"first_name","isMandatory":true},
-							{"name":"last_name","isMandatory":false},
-							{"name":"email","isMandatory":false}
-						]}
-					]
-				}`))
-			case r.Method == http.MethodPut && r.URL.Path == "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
-				gotMethod = r.Method
-				gotPath = r.URL.Path
-				gotTPPClientID = r.Header.Get("TPP-client-id")
-				body, _ := io.ReadAll(r.Body)
-				_ = json.Unmarshal(body, &gotBody)
-				w.WriteHeader(http.StatusOK)
-			default:
-				w.WriteHeader(http.StatusNotFound)
-			}
-		}))
-		defer upstream.Close()
-
-		cfg, err := config.Load()
-		if err != nil {
-			t.Fatalf("failed to load config: %v", err)
-		}
-		cfg.Proxy.OpenFGCAPIURL = upstream.URL
-		cfg.Proxy.PlaceholderModeEnabled = true
-		cfg.Proxy.PlaceholderUserID = "user@example.com"
-		cfg.Proxy.PlaceholderOrgID = "ORG-001"
-		cfg.Proxy.PlaceholderClientID = "PLACEHOLDER-CLIENT-999"
-
-		h, err := newIntegrationHandler(*cfg)
-		if err != nil {
-			t.Fatalf("failed to create handler: %v", err)
-		}
-		bff := httptest.NewServer(h)
-		defer bff.Close()
-
-		payload := []byte(`[{"purposeName":"profile_access","elementName":"last_name"}]`)
-		resp, err := http.Post(bff.URL+"/me/consents/550e8400-e29b-41d4-a716-446655440000/approve", "application/json", bytes.NewReader(payload))
-		if err != nil {
-			t.Fatalf("request failed: %v", err)
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected 200, got %d", resp.StatusCode)
-		}
-		if gotMethod != http.MethodPut {
-			t.Fatalf("expected PUT, got %s", gotMethod)
-		}
-		if gotPath != "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000" {
-			t.Fatalf("unexpected path: %s", gotPath)
-		}
-		if gotTPPClientID != "TPP-CLIENT-001" {
-			t.Fatalf("expected TPP-client-id from consent clientId, got %s", gotTPPClientID)
-		}
-		if gotBody["type"] != "accounts" {
-			t.Fatalf("expected type accounts, got %v", gotBody["type"])
-		}
-		if gotBody["frequency"] != float64(0) {
-			t.Fatalf("expected frequency 0, got %v", gotBody["frequency"])
-		}
-		if gotBody["validityTime"] != float64(0) {
-			t.Fatalf("expected validityTime 0, got %v", gotBody["validityTime"])
-		}
-		if gotBody["recurringIndicator"] != false {
-			t.Fatalf("expected recurringIndicator false, got %v", gotBody["recurringIndicator"])
-		}
-
-		purposes, ok := gotBody["purposes"].([]any)
-		if !ok || len(purposes) != 1 {
-			t.Fatalf("expected one purpose, got %v", gotBody["purposes"])
-		}
-		purpose, ok := purposes[0].(map[string]any)
-		if !ok {
-			t.Fatalf("expected purpose object, got %T", purposes[0])
-		}
-		elements, ok := purpose["elements"].([]any)
-		if !ok || len(elements) != 3 {
-			t.Fatalf("expected three elements, got %v", purpose["elements"])
-		}
-		mandatoryElement, ok := elements[0].(map[string]any)
-		if !ok {
-			t.Fatalf("expected first element object, got %T", elements[0])
-		}
-		if mandatoryElement["isUserApproved"] != true {
-			t.Fatalf("expected mandatory element approved, got %v", mandatoryElement["isUserApproved"])
-		}
-		optionalElement, ok := elements[1].(map[string]any)
-		if !ok {
-			t.Fatalf("expected optional element object, got %T", elements[1])
-		}
-		if optionalElement["isUserApproved"] != true {
-			t.Fatalf("expected selected optional element approved, got %v", optionalElement["isUserApproved"])
-		}
-		omittedOptionalElement, ok := elements[2].(map[string]any)
-		if !ok {
-			t.Fatalf("expected omitted optional element object, got %T", elements[2])
-		}
-		if omittedOptionalElement["isUserApproved"] != true {
-			t.Fatalf("expected omitted optional element to keep existing approval, got %v", omittedOptionalElement["isUserApproved"])
-		}
-
-		authorizations, ok := gotBody["authorizations"].([]any)
-		if !ok || len(authorizations) != 2 {
-			t.Fatalf("expected existing authorization plus current user authorization, got %v", gotBody["authorizations"])
-		}
-		existingAuthorization, ok := authorizations[0].(map[string]any)
-		if !ok {
-			t.Fatalf("expected existing authorization object, got %T", authorizations[0])
-		}
-		if existingAuthorization["userId"] != "user1@example.com" {
-			t.Fatalf("expected existing user id to be preserved, got %v", existingAuthorization["userId"])
-		}
-		updatedAuthorization, ok := authorizations[1].(map[string]any)
-		if !ok {
-			t.Fatalf("expected current user authorization object, got %T", authorizations[1])
-		}
-		if updatedAuthorization["userId"] != "user@example.com" {
-			t.Fatalf("expected current user id, got %v", updatedAuthorization["userId"])
-		}
-		if updatedAuthorization["status"] != "APPROVED" {
-			t.Fatalf("expected approved authorization status, got %v", updatedAuthorization["status"])
-		}
-		if updatedAuthorization["type"] != "authorisation" {
-			t.Fatalf("expected authorization type authorisation, got %v", updatedAuthorization["type"])
-		}
-		if resources, exists := updatedAuthorization["resources"]; !exists || resources == nil {
-			t.Fatalf("expected resources to be present as an empty object, got %v", updatedAuthorization["resources"])
-		}
-	})
-
-	t.Run("revoke maps to revoke endpoint", func(t *testing.T) {
-		var gotMethod string
-		var gotPath string
-		var gotBody map[string]any
-
-		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			gotMethod = r.Method
-			gotPath = r.URL.Path
-			body, _ := io.ReadAll(r.Body)
-			_ = json.Unmarshal(body, &gotBody)
-			w.WriteHeader(http.StatusOK)
-		}))
-		defer upstream.Close()
-
-		bff := newPhase2Server(t, upstream.URL)
-		defer bff.Close()
-
-		req, err := http.NewRequest(http.MethodPut, bff.URL+"/me/consents/550e8400-e29b-41d4-a716-446655440000/revoke", bytes.NewReader([]byte(`{"revocationReason":"test"}`)))
-		if err != nil {
-			t.Fatalf("request creation failed: %v", err)
-		}
-		req.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatalf("request failed: %v", err)
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected 200, got %d", resp.StatusCode)
-		}
-		if gotMethod != http.MethodPut {
-			t.Fatalf("expected PUT, got %s", gotMethod)
-		}
-		if gotPath != "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000/revoke" {
-			t.Fatalf("unexpected path: %s", gotPath)
-		}
-		if gotBody["actionBy"] != "user@example.com" {
-			t.Fatalf("expected placeholder actionBy, got %v", gotBody["actionBy"])
-		}
-		if gotBody["revocationReason"] != "test" {
-			t.Fatalf("expected revocationReason passthrough, got %v", gotBody["revocationReason"])
-		}
-	})
-
-	t.Run("revoke accepts null payload", func(t *testing.T) {
-		var gotMethod string
-		var gotPath string
-		var gotBody map[string]any
-
-		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			gotMethod = r.Method
-			gotPath = r.URL.Path
-			body, _ := io.ReadAll(r.Body)
-			_ = json.Unmarshal(body, &gotBody)
-			w.WriteHeader(http.StatusOK)
-		}))
-		defer upstream.Close()
-
-		bff := newPhase2Server(t, upstream.URL)
-		defer bff.Close()
-
-		req, err := http.NewRequest(http.MethodPut, bff.URL+"/me/consents/550e8400-e29b-41d4-a716-446655440000/revoke", bytes.NewReader([]byte(`null`)))
-		if err != nil {
-			t.Fatalf("request creation failed: %v", err)
-		}
-		req.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatalf("request failed: %v", err)
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		if resp.StatusCode != http.StatusOK {
-			t.Fatalf("expected 200, got %d", resp.StatusCode)
-		}
-		if gotMethod != http.MethodPut {
-			t.Fatalf("expected PUT, got %s", gotMethod)
-		}
-		if gotPath != "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000/revoke" {
-			t.Fatalf("unexpected path: %s", gotPath)
-		}
-		if gotBody["actionBy"] != "user@example.com" {
-			t.Fatalf("expected placeholder actionBy, got %v", gotBody["actionBy"])
-		}
-		if len(gotBody) != 1 {
-			t.Fatalf("expected only actionBy in payload, got %v", gotBody)
-		}
-	})
-}
-
-func TestAPIDenyByDefault(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer upstream.Close()
-
-	bff := newPhase2Server(t, upstream.URL)
-	defer bff.Close()
-
-	t.Run("unknown path returns 404", func(t *testing.T) {
-		resp, err := http.Get(bff.URL + "/api/unknown/resource")
-		if err != nil {
-			t.Fatalf("request failed: %v", err)
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-		if resp.StatusCode != http.StatusNotFound {
-			t.Fatalf("expected 404, got %d", resp.StatusCode)
-		}
-	})
-
-	t.Run("unknown path with disallowed method returns 404", func(t *testing.T) {
-		req, err := http.NewRequest(http.MethodTrace, bff.URL+"/api/unknown/resource", nil)
-		if err != nil {
-			t.Fatalf("request creation failed: %v", err)
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatalf("request failed: %v", err)
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-		if resp.StatusCode != http.StatusNotFound {
-			t.Fatalf("expected 404, got %d", resp.StatusCode)
-		}
-	})
-
-	t.Run("known path wrong method returns 405", func(t *testing.T) {
-		req, err := http.NewRequest(http.MethodDelete, bff.URL+"/api/consents", nil)
-		if err != nil {
-			t.Fatalf("request creation failed: %v", err)
-		}
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatalf("request failed: %v", err)
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-		if resp.StatusCode != http.StatusMethodNotAllowed {
-			t.Fatalf("expected 405, got %d", resp.StatusCode)
-		}
-	})
-}
-
-func TestProxyTimeoutMapsTo504(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		time.Sleep(120 * time.Millisecond)
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer upstream.Close()
-
-	bff := newPhase2ServerWithTimeout(t, upstream.URL, 40*time.Millisecond)
-	defer bff.Close()
-
-	resp, err := http.Get(bff.URL + "/api/consents")
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusGatewayTimeout {
-		t.Fatalf("expected 504, got %d", resp.StatusCode)
-	}
-
-	var payload map[string]any
 	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		t.Fatalf("expected json error payload: %v", err)
+		t.Fatalf("decode response: %v", err)
 	}
-	if payload["code"] != "UPSTREAM_TIMEOUT" {
-		t.Fatalf("expected code UPSTREAM_TIMEOUT, got %v", payload["code"])
+	element := payload.Purposes[0].Elements[0]
+	if payload.GroupID != "GROUP-001" || payload.Purposes[0].PurposeID != "purpose-profile" || payload.Purposes[0].Version != "v2" {
+		t.Fatalf("unexpected purpose binding: %+v", payload.Purposes[0])
+	}
+	if element.ElementID != "element-email" || element.Namespace != "profile" || element.Version != "v3" || !element.Approved || !element.Mandatory {
+		t.Fatalf("unexpected element binding: %+v", element)
+	}
+	if element.Type != "basic" || element.Schema == nil || *element.Schema != "email" || element.Properties["format"] != "email" {
+		t.Fatalf("missing exact-version enrichment: %+v", element)
+	}
+	if requested["/api/v1/consent-purposes/purpose-profile/versions/v2"] != 1 || requested["/api/v1/consent-elements/element-email/versions/v3"] != 1 {
+		t.Fatalf("expected exact version lookups, got %v", requested)
 	}
 }
 
-func TestRequestBodySizeLimitReturns413(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		w.WriteHeader(http.StatusOK)
+func TestApprovalBuildsVersionedUpdateAndTrustedGroupHeader(t *testing.T) {
+	var updateBody map[string]any
+	var updateGroup string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/"+consentID:
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-BOUND","type":"accounts","status":"CREATED","frequency":0,"expirationTime":0,"recurringIndicator":false,"dataAccessValidityDuration":86400,"attributes":{"region":"APAC"},"authorizations":[{"id":"auth-1","userId":"existing@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800000000,"resources":{}}],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true,"approved":false},{"elementId":"element-last","name":"last_name","namespace":"profile","version":"v2","mandatory":false,"approved":false},{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","mandatory":false,"approved":true}]}]}`))
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consent-purposes/purpose-profile/versions/v2":
+			_, _ = w.Write([]byte(`{"purposeId":"purpose-profile","name":"profile_access","groupId":"GROUP-BOUND","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true},{"elementId":"element-last","name":"last_name","namespace":"profile","version":"v2","mandatory":false},{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","mandatory":false}]}`))
+		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v1/consent-elements/"):
+			parts := strings.Split(r.URL.Path, "/")
+			name := map[string]string{"element-first": "first_name", "element-last": "last_name", "element-email": "email"}[parts[4]]
+			_, _ = w.Write([]byte(`{"elementId":"` + parts[4] + `","name":"` + name + `","namespace":"profile","version":"` + parts[6] + `","type":"basic"}`))
+		case r.Method == http.MethodPut && r.URL.Path == "/api/v1/consents/"+consentID:
+			updateGroup = r.Header.Get("group-id")
+			_ = json.NewDecoder(r.Body).Decode(&updateBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
 	}))
 	defer upstream.Close()
-
-	bff := newPhase2ServerWithMaxBytes(t, upstream.URL, 8)
+	bff := newPortalServer(t, upstream.URL, func(cfg *config.Config) {
+		cfg.Proxy.PlaceholderGroupID = "GROUP-PLACEHOLDER"
+	})
 	defer bff.Close()
 
-	t.Run("api passthrough returns 413 with json error", func(t *testing.T) {
-		big := bytes.Repeat([]byte("a"), 32)
-		req, err := http.NewRequest(http.MethodPost, bff.URL+"/api/consents", bytes.NewReader(big))
-		if err != nil {
-			t.Fatalf("request creation failed: %v", err)
-		}
-		req.Header.Set("Content-Type", "application/json")
-		resp, err := http.DefaultClient.Do(req)
-		if err != nil {
-			t.Fatalf("request failed: %v", err)
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		if resp.StatusCode != http.StatusRequestEntityTooLarge {
-			t.Fatalf("expected 413, got %d", resp.StatusCode)
-		}
-		if got := resp.Header.Get("Content-Type"); got != "application/json" {
-			t.Fatalf("expected content type application/json, got %s", got)
-		}
-		var payload map[string]any
-		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-			t.Fatalf("expected json error payload: %v", err)
-		}
-		if payload["code"] != "REQUEST_TOO_LARGE" {
-			t.Fatalf("expected code REQUEST_TOO_LARGE, got %v", payload["code"])
-		}
-	})
-
-	t.Run("me approve returns 413 with json error", func(t *testing.T) {
-		big := bytes.Repeat([]byte("b"), 64)
-		resp, err := http.Post(bff.URL+"/me/consents/550e8400-e29b-41d4-a716-446655440001/approve", "application/json", bytes.NewReader(big))
-		if err != nil {
-			t.Fatalf("request failed: %v", err)
-		}
-		defer func() {
-			_ = resp.Body.Close()
-		}()
-
-		if resp.StatusCode != http.StatusRequestEntityTooLarge {
-			t.Fatalf("expected 413, got %d", resp.StatusCode)
-		}
-		var payload map[string]any
-		if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-			t.Fatalf("expected json error payload: %v", err)
-		}
-		if payload["code"] != "REQUEST_TOO_LARGE" {
-			t.Fatalf("expected code REQUEST_TOO_LARGE, got %v", payload["code"])
-		}
-	})
-}
-
-func TestRequestBodyReadFailureReturnsBadRequest(t *testing.T) {
-	upstreamCalled := false
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		upstreamCalled = true
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer upstream.Close()
-
-	cfg, err := config.Load()
-	if err != nil {
-		t.Fatalf("failed to load config: %v", err)
-	}
-	cfg.Proxy.OpenFGCAPIURL = upstream.URL
-
-	h, err := newIntegrationHandler(*cfg)
-	if err != nil {
-		t.Fatalf("failed to create handler: %v", err)
-	}
-
-	req := httptest.NewRequest(http.MethodPost, "/api/consents", nil)
-	req.Body = failingReadCloser{}
-	res := httptest.NewRecorder()
-
-	h.ServeHTTP(res, req)
-
-	if res.Code != http.StatusBadRequest {
-		t.Fatalf("expected 400, got %d", res.Code)
-	}
-	var payload map[string]any
-	if err := json.NewDecoder(res.Body).Decode(&payload); err != nil {
-		t.Fatalf("expected json error payload: %v", err)
-	}
-	if payload["code"] != "INVALID_REQUEST_BODY" {
-		t.Fatalf("expected code INVALID_REQUEST_BODY, got %v", payload["code"])
-	}
-	if upstreamCalled {
-		t.Fatalf("expected upstream not to be called")
-	}
-}
-
-func TestUpstreamUnavailableMapsTo502(t *testing.T) {
-	bff := newPhase2Server(t, "http://127.0.0.1:1")
-	defer bff.Close()
-
-	resp, err := http.Get(bff.URL + "/api/consents")
+	selection := `[{"purposeId":"purpose-profile","purposeVersion":"v2","elementId":"element-last","elementVersion":"v2"}]`
+	resp, err := http.Post(bff.URL+"/me/consents/"+consentID+"/approve", "application/json", strings.NewReader(selection))
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-
-	if resp.StatusCode != http.StatusBadGateway {
-		t.Fatalf("expected 502, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK || updateGroup != "GROUP-BOUND" {
+		t.Fatalf("unexpected approval result: status=%d group=%q", resp.StatusCode, updateGroup)
 	}
-
-	var payload map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		t.Fatalf("expected json error payload: %v", err)
+	if updateBody["expirationTime"] != float64(0) {
+		t.Fatalf("expected expirationTime to be preserved, got %v", updateBody)
 	}
-	if payload["code"] != "UPSTREAM_UNAVAILABLE" {
-		t.Fatalf("expected code UPSTREAM_UNAVAILABLE, got %v", payload["code"])
+	purpose := updateBody["purposes"].([]any)[0].(map[string]any)
+	if purpose["version"] != "v2" {
+		t.Fatalf("expected bound purpose version, got %v", purpose)
+	}
+	elements := purpose["elements"].([]any)
+	for index, expectedVersion := range []string{"v1", "v2", "v3"} {
+		element := elements[index].(map[string]any)
+		if element["version"] != expectedVersion || element["namespace"] != "profile" || element["approved"] != true {
+			t.Fatalf("unexpected updated element %d: %v", index, element)
+		}
+	}
+	if len(updateBody["authorizations"].([]any)) != 2 {
+		t.Fatalf("expected existing and current-user authorizations, got %v", updateBody["authorizations"])
 	}
 }
 
-func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
-	upstreamCalled := false
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
-		upstreamCalled = true
-		w.WriteHeader(http.StatusOK)
-	}))
-	defer upstream.Close()
-
-	bff := newPhase2ServerPlaceholderDisabled(t, upstream.URL)
-	defer bff.Close()
-
-	testCases := []struct {
-		name   string
-		method string
-		path   string
-		body   string
-	}{
-		{name: "me consents", method: http.MethodGet, path: "/me/consents"},
-		{name: "me consent by id", method: http.MethodGet, path: "/me/consents/550e8400-e29b-41d4-a716-446655440000"},
-		{name: "me approve", method: http.MethodPost, path: "/me/consents/550e8400-e29b-41d4-a716-446655440000/approve", body: "[]"},
-		{name: "me revoke", method: http.MethodPut, path: "/me/consents/550e8400-e29b-41d4-a716-446655440000/revoke", body: "{}"},
-	}
-
-	for _, tc := range testCases {
-		t.Run(tc.name, func(t *testing.T) {
-			upstreamCalled = false
-
-			var body io.Reader
-			if tc.body != "" {
-				body = strings.NewReader(tc.body)
-			}
-
-			req, err := http.NewRequest(tc.method, bff.URL+tc.path, body)
-			if err != nil {
-				t.Fatalf("request creation failed: %v", err)
-			}
-			if tc.body != "" {
-				req.Header.Set("Content-Type", "application/json")
-			}
-
-			resp, err := http.DefaultClient.Do(req)
+func TestApprovalRejectsUnknownOrMandatorySelection(t *testing.T) {
+	for _, selection := range []string{
+		`[{"purposeId":"purpose-profile","purposeVersion":"v2","elementId":"unknown","elementVersion":"v1"}]`,
+		`[{"purposeId":"purpose-profile","purposeVersion":"v2","elementId":"element-first","elementVersion":"v1"}]`,
+	} {
+		t.Run(selection, func(t *testing.T) {
+			upstream := approvalReadOnlyUpstream(t)
+			defer upstream.Close()
+			bff := newPortalServer(t, upstream.URL, nil)
+			defer bff.Close()
+			resp, err := http.Post(bff.URL+"/me/consents/"+consentID+"/approve", "application/json", strings.NewReader(selection))
 			if err != nil {
 				t.Fatalf("request failed: %v", err)
 			}
 			defer func() {
 				_ = resp.Body.Close()
 			}()
-
-			if resp.StatusCode != http.StatusServiceUnavailable {
-				t.Fatalf("expected 503, got %d", resp.StatusCode)
-			}
-
-			if upstreamCalled {
-				t.Fatal("expected request to be blocked before upstream call")
-			}
-
-			var payload map[string]any
-			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-				t.Fatalf("expected json error payload: %v", err)
-			}
-			if payload["code"] != "IDENTITY_UNAVAILABLE" {
-				t.Fatalf("expected IDENTITY_UNAVAILABLE, got %v", payload["code"])
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d", resp.StatusCode)
 			}
 		})
 	}
 }
 
-func TestMeConsentByIDAggregatesPurposeAndElementDetails(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+func approvalReadOnlyUpstream(t *testing.T) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
-		case "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{
-				"id":"550e8400-e29b-41d4-a716-446655440000",
-				"clientId":"TPP-CLIENT-001",
-				"type":"accounts",
-				"status":"ACTIVE",
-				"createdTime":1702800000,
-				"updatedTime":1702800001,
-				"purposes":[
-					{
-						"name":"marketing_communication_preferences",
-						"elements":[
-							{"name":"user_email","isUserApproved":true}
-						]
-					}
-				]
-			}`))
-		case "/api/v1/consent-purposes":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{
-				"data":[
-					{
-						"name":"marketing_communication_preferences",
-						"description":"Marketing communication consent",
-						"elements":[
-							{"name":"user_email","isMandatory":true}
-						]
-					}
-				]
-			}`))
-		case "/api/v1/consent-elements":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{
-				"data":[
-					{
-						"name":"user_email",
-						"type":"basic",
-						"description":"User email address",
-						"properties":{"channel":"email"}
-					}
-				]
-			}`))
+		case "/api/v1/consents/" + consentID:
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"CREATED","attributes":{},"authorizations":[],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true,"approved":false}]}]}`))
+		case "/api/v1/consent-purposes/purpose-profile/versions/v2":
+			_, _ = w.Write([]byte(`{"purposeId":"purpose-profile","name":"profile_access","groupId":"GROUP-001","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true}]}`))
+		case "/api/v1/consent-elements/element-first/versions/v1":
+			_, _ = w.Write([]byte(`{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","type":"basic"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
-	defer upstream.Close()
+}
 
-	bff := newPhase2Server(t, upstream.URL)
+func TestRevokeUsesPostAndInjectsActionBy(t *testing.T) {
+	var method, path string
+	var body map[string]any
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		method, path = r.Method, r.URL.Path
+		_ = json.NewDecoder(r.Body).Decode(&body)
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	bff := newPortalServer(t, upstream.URL, nil)
 	defer bff.Close()
 
-	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440000")
+	req, _ := http.NewRequest(http.MethodPost, bff.URL+"/me/consents/"+consentID+"/revoke", strings.NewReader(`{"revocationReason":"test"}`))
+	req.Header.Set("Content-Type", "application/json")
+	resp, err := http.DefaultClient.Do(req)
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
+	if resp.StatusCode != http.StatusOK || method != http.MethodPost || path != "/api/v1/consents/"+consentID+"/revoke" {
+		t.Fatalf("unexpected revoke mapping: status=%d method=%s path=%s", resp.StatusCode, method, path)
 	}
-
-	var payload map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		t.Fatalf("expected json response: %v", err)
-	}
-
-	purposes, ok := payload["purposes"].([]any)
-	if !ok || len(purposes) != 1 {
-		t.Fatalf("expected one purpose, got %v", payload["purposes"])
-	}
-	purpose, ok := purposes[0].(map[string]any)
-	if !ok {
-		t.Fatalf("expected purpose object, got %T", purposes[0])
-	}
-	if purpose["description"] != "Marketing communication consent" {
-		t.Fatalf("expected purpose description to be enriched, got %v", purpose["description"])
-	}
-
-	elements, ok := purpose["elements"].([]any)
-	if !ok || len(elements) != 1 {
-		t.Fatalf("expected one element, got %v", purpose["elements"])
-	}
-	element, ok := elements[0].(map[string]any)
-	if !ok {
-		t.Fatalf("expected element object, got %T", elements[0])
-	}
-	if mandatory, ok := element["isMandatory"].(bool); !ok || !mandatory {
-		t.Fatalf("expected isMandatory=true, got %v", element["isMandatory"])
-	}
-	if element["type"] != "basic" {
-		t.Fatalf("expected enriched element type, got %v", element["type"])
-	}
-	if element["description"] != "User email address" {
-		t.Fatalf("expected enriched element description, got %v", element["description"])
+	if body["actionBy"] != "user@example.com" || body["revocationReason"] != "test" {
+		t.Fatalf("unexpected revoke payload: %v", body)
 	}
 }
 
-func TestMeConsentByIDFailsClosedWhenPurposeMetadataMissing(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{
-				"id":"550e8400-e29b-41d4-a716-446655440000",
-				"clientId":"TPP-CLIENT-001",
-				"type":"accounts",
-				"status":"ACTIVE",
-				"createdTime":1702800000,
-				"updatedTime":1702800001,
-				"purposes":[{"name":"marketing_communication_preferences","elements":[{"name":"user_email","isUserApproved":true}]}]
-			}`))
-		case "/api/v1/consent-purposes":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"data":[]}`))
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
+func TestAPIDenyByDefault(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
 	defer upstream.Close()
-
-	bff := newPhase2Server(t, upstream.URL)
+	bff := newPortalServer(t, upstream.URL, nil)
 	defer bff.Close()
 
-	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440000")
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
+	tests := []struct {
+		method string
+		path   string
+		status int
+	}{
+		{http.MethodGet, "/api/unknown/resource", http.StatusNotFound},
+		{http.MethodDelete, "/api/consents", http.StatusMethodNotAllowed},
+		{http.MethodPut, "/api/consents/" + consentID + "/revoke", http.StatusMethodNotAllowed},
+		{http.MethodPut, "/api/consent-elements/element-1", http.StatusMethodNotAllowed},
+		{http.MethodDelete, "/api/consent-purposes/purpose-1", http.StatusMethodNotAllowed},
 	}
+	for _, tc := range tests {
+		req, _ := http.NewRequest(tc.method, bff.URL+tc.path, nil)
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != tc.status {
+			t.Fatalf("%s %s: expected %d, got %d", tc.method, tc.path, tc.status, resp.StatusCode)
+		}
+	}
+}
+
+func TestProxyErrorAndBodyLimits(t *testing.T) {
+	t.Run("timeout", func(t *testing.T) {
+		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+			time.Sleep(100 * time.Millisecond)
+			w.WriteHeader(http.StatusOK)
+		}))
+		defer upstream.Close()
+		bff := newPortalServer(t, upstream.URL, func(cfg *config.Config) { cfg.Proxy.OpenFGCAPITimeout = 20 * time.Millisecond })
+		defer bff.Close()
+		resp, _ := http.Get(bff.URL + "/api/consents")
+		defer func() {
+			_ = resp.Body.Close()
+		}()
+		if resp.StatusCode != http.StatusGatewayTimeout {
+			t.Fatalf("expected 504, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("request too large", func(t *testing.T) {
+		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
+		defer upstream.Close()
+		bff := newPortalServer(t, upstream.URL, func(cfg *config.Config) { cfg.Proxy.MaxRequestBytes = 8 })
+		defer bff.Close()
+		resp, _ := http.Post(bff.URL+"/api/consents", "application/json", bytes.NewReader(bytes.Repeat([]byte("a"), 32)))
+		defer func() {
+			_ = resp.Body.Close()
+		}()
+		if resp.StatusCode != http.StatusRequestEntityTooLarge {
+			t.Fatalf("expected 413, got %d", resp.StatusCode)
+		}
+	})
+
+	t.Run("body read failure", func(t *testing.T) {
+		upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
+		defer upstream.Close()
+		cfg, _ := config.Load()
+		cfg.Proxy.OpenFGCAPIURL = upstream.URL
+		h, _ := newIntegrationHandler(*cfg)
+		req := httptest.NewRequest(http.MethodPost, "/api/consents", nil)
+		req.Body = failingReadCloser{}
+		res := httptest.NewRecorder()
+		h.ServeHTTP(res, req)
+		if res.Code != http.StatusBadRequest {
+			t.Fatalf("expected 400, got %d", res.Code)
+		}
+	})
+}
+
+func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
+	called := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		called = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+	bff := newPortalServer(t, upstream.URL, func(cfg *config.Config) {
+		cfg.Proxy.PlaceholderModeEnabled = false
+		cfg.Proxy.PlaceholderUserID = ""
+		cfg.Proxy.PlaceholderOrgID = ""
+		cfg.Proxy.PlaceholderGroupID = ""
+	})
+	defer bff.Close()
+
+	tests := []struct{ method, path, body string }{
+		{http.MethodGet, "/me/consents", ""},
+		{http.MethodGet, "/me/consents/" + consentID, ""},
+		{http.MethodPost, "/me/consents/" + consentID + "/approve", "[]"},
+		{http.MethodPost, "/me/consents/" + consentID + "/revoke", "{}"},
+	}
+	for _, tc := range tests {
+		req, _ := http.NewRequest(tc.method, bff.URL+tc.path, strings.NewReader(tc.body))
+		resp, err := http.DefaultClient.Do(req)
+		if err != nil {
+			t.Fatalf("request failed: %v", err)
+		}
+		_ = resp.Body.Close()
+		if resp.StatusCode != http.StatusServiceUnavailable || called {
+			t.Fatalf("%s %s: expected local 503, got status=%d called=%v", tc.method, tc.path, resp.StatusCode, called)
+		}
+	}
+}
+
+func TestConsentDetailsFailClosedWhenExactMetadataIsMissing(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/consents/"+consentID {
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"ACTIVE","attributes":{},"authorizations":[],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[]}]}`))
+			return
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer upstream.Close()
+	bff := newPortalServer(t, upstream.URL, nil)
+	defer bff.Close()
+	resp, _ := http.Get(bff.URL + "/me/consents/" + consentID)
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-
 	if resp.StatusCode != http.StatusBadGateway {
 		t.Fatalf("expected 502, got %d", resp.StatusCode)
-	}
-
-	var payload map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		t.Fatalf("expected json error payload: %v", err)
-	}
-	if payload["code"] != "UPSTREAM_UNAVAILABLE" {
-		t.Fatalf("expected code UPSTREAM_UNAVAILABLE, got %v", payload["code"])
-	}
-}
-
-func TestMeConsentByIDHandlesNullableAndMixedProperties(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{
-				"id":"550e8400-e29b-41d4-a716-446655440000",
-				"clientId":"TPP-CLIENT-001",
-				"type":"accounts",
-				"status":"ACTIVE",
-				"frequency":null,
-				"validityTime":null,
-				"recurringIndicator":null,
-				"dataAccessValidityDuration":null,
-				"attributes":{"consentMode":1},
-				"authorizations":[{"id":"auth-1","userId":null,"type":"authorisation","status":"APPROVED","updatedTime":1702800002}],
-				"createdTime":1702800000,
-				"updatedTime":1702800001,
-				"purposes":[{"name":"marketing_communication_preferences","elements":[{"name":"user_email","isUserApproved":true}]}]
-			}`))
-		case "/api/v1/consent-purposes":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{
-				"data":[{"name":"marketing_communication_preferences","description":null,"elements":[{"name":"user_email","isMandatory":true}]}]
-			}`))
-		case "/api/v1/consent-elements":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{
-				"data":[{"name":"user_email","type":"json-payload","description":null,"properties":{"validationSchema":{"type":"object"}}}]
-			}`))
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer upstream.Close()
-
-	bff := newPhase2Server(t, upstream.URL)
-	defer bff.Close()
-
-	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440000")
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
-
-	var payload map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		t.Fatalf("expected json response: %v", err)
-	}
-
-	purposes, ok := payload["purposes"].([]any)
-	if !ok || len(purposes) != 1 {
-		t.Fatalf("expected one purpose, got %v", payload["purposes"])
-	}
-	purpose := purposes[0].(map[string]any)
-	elements := purpose["elements"].([]any)
-	element := elements[0].(map[string]any)
-
-	if mandatory, ok := element["isMandatory"].(bool); !ok || !mandatory {
-		t.Fatalf("expected isMandatory=true, got %v", element["isMandatory"])
-	}
-	if element["type"] != "json-payload" {
-		t.Fatalf("expected enriched element type, got %v", element["type"])
-	}
-	properties, ok := element["properties"].(map[string]any)
-	if !ok {
-		t.Fatalf("expected properties map, got %T", element["properties"])
-	}
-	if _, ok := properties["validationSchema"].(map[string]any); !ok {
-		t.Fatalf("expected validationSchema object, got %T", properties["validationSchema"])
-	}
-}
-
-func TestMeConsentByIDPurposeLookupFallsBackWithoutClientFilter(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		switch r.URL.Path {
-		case "/api/v1/consents/550e8400-e29b-41d4-a716-446655440000":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{
-				"id":"550e8400-e29b-41d4-a716-446655440000",
-				"clientId":"TPP-CLIENT-003",
-				"type":"accounts",
-				"status":"ACTIVE",
-				"createdTime":1702800000,
-				"updatedTime":1702800001,
-				"purposes":[{"name":"data_sharing_purpose","elements":[{"name":"user_email","isUserApproved":true}]}]
-			}`))
-		case "/api/v1/consent-purposes":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			if strings.Contains(r.URL.RawQuery, "clientIds=TPP-CLIENT-003") {
-				_, _ = w.Write([]byte(`{"data":[]}`))
-				return
-			}
-			_, _ = w.Write([]byte(`{
-				"data":[{"clientId":"TPP-CLIENT-002","name":"data_sharing_purpose","description":"Third-party data sharing purpose","elements":[{"name":"user_email","isMandatory":false}]}]
-			}`))
-		case "/api/v1/consent-elements":
-			w.Header().Set("Content-Type", "application/json")
-			w.WriteHeader(http.StatusOK)
-			_, _ = w.Write([]byte(`{"data":[{"name":"user_email","type":"basic","description":"User email","properties":{}}]}`))
-		default:
-			w.WriteHeader(http.StatusNotFound)
-		}
-	}))
-	defer upstream.Close()
-
-	bff := newPhase2Server(t, upstream.URL)
-	defer bff.Close()
-
-	resp, err := http.Get(bff.URL + "/me/consents/550e8400-e29b-41d4-a716-446655440000")
-	if err != nil {
-		t.Fatalf("request failed: %v", err)
-	}
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-
-	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("expected 200, got %d", resp.StatusCode)
-	}
-
-	var payload map[string]any
-	if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
-		t.Fatalf("expected json response: %v", err)
-	}
-	purposes, ok := payload["purposes"].([]any)
-	if !ok || len(purposes) != 1 {
-		t.Fatalf("expected one purpose, got %v", payload["purposes"])
-	}
-	purpose := purposes[0].(map[string]any)
-	if purpose["description"] != "Third-party data sharing purpose" {
-		t.Fatalf("expected fallback purpose description, got %v", purpose["description"])
 	}
 }

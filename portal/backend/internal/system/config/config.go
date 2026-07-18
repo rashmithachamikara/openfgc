@@ -75,7 +75,7 @@ type ProxyConfig struct {
 	PlaceholderModeEnabled bool   `koanf:"placeholder_mode_enabled"`
 	PlaceholderUserID      string `koanf:"placeholder_user_id"`
 	PlaceholderOrgID       string `koanf:"placeholder_org_id"`
-	PlaceholderClientID    string `koanf:"placeholder_client_id"`
+	PlaceholderGroupID     string `koanf:"placeholder_group_id"`
 
 	AllowedPassthrough []string `koanf:"allowed_passthrough_methods"`
 }
@@ -190,7 +190,7 @@ func setDefaults(k *koanf.Koanf) error {
 	if err := k.Set("proxy.placeholder_org_id", ""); err != nil {
 		return err
 	}
-	if err := k.Set("proxy.placeholder_client_id", ""); err != nil {
+	if err := k.Set("proxy.placeholder_group_id", ""); err != nil {
 		return err
 	}
 	if err := k.Set("proxy.allowed_passthrough_methods", []string{"GET", "POST", "PUT", "DELETE"}); err != nil {
@@ -267,8 +267,8 @@ func validate(cfg Config) error {
 	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderOrgID != "" {
 		return fmt.Errorf("proxy.placeholder_org_id must be empty when placeholder mode is disabled")
 	}
-	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderClientID != "" {
-		return fmt.Errorf("proxy.placeholder_client_id must be empty when placeholder mode is disabled")
+	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderGroupID != "" {
+		return fmt.Errorf("proxy.placeholder_group_id must be empty when placeholder mode is disabled")
 	}
 	if len(cfg.Proxy.AllowedPassthrough) == 0 {
 		return fmt.Errorf("proxy.allowed_passthrough_methods must not be empty")
