@@ -1,0 +1,53 @@
+/*
+ * Copyright (c) 2026, WSO2 LLC. (https://www.wso2.com).
+ * Licensed under the Apache License, Version 2.0.
+ */
+
+import { UserMenu } from '@wso2/oxygen-ui'
+import { useTranslation } from 'react-i18next'
+import { getUserProfile, logout } from '../../../utils/authClient'
+
+type UserClaims = Record<string, unknown>
+
+function claim(claims: UserClaims, name: string): string | undefined {
+  const value = claims[name]
+
+  return typeof value === 'string' && value.trim() ? value.trim() : undefined
+}
+
+function displayName(claims: UserClaims, fallback: string): string {
+  const name = claim(claims, 'name') ?? claim(claims, 'displayName')
+  if (name) {
+    return name
+  }
+
+  const fullName = [claim(claims, 'given_name'), claim(claims, 'family_name')]
+    .filter(Boolean)
+    .join(' ')
+
+  return fullName || claim(claims, 'preferred_username') || claim(claims, 'username') || fallback
+}
+
+function UserProfileMenu(): React.JSX.Element {
+  const { t } = useTranslation('common')
+  const claims = getUserProfile() ?? {}
+  const name = displayName(claims, t('layout.userMenu.unknownUser'))
+  const email = claim(claims, 'email') ?? claim(claims, 'sub') ?? t('layout.userMenu.noEmail')
+  const avatar = claim(claims, 'picture')
+
+  return (
+    <UserMenu>
+      <UserMenu.Trigger name={name} avatar={avatar} />
+      <UserMenu.Header name={name} email={email} avatar={avatar} />
+      <UserMenu.Divider />
+      <UserMenu.Logout
+        label={t('layout.userMenu.signOut')}
+        onClick={() => {
+          logout().catch(() => undefined)
+        }}
+      />
+    </UserMenu>
+  )
+}
+
+export default UserProfileMenu

@@ -16,12 +16,12 @@
  * under the License.
  */
 
-import { AppShell, Box, ColorSchemeToggle, Header, IconButton } from '@wso2/oxygen-ui'
-import { CircleUserRound } from '@wso2/oxygen-ui-icons-react'
+import { AppShell, Box, ColorSchemeToggle, Header } from '@wso2/oxygen-ui'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet } from 'react-router-dom'
 import AppSidebar from '../sidebar/AppSidebar'
+import UserProfileMenu from './UserProfileMenu'
 
 function MainLayout(): React.JSX.Element {
   const { t } = useTranslation('common')
@@ -56,9 +56,7 @@ function MainLayout(): React.JSX.Element {
           <Header.Spacer />
           <Header.Actions>
             <ColorSchemeToggle />
-            <IconButton size="medium" aria-label={t('layout.userAvatarAriaLabel')}>
-              <CircleUserRound size={26} />
-            </IconButton>
+            <UserProfileMenu />
           </Header.Actions>
         </Header>
       </AppShell.Navbar>
