@@ -32,6 +32,7 @@ import (
 	"strings"
 
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
+	systemcontext "github.com/wso2/openfgc/portal/backend/internal/system/context"
 	"github.com/wso2/openfgc/portal/backend/internal/system/correlation"
 )
 
@@ -374,13 +375,11 @@ func connectionHeaderNames(headers http.Header) map[string]struct{} {
 }
 
 func (s *Service) setTrustedHeaders(incoming *http.Request, outgoing *http.Request, trustedGroupID string) {
-	if s.cfg.PlaceholderOrgID != "" {
-		outgoing.Header.Set("org-id", s.cfg.PlaceholderOrgID)
+	if principal, ok := systemcontext.PrincipalFromContext(incoming.Context()); ok {
+		outgoing.Header.Set("org-id", principal.OrgID)
 	}
 	if trustedGroupID != "" {
 		outgoing.Header.Set("group-id", trustedGroupID)
-	} else if s.cfg.PlaceholderGroupID != "" {
-		outgoing.Header.Set("group-id", s.cfg.PlaceholderGroupID)
 	}
 	correlationID := incoming.Header.Get("X-Correlation-ID")
 	if correlationID == "" {

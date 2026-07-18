@@ -20,6 +20,7 @@ package config
 
 import (
 	"os"
+	"path/filepath"
 	"strings"
 	"testing"
 )
@@ -128,7 +129,6 @@ func TestPlaceholderValuesRejectedWhenModeDisabled(t *testing.T) {
 	}{
 		{name: "user id", envName: "BFF_PROXY__PLACEHOLDER_USER_ID", errText: "proxy.placeholder_user_id must be empty"},
 		{name: "org id", envName: "BFF_PROXY__PLACEHOLDER_ORG_ID", errText: "proxy.placeholder_org_id must be empty"},
-		{name: "group id", envName: "BFF_PROXY__PLACEHOLDER_GROUP_ID", errText: "proxy.placeholder_group_id must be empty"},
 	}
 
 	for _, tt := range tests {
@@ -199,5 +199,37 @@ func TestMaxResponseBytesMustBePositive(t *testing.T) {
 	}
 	if !strings.Contains(err.Error(), "proxy.max_response_bytes must be > 0") {
 		t.Fatalf("unexpected error: %v", err)
+	}
+}
+
+func TestAuthClientSecretIsEnvironmentOnly(t *testing.T) {
+	configPath := filepath.Join(t.TempDir(), "config.yaml")
+	contents := `
+auth:
+  enabled: true
+  issuer_url: https://idp.example.com
+  client_id: portal-client
+  client_secret: file-secret-must-be-ignored
+  portal_url: https://portal.example.com/consents
+  redirect_uri: https://portal.example.com/auth/callback
+  post_logout_redirect_uri: https://portal.example.com/
+  resource_audience: portal-api
+`
+	if err := os.WriteFile(configPath, []byte(contents), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	t.Setenv("BFF_CONFIG_FILE", configPath)
+
+	if _, err := Load(); err == nil || !strings.Contains(err.Error(), "BFF_AUTH__CLIENT_SECRET") {
+		t.Fatalf("expected file secret to be ignored, got %v", err)
+	}
+
+	t.Setenv("BFF_AUTH__CLIENT_SECRET", "environment-secret")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("expected environment secret to load: %v", err)
+	}
+	if cfg.Auth.ClientSecret != "environment-secret" {
+		t.Fatalf("unexpected client secret source")
 	}
 }

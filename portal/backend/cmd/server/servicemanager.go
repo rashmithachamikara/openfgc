@@ -19,11 +19,13 @@
 package main
 
 import (
+	"context"
 	"log/slog"
 	"net/http"
 
 	"github.com/wso2/openfgc/portal/backend/internal/me"
 	"github.com/wso2/openfgc/portal/backend/internal/proxy"
+	"github.com/wso2/openfgc/portal/backend/internal/system/auth"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 	"github.com/wso2/openfgc/portal/backend/internal/system/healthcheck"
 )
@@ -35,12 +37,19 @@ func registerServices(mux *http.ServeMux, log *slog.Logger, cfg config.Config) e
 	mux.HandleFunc("GET /health", healthHandler.Liveness)
 	log.Debug("registered health endpoints")
 
-	if err := proxy.Initialize(mux, cfg.Proxy); err != nil {
+	authManager, err := auth.NewManager(context.Background(), cfg.Auth, cfg.Proxy, log)
+	if err != nil {
+		return err
+	}
+	authManager.RegisterRoutes(mux)
+	log.Debug("registered auth module")
+
+	if err := proxy.Initialize(mux, cfg.Proxy, authManager); err != nil {
 		return err
 	}
 	log.Debug("registered proxy module")
 
-	if err := me.Initialize(mux, cfg); err != nil {
+	if err := me.Initialize(mux, cfg, authManager); err != nil {
 		return err
 	}
 	log.Debug("registered me module")
