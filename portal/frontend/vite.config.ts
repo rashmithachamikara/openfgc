@@ -46,20 +46,21 @@ function securityHeadersPlugin(policy: string, metaPolicy: string): Plugin {
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), 'VITE_')
+  const apiBaseURL = env.VITE_API_BASE_URL || 'http://localhost:8080'
 
   if (mode !== 'test' && !env.VITE_API_BASE_URL) {
     throw new Error('VITE_API_BASE_URL is required. Create a .env file from .env.example.')
   }
 
   const production = mode === 'production'
-  const upgradeInsecureRequests = production && env.VITE_API_BASE_URL.startsWith('https://')
+  const upgradeInsecureRequests = production && apiBaseURL.startsWith('https://')
   const policy = contentSecurityPolicy({
-    apiBaseURL: env.VITE_API_BASE_URL || 'http://localhost:8080',
+    apiBaseURL,
     upgradeInsecureRequests,
   })
   // frame-ancestors is supported only in the HTTP header, not a CSP meta element.
   const metaPolicy = contentSecurityPolicy({
-    apiBaseURL: env.VITE_API_BASE_URL || 'http://localhost:8080',
+    apiBaseURL,
     includeFrameAncestors: false,
     upgradeInsecureRequests,
   })

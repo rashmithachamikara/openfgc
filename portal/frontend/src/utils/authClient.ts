@@ -39,11 +39,18 @@ function allowedNavigationOrigins(): Set<string> {
   }
 
   const configured = import.meta.env.VITE_AUTH_LOGOUT_ALLOWED_ORIGINS as string | undefined
-  configured
+  const configuredOrigins = configured
     ?.split(',')
     .map((origin) => origin.trim())
     .filter(Boolean)
-    .forEach((origin) => origins.add(httpURL(origin).origin))
+
+  configuredOrigins?.forEach((origin) => {
+    try {
+      origins.add(httpURL(origin).origin)
+    } catch {
+      // Invalid configured entries fail closed without disabling valid origins.
+    }
+  })
 
   return origins
 }
