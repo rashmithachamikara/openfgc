@@ -9,6 +9,8 @@ import (
 	"crypto/rsa"
 	"encoding/json"
 	"net/http"
+	"net/http/httptest"
+	"net/url"
 	"testing"
 	"time"
 
@@ -28,7 +30,9 @@ func testAuthConfig(issuer string) config.AuthConfig {
 		ScopeClaim: "scope", OrgIDClaim: "org_id", AccessTokenPart1Cookie: "portal-at-p1",
 		AccessTokenPart2Cookie: "portal-at-p2", RefreshTokenPart1Cookie: "portal-rt-p1",
 		RefreshTokenPart2Cookie: "portal-rt-p2", IDTokenPart1Cookie: "portal-id-p1",
-		IDTokenPart2Cookie: "portal-id-p2", CookieSameSite: "Lax", RefreshCookieMaxAgeSeconds: 3600,
+		IDTokenPart2Cookie: "portal-id-p2", OAuthStateCookie: "portal-oauth-state",
+		PKCEVerifierCookie: "portal-pkce-verifier", CookieSameSite: "Lax",
+		LoginTransactionMaxAgeSeconds: 600, RefreshCookieMaxAgeSeconds: 3600,
 		MaxTokenPartBytes: 3800, MaxReconstructedTokenBytes: 7600,
 	}
 }
@@ -57,4 +61,18 @@ func cookiesByName(cookies []*http.Cookie) map[string]*http.Cookie {
 		result[cookie.Name] = cookie
 	}
 	return result
+}
+
+func startLoginTransaction(t *testing.T, manager *Manager) (string, map[string]*http.Cookie) {
+	t.Helper()
+	recorder := httptest.NewRecorder()
+	manager.Login(recorder, httptest.NewRequest(http.MethodGet, "/auth/login", nil))
+	if recorder.Code != http.StatusFound {
+		t.Fatalf("login returned %d", recorder.Code)
+	}
+	location, err := url.Parse(recorder.Header().Get("Location"))
+	if err != nil || location.Query().Get("state") == "" {
+		t.Fatalf("login did not return state: %q", recorder.Header().Get("Location"))
+	}
+	return location.Query().Get("state"), cookiesByName(recorder.Result().Cookies())
 }

@@ -44,6 +44,9 @@ paths:
     get:
       tags: [Authentication]
       summary: Start OIDC login
+      description: >-
+        Creates a short-lived, one-time login transaction in secure HttpOnly
+        cookies and redirects with OAuth state and an S256 PKCE challenge.
       security: []
       responses:
         '302':
@@ -58,9 +61,17 @@ paths:
           name: code
           required: true
           schema: { type: string }
+        - in: query
+          name: state
+          required: true
+          description: Must match the one-time state cookie issued by `/auth/login`.
+          schema: { type: string }
       responses:
         '302':
-          description: Redirect to the portal after success or with a generic auth error.
+          description: >-
+            Consumes the login transaction, exchanges the code with its PKCE
+            verifier, and redirects to the portal after success or with a generic
+            authentication error.
   /auth/refresh:
     post:
       tags: [Authentication]

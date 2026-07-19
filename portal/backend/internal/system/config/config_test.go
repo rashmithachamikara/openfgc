@@ -282,6 +282,24 @@ func TestDevelopmentAuthURLsAllowHTTP(t *testing.T) {
 	}
 }
 
+func TestLoginTransactionConfigurationValidation(t *testing.T) {
+	t.Run("maximum age", func(t *testing.T) {
+		cfg := validAuthValidationConfig("development")
+		cfg.Auth.LoginTransactionMaxAgeSeconds = 601
+		if err := validateAuth(cfg); err == nil || !strings.Contains(err.Error(), "login_transaction_max_age_seconds") {
+			t.Fatalf("expected invalid transaction maximum age, got %v", err)
+		}
+	})
+
+	t.Run("unique cookie names", func(t *testing.T) {
+		cfg := validAuthValidationConfig("development")
+		cfg.Auth.PKCEVerifierCookie = cfg.Auth.OAuthStateCookie
+		if err := validateAuth(cfg); err == nil || !strings.Contains(err.Error(), "cookie names must be unique") {
+			t.Fatalf("expected duplicate transaction cookie name to fail, got %v", err)
+		}
+	})
+}
+
 func TestAuthURLsRemainAbsoluteHTTPURLsInEveryEnvironment(t *testing.T) {
 	for _, value := range []string{"/relative", "ftp://idp.example.com", "https:///missing-host"} {
 		if err := validateAbsoluteHTTPURL(value, false); err == nil || !strings.Contains(err.Error(), "absolute HTTP(S) URL") {
@@ -303,6 +321,8 @@ func validAuthValidationConfig(environment string) Config {
 			AccessTokenPart1Cookie: "at-p1", AccessTokenPart2Cookie: "at-p2",
 			RefreshTokenPart1Cookie: "rt-p1", RefreshTokenPart2Cookie: "rt-p2",
 			IDTokenPart1Cookie: "id-p1", IDTokenPart2Cookie: "id-p2",
+			OAuthStateCookie: "oauth-state", PKCEVerifierCookie: "pkce-verifier",
+			LoginTransactionMaxAgeSeconds: 600,
 		},
 	}
 }

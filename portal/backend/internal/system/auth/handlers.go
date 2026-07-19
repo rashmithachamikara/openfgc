@@ -30,13 +30,14 @@ func (m *Manager) Login(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "route not found")
 		return
 	}
-	authorizationURL := m.oauthConfig.AuthCodeURL("")
-	if parsed, err := url.Parse(authorizationURL); err == nil {
-		query := parsed.Query()
-		query.Del("state")
-		parsed.RawQuery = query.Encode()
-		authorizationURL = parsed.String()
+	state, verifier, err := newLoginTransaction()
+	if err != nil {
+		m.log.Error("OIDC login transaction generation failed")
+		writeError(w, http.StatusInternalServerError, "LOGIN_FAILED", "login failed")
+		return
 	}
+	m.setLoginTransactionCookies(w, state, verifier)
+	authorizationURL := m.oauthConfig.AuthCodeURL(state, pkceAuthorizationOption(verifier))
 	http.Redirect(w, r, authorizationURL, http.StatusFound)
 }
 
@@ -46,6 +47,15 @@ func (m *Manager) Callback(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusNotFound, "NOT_FOUND", "route not found")
 		return
 	}
+	states := r.URL.Query()["state"]
+	expectedState, stateErr := exactlyOneCookie(r, m.cfg.OAuthStateCookie)
+	verifier, verifierErr := exactlyOneCookie(r, m.cfg.PKCEVerifierCookie)
+	m.clearLoginTransactionCookies(w)
+	if len(states) != 1 || !statesMatch(expectedState, states[0]) || stateErr != nil ||
+		verifierErr != nil || !validPKCEVerifier(verifier) {
+		m.callbackFailure(w, r, "invalid login transaction")
+		return
+	}
 	codes := r.URL.Query()["code"]
 	if len(codes) != 1 || strings.TrimSpace(codes[0]) == "" {
 		m.callbackFailure(w, r, "missing authorization code")
@@ -53,7 +63,7 @@ func (m *Manager) Callback(w http.ResponseWriter, r *http.Request) {
 	}
 	ctx, cancel := timeBoundOIDCContext(r, m.httpClient, m.cfg.HTTPTimeout)
 	defer cancel()
-	token, err := m.oauthConfig.Exchange(ctx, codes[0])
+	token, err := m.oauthConfig.Exchange(ctx, codes[0], oauth2.VerifierOption(verifier))
 	if err != nil {
 		m.callbackFailure(w, r, "token exchange failed")
 		return

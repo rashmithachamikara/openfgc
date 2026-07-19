@@ -35,6 +35,7 @@ func TestOIDCLoginCallbackRefreshAndLogout(t *testing.T) {
 	keyID := "test-key"
 	var issuer *httptest.Server
 	var refreshCalls int
+	var expectedPKCEChallenge string
 	issuer = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/.well-known/openid-configuration":
@@ -54,6 +55,12 @@ func TestOIDCLoginCallbackRefreshAndLogout(t *testing.T) {
 			}
 			if clientID, clientSecret, ok := r.BasicAuth(); !ok || clientID != "portal-client" || clientSecret != "secret" {
 				t.Errorf("unexpected confidential-client authentication")
+			}
+			if r.Form.Get("grant_type") != "refresh_token" {
+				verifier := r.Form.Get("code_verifier")
+				if !validPKCEVerifier(verifier) || pkceChallenge(verifier) != expectedPKCEChallenge {
+					t.Errorf("authorization-code exchange did not contain the matching PKCE verifier")
+				}
 			}
 			now := time.Now()
 			access := signTestToken(t, privateKey, keyID, map[string]any{
@@ -89,16 +96,37 @@ func TestOIDCLoginCallbackRefreshAndLogout(t *testing.T) {
 
 	login := httptest.NewRecorder()
 	mux.ServeHTTP(login, httptest.NewRequest(http.MethodGet, "/auth/login", nil))
-	if login.Code != http.StatusFound || strings.Contains(login.Header().Get("Location"), "state=") {
+	authorizationURL, parseErr := url.Parse(login.Header().Get("Location"))
+	if login.Code != http.StatusFound || parseErr != nil {
 		t.Fatalf("unexpected login redirect: %d %s", login.Code, login.Header().Get("Location"))
+	}
+	state := authorizationURL.Query().Get("state")
+	expectedPKCEChallenge = authorizationURL.Query().Get("code_challenge")
+	if state == "" || expectedPKCEChallenge == "" || authorizationURL.Query().Get("code_challenge_method") != "S256" {
+		t.Fatalf("login redirect missing state or S256 PKCE parameters: %s", authorizationURL.RawQuery)
+	}
+	transactionCookies := cookiesByName(login.Result().Cookies())
+	for _, name := range []string{cfg.OAuthStateCookie, cfg.PKCEVerifierCookie} {
+		cookie := transactionCookies[name]
+		if cookie == nil || !cookie.HttpOnly || cookie.Path != "/" || cookie.MaxAge != cfg.LoginTransactionMaxAgeSeconds {
+			t.Fatalf("invalid login transaction cookie %s: %#v", name, cookie)
+		}
 	}
 
 	callback := httptest.NewRecorder()
-	mux.ServeHTTP(callback, httptest.NewRequest(http.MethodGet, "/auth/callback?code=test-code", nil))
+	callbackRequest := httptest.NewRequest(http.MethodGet, "/auth/callback?code=test-code&state="+url.QueryEscape(state), nil)
+	callbackRequest.AddCookie(transactionCookies[cfg.OAuthStateCookie])
+	callbackRequest.AddCookie(transactionCookies[cfg.PKCEVerifierCookie])
+	mux.ServeHTTP(callback, callbackRequest)
 	if callback.Code != http.StatusFound || callback.Header().Get("Location") != cfg.PortalURL {
 		t.Fatalf("unexpected callback: %d %s", callback.Code, callback.Header().Get("Location"))
 	}
 	cookies := cookiesByName(callback.Result().Cookies())
+	for _, name := range []string{cfg.OAuthStateCookie, cfg.PKCEVerifierCookie} {
+		if cookies[name] == nil || cookies[name].MaxAge != -1 {
+			t.Fatalf("callback did not consume login transaction cookie %s", name)
+		}
+	}
 	for _, name := range []string{cfg.AccessTokenPart1Cookie, cfg.AccessTokenPart2Cookie, cfg.RefreshTokenPart1Cookie, cfg.RefreshTokenPart2Cookie, cfg.IDTokenPart1Cookie, cfg.IDTokenPart2Cookie} {
 		if cookies[name] == nil {
 			t.Fatalf("missing cookie %s", name)
@@ -193,7 +221,14 @@ func TestCallbackFailureMappingAndRedaction(t *testing.T) {
 				t.Fatal(err)
 			}
 			recorder := httptest.NewRecorder()
-			manager.Callback(recorder, httptest.NewRequest(http.MethodGet, test.requestURL, nil))
+			state, transactionCookies := startLoginTransaction(t, manager)
+			request := httptest.NewRequest(http.MethodGet, test.requestURL, nil)
+			query := request.URL.Query()
+			query.Set("state", state)
+			request.URL.RawQuery = query.Encode()
+			request.AddCookie(transactionCookies[cfg.OAuthStateCookie])
+			request.AddCookie(transactionCookies[cfg.PKCEVerifierCookie])
+			manager.Callback(recorder, request)
 			if recorder.Code != http.StatusFound {
 				t.Fatalf("expected generic redirect, got %d", recorder.Code)
 			}
@@ -205,6 +240,83 @@ func TestCallbackFailureMappingAndRedaction(t *testing.T) {
 				t.Fatalf("callback leaked sensitive details: body=%q logs=%q", recorder.Body.String(), logs.String())
 			}
 		})
+	}
+}
+
+func TestCallbackRejectsMissingMismatchedAndReplayedState(t *testing.T) {
+	provider := newOIDCValidationProvider(t)
+	var tokenCalls atomic.Int32
+	provider.token = func(w http.ResponseWriter, _ *http.Request) {
+		tokenCalls.Add(1)
+		writeValidTokenResponse(t, w, provider, "refresh-token", true)
+	}
+	manager := provider.manager(t, nil)
+
+	for _, test := range []struct {
+		name  string
+		state func(string) []string
+	}{
+		{name: "missing state", state: func(string) []string { return nil }},
+		{name: "mismatched state", state: func(string) []string { return []string{"different-state"} }},
+		{name: "duplicate state", state: func(value string) []string { return []string{value, value} }},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			state, cookies := startLoginTransaction(t, manager)
+			request := httptest.NewRequest(http.MethodGet, "/auth/callback?code=test-code", nil)
+			query := request.URL.Query()
+			query["state"] = test.state(state)
+			request.URL.RawQuery = query.Encode()
+			request.AddCookie(cookies[manager.cfg.OAuthStateCookie])
+			request.AddCookie(cookies[manager.cfg.PKCEVerifierCookie])
+
+			recorder := httptest.NewRecorder()
+			manager.Callback(recorder, request)
+
+			assertCallbackFailure(t, recorder)
+			assertTransactionCookiesCleared(t, recorder, manager.cfg)
+		})
+	}
+
+	state, cookies := startLoginTransaction(t, manager)
+	newRequest := func() *http.Request {
+		request := httptest.NewRequest(http.MethodGet, "/auth/callback?code=test-code&state="+url.QueryEscape(state), nil)
+		request.AddCookie(cookies[manager.cfg.OAuthStateCookie])
+		request.AddCookie(cookies[manager.cfg.PKCEVerifierCookie])
+		return request
+	}
+	success := httptest.NewRecorder()
+	manager.Callback(success, newRequest())
+	if success.Code != http.StatusFound || success.Header().Get("Location") != manager.cfg.PortalURL {
+		t.Fatalf("valid callback failed: %d %q", success.Code, success.Header().Get("Location"))
+	}
+
+	replay := httptest.NewRecorder()
+	replayRequest := httptest.NewRequest(http.MethodGet, "/auth/callback?code=test-code&state="+url.QueryEscape(state), nil)
+	manager.Callback(replay, replayRequest)
+	assertCallbackFailure(t, replay)
+	if tokenCalls.Load() != 1 {
+		t.Fatalf("replayed callback reached token endpoint; calls=%d", tokenCalls.Load())
+	}
+}
+
+func assertCallbackFailure(t *testing.T, recorder *httptest.ResponseRecorder) {
+	t.Helper()
+	if recorder.Code != http.StatusFound {
+		t.Fatalf("expected callback failure redirect, got %d", recorder.Code)
+	}
+	location, err := url.Parse(recorder.Header().Get("Location"))
+	if err != nil || location.Query().Get("auth_error") != "login_failed" {
+		t.Fatalf("unexpected callback failure location: %q", recorder.Header().Get("Location"))
+	}
+}
+
+func assertTransactionCookiesCleared(t *testing.T, recorder *httptest.ResponseRecorder, cfg config.AuthConfig) {
+	t.Helper()
+	cookies := cookiesByName(recorder.Result().Cookies())
+	for _, name := range []string{cfg.OAuthStateCookie, cfg.PKCEVerifierCookie} {
+		if cookies[name] == nil || cookies[name].MaxAge != -1 || !cookies[name].HttpOnly {
+			t.Fatalf("transaction cookie %s was not securely consumed: %#v", name, cookies[name])
+		}
 	}
 }
 
