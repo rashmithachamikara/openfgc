@@ -69,6 +69,10 @@ func (p *authIntegrationProvider) serveHTTP(w http.ResponseWriter, r *http.Reque
 			http.Error(w, "invalid client", http.StatusUnauthorized)
 			return
 		}
+		if r.Form.Get("grant_type") != "refresh_token" && r.Form.Get("code_verifier") == "" {
+			http.Error(w, "missing PKCE verifier", http.StatusBadRequest)
+			return
+		}
 		refreshToken := "refresh-token-initial"
 		if r.Form.Get("grant_type") == "refresh_token" {
 			p.mu.Lock()
@@ -149,8 +153,10 @@ func newAuthIntegrationFixture(t *testing.T, tokenScopes string) *authIntegratio
 		AccessTokenPart1Cookie: "integration-at-p1", AccessTokenPart2Cookie: "integration-at-p2",
 		RefreshTokenPart1Cookie: "integration-rt-p1", RefreshTokenPart2Cookie: "integration-rt-p2",
 		IDTokenPart1Cookie: "integration-id-p1", IDTokenPart2Cookie: "integration-id-p2",
-		CookieSecure: false, CookieSameSite: "Lax", RefreshCookieMaxAgeSeconds: 3600,
-		MaxTokenPartBytes: 3800, MaxReconstructedTokenBytes: 7600,
+		OAuthStateCookie: "integration-oauth-state", PKCEVerifierCookie: "integration-pkce-verifier",
+		CookieSecure: false, CookieSameSite: "Lax", LoginTransactionMaxAgeSeconds: 600,
+		RefreshCookieMaxAgeSeconds: 3600,
+		MaxTokenPartBytes:          3800, MaxReconstructedTokenBytes: 7600,
 	}
 	cfg.Proxy.OpenFGCAPIURL = upstream.URL
 	cfg.Proxy.PlaceholderModeEnabled = false
@@ -189,14 +195,34 @@ func (f *authIntegrationFixture) login(t *testing.T) map[string]*http.Cookie {
 	if authorizationURL.Query().Get("client_id") != f.cfg.Auth.ClientID || authorizationURL.Query().Get("redirect_uri") != f.cfg.Auth.RedirectURI {
 		t.Fatalf("authorization redirect has incorrect client parameters: %s", authorizationURL.RawQuery)
 	}
+	state := authorizationURL.Query().Get("state")
+	if state == "" || authorizationURL.Query().Get("code_challenge") == "" || authorizationURL.Query().Get("code_challenge_method") != "S256" {
+		t.Fatalf("authorization redirect is missing state or S256 PKCE: %s", authorizationURL.RawQuery)
+	}
+	loginCookies := authIntegrationCookiesByName(loginResponse.Cookies())
+	if loginCookies[f.cfg.Auth.OAuthStateCookie] == nil || loginCookies[f.cfg.Auth.PKCEVerifierCookie] == nil {
+		t.Fatal("login did not issue transaction cookies")
+	}
 
-	callbackResponse, err := f.client.Get(f.bff.URL + "/auth/callback?code=integration-code")
+	callbackRequest, _ := http.NewRequest(http.MethodGet, f.bff.URL+"/auth/callback?code=integration-code&state="+url.QueryEscape(state), nil)
+	callbackRequest.AddCookie(loginCookies[f.cfg.Auth.OAuthStateCookie])
+	callbackRequest.AddCookie(loginCookies[f.cfg.Auth.PKCEVerifierCookie])
+	callbackResponse, err := f.client.Do(callbackRequest)
 	if err != nil {
 		t.Fatalf("callback request: %v", err)
 	}
 	_ = callbackResponse.Body.Close()
 	if callbackResponse.StatusCode != http.StatusFound || callbackResponse.Header.Get("Location") != f.cfg.Auth.PortalURL {
 		t.Fatalf("unexpected callback response: %d %q", callbackResponse.StatusCode, callbackResponse.Header.Get("Location"))
+	}
+	replayResponse, err := f.client.Get(f.bff.URL + "/auth/callback?code=integration-code&state=" + url.QueryEscape(state))
+	if err != nil {
+		t.Fatalf("replayed callback request: %v", err)
+	}
+	_ = replayResponse.Body.Close()
+	replayLocation, parseErr := url.Parse(replayResponse.Header.Get("Location"))
+	if replayResponse.StatusCode != http.StatusFound || parseErr != nil || replayLocation.Query().Get("auth_error") != "login_failed" {
+		t.Fatalf("replayed callback was not rejected: %d %q", replayResponse.StatusCode, replayResponse.Header.Get("Location"))
 	}
 	cookies := authIntegrationCookiesByName(callbackResponse.Cookies())
 	for _, name := range []string{

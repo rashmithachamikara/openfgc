@@ -46,35 +46,38 @@ type Config struct {
 
 // AuthConfig contains OIDC confidential-client, JWT validation, and split-cookie settings.
 type AuthConfig struct {
-	Enabled                    bool          `koanf:"enabled"`
-	IssuerURL                  string        `koanf:"issuer_url"`
-	ClientID                   string        `koanf:"client_id"`
-	ClientSecret               string        `koanf:"-"`
-	PortalURL                  string        `koanf:"portal_url"`
-	RedirectURI                string        `koanf:"redirect_uri"`
-	PostLogoutRedirectURI      string        `koanf:"post_logout_redirect_uri"`
-	Scopes                     []string      `koanf:"scopes"`
-	ResourceAudience           string        `koanf:"resource_audience"`
-	AllowedSigningAlgorithms   []string      `koanf:"allowed_signing_algorithms"`
-	HTTPTimeout                time.Duration `koanf:"http_timeout"`
-	RefreshTimeout             time.Duration `koanf:"refresh_timeout"`
-	ScopeClaim                 string        `koanf:"scope_claim"`
-	OrgIDClaim                 string        `koanf:"org_id_claim"`
-	RequireAccessTokenType     bool          `koanf:"require_access_token_type"`
-	AccessTokenTypeClaim       string        `koanf:"access_token_type_claim"`
-	AccessTokenTypeValue       string        `koanf:"access_token_type_value"`
-	AccessTokenPart1Cookie     string        `koanf:"access_token_part1_cookie"`
-	AccessTokenPart2Cookie     string        `koanf:"access_token_part2_cookie"`
-	RefreshTokenPart1Cookie    string        `koanf:"refresh_token_part1_cookie"`
-	RefreshTokenPart2Cookie    string        `koanf:"refresh_token_part2_cookie"`
-	IDTokenPart1Cookie         string        `koanf:"id_token_part1_cookie"`
-	IDTokenPart2Cookie         string        `koanf:"id_token_part2_cookie"`
-	CookieSecure               bool          `koanf:"cookie_secure"`
-	CookieSameSite             string        `koanf:"cookie_same_site"`
-	ClockSkew                  time.Duration `koanf:"clock_skew"`
-	RefreshCookieMaxAgeSeconds int           `koanf:"refresh_cookie_max_age_seconds"`
-	MaxTokenPartBytes          int           `koanf:"max_token_part_bytes"`
-	MaxReconstructedTokenBytes int           `koanf:"max_reconstructed_token_bytes"`
+	Enabled                       bool          `koanf:"enabled"`
+	IssuerURL                     string        `koanf:"issuer_url"`
+	ClientID                      string        `koanf:"client_id"`
+	ClientSecret                  string        `koanf:"-"`
+	PortalURL                     string        `koanf:"portal_url"`
+	RedirectURI                   string        `koanf:"redirect_uri"`
+	PostLogoutRedirectURI         string        `koanf:"post_logout_redirect_uri"`
+	Scopes                        []string      `koanf:"scopes"`
+	ResourceAudience              string        `koanf:"resource_audience"`
+	AllowedSigningAlgorithms      []string      `koanf:"allowed_signing_algorithms"`
+	HTTPTimeout                   time.Duration `koanf:"http_timeout"`
+	RefreshTimeout                time.Duration `koanf:"refresh_timeout"`
+	ScopeClaim                    string        `koanf:"scope_claim"`
+	OrgIDClaim                    string        `koanf:"org_id_claim"`
+	RequireAccessTokenType        bool          `koanf:"require_access_token_type"`
+	AccessTokenTypeClaim          string        `koanf:"access_token_type_claim"`
+	AccessTokenTypeValue          string        `koanf:"access_token_type_value"`
+	AccessTokenPart1Cookie        string        `koanf:"access_token_part1_cookie"`
+	AccessTokenPart2Cookie        string        `koanf:"access_token_part2_cookie"`
+	RefreshTokenPart1Cookie       string        `koanf:"refresh_token_part1_cookie"`
+	RefreshTokenPart2Cookie       string        `koanf:"refresh_token_part2_cookie"`
+	IDTokenPart1Cookie            string        `koanf:"id_token_part1_cookie"`
+	IDTokenPart2Cookie            string        `koanf:"id_token_part2_cookie"`
+	OAuthStateCookie              string        `koanf:"oauth_state_cookie"`
+	PKCEVerifierCookie            string        `koanf:"pkce_verifier_cookie"`
+	CookieSecure                  bool          `koanf:"cookie_secure"`
+	CookieSameSite                string        `koanf:"cookie_same_site"`
+	ClockSkew                     time.Duration `koanf:"clock_skew"`
+	LoginTransactionMaxAgeSeconds int           `koanf:"login_transaction_max_age_seconds"`
+	RefreshCookieMaxAgeSeconds    int           `koanf:"refresh_cookie_max_age_seconds"`
+	MaxTokenPartBytes             int           `koanf:"max_token_part_bytes"`
+	MaxReconstructedTokenBytes    int           `koanf:"max_reconstructed_token_bytes"`
 }
 
 // CORSConfig contains browser cross-origin policy settings for local/frontend integration.
@@ -262,6 +265,12 @@ func setDefaults(k *koanf.Koanf) error {
 	if err := k.Set("auth.id_token_part2_cookie", "portal-id-p2"); err != nil {
 		return err
 	}
+	if err := k.Set("auth.oauth_state_cookie", "portal-oauth-state"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.pkce_verifier_cookie", "portal-pkce-verifier"); err != nil {
+		return err
+	}
 	if err := k.Set("auth.cookie_secure", false); err != nil {
 		return err
 	}
@@ -269,6 +278,9 @@ func setDefaults(k *koanf.Koanf) error {
 		return err
 	}
 	if err := k.Set("auth.refresh_cookie_max_age_seconds", 86400); err != nil {
+		return err
+	}
+	if err := k.Set("auth.login_transaction_max_age_seconds", 600); err != nil {
 		return err
 	}
 	if err := k.Set("auth.max_token_part_bytes", 3800); err != nil {
@@ -429,6 +441,9 @@ func validateAuth(cfg Config) error {
 	if cfg.Auth.RefreshCookieMaxAgeSeconds <= 0 {
 		return fmt.Errorf("auth.refresh_cookie_max_age_seconds must be > 0")
 	}
+	if cfg.Auth.LoginTransactionMaxAgeSeconds <= 0 || cfg.Auth.LoginTransactionMaxAgeSeconds > 600 {
+		return fmt.Errorf("auth.login_transaction_max_age_seconds must be between 1 and 600")
+	}
 	switch strings.ToLower(cfg.Auth.CookieSameSite) {
 	case "strict", "lax", "none":
 	default:
@@ -441,6 +456,7 @@ func validateAuth(cfg Config) error {
 		cfg.Auth.AccessTokenPart1Cookie, cfg.Auth.AccessTokenPart2Cookie,
 		cfg.Auth.RefreshTokenPart1Cookie, cfg.Auth.RefreshTokenPart2Cookie,
 		cfg.Auth.IDTokenPart1Cookie, cfg.Auth.IDTokenPart2Cookie,
+		cfg.Auth.OAuthStateCookie, cfg.Auth.PKCEVerifierCookie,
 	}
 	seenCookieNames := make(map[string]struct{}, len(cookieNames))
 	for _, name := range cookieNames {

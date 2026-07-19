@@ -51,7 +51,7 @@ The portal backend is both an OIDC confidential client and the protected API bou
 
 - The selected IdP issues signed JWT access tokens for the portal API audience and supports OIDC discovery/JWKS.
 - The BFF is registered as an OAuth confidential client using Authorization Code flow. The client secret is available only to the BFF.
-- The initial confidential-client implementation follows the Financial Services Accelerator reference flow and does not implement OAuth `state`, OIDC `nonce`, or PKCE. These correlation protections are explicitly deferred to a separate final-hardening change.
+- The confidential-client flow uses OAuth `state` and S256 PKCE with one-time, short-lived HTTP-only transaction cookies. OIDC `nonce` remains deferred to a separate hardening change.
 - The frontend and BFF are deployed on the same host in production, normally behind one ingress, so the host-only part-1 cookies are readable by the portal. If they use different origins on that host, CORS credentials and exact origin allowlisting are required.
 - The validated token `sub` is the same identifier OpenFGC uses in `userIds`.
 - The BFF and OpenFGC communicate on a private network. OpenFGC is available at `http://localhost:8060` in local development.
@@ -64,6 +64,7 @@ The portal backend is both an OIDC confidential client and the protected API bou
 | Decision | Rationale |
 |---|---|
 | BFF performs OIDC as a confidential client | Keeps the client secret and token endpoint interaction outside the browser and removes the frontend IdP SDK dependency. |
+| Stateless login correlation and S256 PKCE | Binds each callback to one initiating browser using one-time HTTP-only state/verifier cookies without a server session, shared store, encryption key, or signing key. |
 | Split-token transport | A complete access or refresh token is not JavaScript-readable; the readable half alone is unusable away from the browser session. |
 | Partial Bearer header plus HTTP-only cookie | The frontend sends access-token part 1 as `Authorization: Bearer <part-1>` and the browser supplies part 2 as a secure HTTP-only cookie. |
 | BFF remains a JWT resource server | Reconstructing a token is transport handling only; the BFF still validates it through issuer discovery/JWKS on every protected request. |
@@ -100,17 +101,17 @@ Portal components must not parse token claims for authorization. The API client 
 
 ```
 1. The frontend navigates to `GET /auth/login`.
-2. The BFF redirects to the IdP authorization endpoint using Authorization Code flow.
+2. The BFF generates cryptographically random OAuth state and PKCE verifier values, stores them in short-lived HTTP-only cookies, and redirects to the IdP with the state and S256 code challenge.
 3. The user authenticates at the IdP.
-4. The IdP redirects to `GET /auth/callback?code=...`.
-5. The BFF exchanges the code at the token endpoint using its confidential-client authentication method.
+4. The IdP redirects to `GET /auth/callback?code=...&state=...`.
+5. The BFF consumes the transaction cookies, validates the returned state using constant-time comparison, and exchanges the code with the matching PKCE verifier and its confidential-client authentication method.
 6. The BFF validates the ID token through discovery/JWKS, including signature, allowed algorithm,
-   issuer, client audience, and expiry. Nonce validation is deferred with the later correlation hardening.
+   issuer, client audience, and expiry. OIDC nonce validation remains deferred.
 7. The BFF validates the access token through discovery/JWKS, splits the returned tokens, sets the
    token cookies, and redirects to the configured portal URL.
 ```
 
-The BFF must reject missing codes, token-exchange failures, and invalid returned tokens, and must never place authorization codes or tokens in logs or frontend-visible URLs. This initial reference-compatible flow does not claim login-CSRF, callback-correlation, or ID-token replay protection; those limitations remain documented until `state`, `nonce`, and PKCE are added.
+The BFF must reject missing or duplicate codes/state values, missing or duplicate transaction cookies, state mismatch, replayed callbacks, token-exchange failures, and invalid returned tokens. Transaction cookies are consumed before code exchange and never reused. Authorization codes, state, PKCE verifiers, and tokens must never be logged. State and PKCE provide login-CSRF and authorization-code interception protection; OIDC nonce-based ID-token replay correlation remains deferred.
 
 ### 3.3 Token Cookie and Transport Contract
 
@@ -121,6 +122,8 @@ Tokens are split at a deterministic midpoint and reconstructed only in BFF auth 
 | Access token | JavaScript-readable secure cookie `__Host-portal-at-p1` | Secure HTTP-only cookie `__Host-portal-at-p2` | Part 1 in `Authorization: Bearer <part-1>`; part 2 automatically attached as a cookie |
 | Refresh token | JavaScript-readable secure cookie `__Host-portal-rt-p1` | Secure HTTP-only cookie `__Host-portal-rt-p2` | Part 1 in the `POST /auth/refresh` body; part 2 automatically attached as a cookie |
 | ID token | JavaScript-readable secure cookie `__Host-portal-id-p1` | JavaScript-readable secure cookie `__Host-portal-id-p2` | Frontend may reconstruct and decode it for display/profile data; the BFF may reconstruct it as an end-session hint only after appropriate validation; never accepted as API credentials |
+
+Login transactions use two additional configurable, secure HTTP-only cookies: OAuth state and the PKCE verifier. They contain independent cryptographically random values, expire within at most ten minutes, use `SameSite=Lax` by default, and are cleared before callback validation or token exchange. They are not encrypted because they are ephemeral correlation secrets, and tampering can only invalidate the login transaction. No server-side session or BFF-owned cryptographic key is introduced. Production `__Host-` names require `Secure`, no `Domain`, and `Path=/`; local HTTP development may use non-`__Host-` names. A new login in the same browser replaces the previous outstanding transaction, so only the most recently initiated login can complete.
 
 All production cookies use `Secure`, `Path=/`, no `Domain`, and an explicitly configured `SameSite` value. Access/refresh part-2 cookies use `HttpOnly`; part-1 and both ID-token cookies are JavaScript-readable. Splitting the ID token is for cookie-size handling only—the complete ID token remains available to JavaScript. Cookie expiry must not exceed the corresponding token expiry. Development cookie names may omit the `__Host-` prefix only when local HTTP operation makes secure cookies impossible.
 
@@ -165,7 +168,7 @@ For every protected request, the BFF must validate the reconstructed access toke
 - Token type/purpose only when `BFF_AUTH__REQUIRE_ACCESS_TOKEN_TYPE=true`, so an ID token cannot be accepted as an API access token when the IdP provides a reliable distinguishing claim.
 - Required scopes and organization claims for the target route.
 
-The callback separately validates the ID token against the OIDC client ID without nonce validation in this initial stage. The BFF must reject complete browser-supplied tokens, query-string tokens, bearer values without the matching part-2 cookie, unsigned tokens, unsupported algorithms, unknown issuers/audiences, and expired tokens.
+The callback separately validates the ID token against the OIDC client ID; nonce validation remains deferred. The BFF must reject complete browser-supplied tokens, query-string tokens, bearer values without the matching part-2 cookie, unsigned tokens, unsupported algorithms, unknown issuers/audiences, and expired tokens.
 
 ### 3.6 Refresh
 
@@ -187,7 +190,7 @@ On success, the BFF atomically replaces both access-token cookies, both refresh-
 
 ## 4. API Routes and Authorization
 
-Every path and method currently defined in `portal/backend/openapi/bff.yaml` is listed below. Routes require a successfully reconstructed and validated access token unless explicitly marked public. Authorization is evaluated from the validated principal, never from browser-supplied user or organization values. The BFF authorizes capabilities through scopes; IdP roles are used only to grant scope bundles and are not evaluated by the BFF.
+Every path and method currently defined in `portal/backend/openapi/portal-backend.yaml` is listed below. Routes require a successfully reconstructed and validated access token unless explicitly marked public. Authorization is evaluated from the validated principal, never from browser-supplied user or organization values. The BFF authorizes capabilities through scopes; IdP roles are used only to grant scope bundles and are not evaluated by the BFF.
 
 ### 4.1 Public System Endpoints
 
@@ -400,7 +403,7 @@ Do not forward a token merely because it is available; its audience and downstre
 
 ### 7.3 Cross-Site Request and XSS Protection
 
-The design does not issue a separate CSRF cookie or token. Protected API calls and logout require a JavaScript-created partial Bearer header plus the matching HTTP-only access-token half. Refresh requires refresh-token part 1 in the explicit request body plus the matching HTTP-only part-2 cookie. Because another origin cannot read either JavaScript-readable part through the same-origin policy, automatically attached cookies alone cannot authenticate these operations. Login/callback correlation protection is deferred with `state`, `nonce`, and PKCE.
+The design does not issue a separate API CSRF cookie or token. Protected API calls and logout require a JavaScript-created partial Bearer header plus the matching HTTP-only access-token half. Refresh requires refresh-token part 1 in the explicit request body plus the matching HTTP-only part-2 cookie. Because another origin cannot read either JavaScript-readable part through the same-origin policy, automatically attached cookies alone cannot authenticate these operations. Login/callback correlation uses a separate one-time OAuth state cookie and S256 PKCE verifier cookie; OIDC nonce remains deferred.
 
 The split-token model reduces complete-token exfiltration but does not prevent same-origin action by injected scripts. The React portal must maintain a restrictive CSP, avoid unsafe HTML injection, review third-party scripts, and apply normal output-encoding and dependency controls.
 
@@ -419,19 +422,19 @@ Pragma: no-cache
 
 The BFF returns JSON and redirects only; the React portal has its own CSP.
 
-### 7.5 Deferred Frontend XSS Hardening
+### 7.5 Frontend XSS Hardening
 
-This section records the intended later hardening direction only. It is not part of the current authentication implementation tranche.
+The static-compatible hardening baseline is implemented as part of the authentication boundary. The production build emits an enforcing CSP meta policy plus a `_headers` deployment artifact; the static host must apply the emitted HTTP headers so header-only directives such as `frame-ancestors` are enforced.
 
 The split-token design limits complete-token exfiltration but JavaScript executing in the portal origin can still read every part-1 cookie and issue authenticated requests while the browser supplies part 2. Frontend XSS prevention is therefore part of the authentication boundary, not only a UI concern.
 
-Serve the React application with a restrictive, static, deployment-specific CSP. All application JavaScript and CSS must be emitted as external same-origin build assets so the initial implementation does not require CSP nonces or hashes. Do not enable `'unsafe-inline'` or `'unsafe-eval'`. A production baseline is:
+Serve the React application with a restrictive, deployment-specific CSP. All application JavaScript is emitted as external same-origin build assets, and inline scripts, inline event handlers, string-to-code execution, and `'unsafe-eval'` remain prohibited. Oxygen UI currently uses Emotion-generated runtime style elements, so styles retain a narrowly documented `style-src 'unsafe-inline'` exception until per-response style nonces or a build-time styling migration is implemented. A production baseline is:
 
 ```text
 Content-Security-Policy:
   default-src 'self';
   script-src 'self';
-  style-src 'self';
+  style-src 'self' 'unsafe-inline'; # temporary Oxygen UI/Emotion exception
   connect-src 'self' <exact-bff-origin-if-not-self>;
   img-src 'self' data:;
   font-src 'self';
@@ -443,7 +446,7 @@ Content-Security-Policy:
   upgrade-insecure-requests
 ```
 
-The production build must not contain inline scripts, inline event handlers, or required inline styles. If a future dependency makes inline execution unavoidable, nonce/hash support requires a separate reviewed design change; it must not be added as part of the current authentication implementation. Keep development-only CSP allowances out of production configuration. Introduce CSP changes in report-only mode when necessary, review violations, and then enforce; reporting payloads must not include token or user data.
+The production HTML must not contain inline scripts, inline event handlers, inline style attributes, or inline style elements. Runtime Emotion style elements are the only current exception and are covered by the temporary style policy above; no script nonce/hash handling is introduced. Keep development-only script allowances out of production configuration. Introduce future CSP changes in report-only mode when necessary, review violations, and then enforce; reporting payloads must not include token or user data.
 
 Additionally:
 
@@ -559,8 +562,11 @@ BFF_AUTH__REFRESH_TOKEN_PART1_COOKIE=portal-rt-p1
 BFF_AUTH__REFRESH_TOKEN_PART2_COOKIE=portal-rt-p2
 BFF_AUTH__ID_TOKEN_PART1_COOKIE=portal-id-p1
 BFF_AUTH__ID_TOKEN_PART2_COOKIE=portal-id-p2
+BFF_AUTH__OAUTH_STATE_COOKIE=portal-oauth-state
+BFF_AUTH__PKCE_VERIFIER_COOKIE=portal-pkce-verifier
 BFF_AUTH__COOKIE_SECURE=false
 BFF_AUTH__COOKIE_SAME_SITE=Lax
+BFF_AUTH__LOGIN_TRANSACTION_MAX_AGE_SECONDS=600
 BFF_AUTH__MAX_TOKEN_PART_BYTES=3800
 BFF_AUTH__MAX_RECONSTRUCTED_TOKEN_BYTES=7600
 BFF_AUTH__REFRESH_TIMEOUT=10s
@@ -633,89 +639,91 @@ Local HTTP development may use non-`__Host-` cookie names with `Secure=false` th
 
 ### React Portal
 
-- [ ] Implement the portal-owned auth client with login, logout, refresh, local ID-token profile decoding, and signed-in status helpers; do not add an IdP SDK.
-- [ ] Add an API interceptor that reads access-token part 1 and sets `Authorization: Bearer <part-1>` with credentials enabled.
-- [ ] Send refresh-token part 1 only in the `/auth/refresh` request body; never make cookie-only refresh requests.
-- [ ] Handle `401` with at most one refresh and one request retry before starting login.
-- [ ] Handle `403` as an authorization failure.
-- [ ] Reconstruct and decode the ID-token cookies only for profile display; never send browser-decoded claims back as trusted identity or use them for authorization.
-- [ ] Apply a restrictive frontend CSP and verify that logs, analytics, and error reporting never capture token parts.
+- [x] Implement the portal-owned auth client with login, logout, refresh, local ID-token profile decoding, and signed-in status helpers; do not add an IdP SDK.
+- [x] Add an API interceptor that reads access-token part 1 and sets `Authorization: Bearer <part-1>` with credentials enabled.
+- [x] Send refresh-token part 1 only in the `/auth/refresh` request body; never make cookie-only refresh requests.
+- [x] Handle `401` with at most one refresh and one request retry before starting login.
+- [x] Handle `403` as an authorization failure.
+- [x] Reconstruct and decode the ID-token cookies only for profile display; never send browser-decoded claims back as trusted identity or use them for authorization.
+- [x] Apply the static-compatible restrictive frontend CSP, prohibit unsafe script execution, and verify that frontend storage and production source sinks do not capture token parts. The temporary Emotion style exception remains tracked below.
 
 ### BFF Authentication and Authorization
 
-- [ ] Implement OIDC confidential-client discovery, authorization URL construction, code exchange, and refresh-token exchange.
-- [ ] Implement split-token cookie issuance, reconstruction, rotation, exact-attribute clearing, and size limits.
-- [ ] Implement strict partial Bearer-header and part-2-cookie parsing.
-- [ ] Implement issuer discovery and bounded JWKS caching.
-- [ ] Validate ID tokens at callback, including signature, allowed algorithm, issuer, client audience, and time claims; nonce validation is deferred.
-- [ ] Validate reconstructed access tokens, including signature, allowed algorithm, issuer, resource audience, time claims, and subject; validate access-token type only when explicitly enabled and supported by the IdP.
-- [ ] Refresh JWKS on unknown `kid` and support normal key rotation.
-- [ ] Map validated claims to the normalized `Principal` model.
+- [x] Implement OIDC confidential-client discovery, authorization URL construction, code exchange, and refresh-token exchange.
+- [x] Generate one-time OAuth state and S256 PKCE transactions, store state/verifier only in short-lived HTTP-only cookies, validate state in constant time, consume transactions before exchange, and reject callback replay without server-side session or key storage.
+- [x] Implement split-token cookie issuance, reconstruction, rotation, exact-attribute clearing, and size limits.
+- [x] Implement strict partial Bearer-header and part-2-cookie parsing.
+- [x] Implement issuer discovery and library-managed remote JWKS caching through `go-oidc`, with bounded HTTP timeouts, cached-key reuse, and unknown-`kid` refresh for normal key rotation.
+- [x] Validate ID tokens at callback, including signature, allowed algorithm, issuer, client audience, and time claims; nonce validation is deferred.
+- [x] Validate reconstructed access tokens, including signature, allowed algorithm, issuer, resource audience, time claims, and subject; validate access-token type only when explicitly enabled and supported by the IdP.
+- [x] Refresh JWKS on unknown `kid` and support normal key rotation.
+- [x] Map validated claims to the normalized `Principal` model.
 - [ ] Define all portal scope names as typed constants and an immutable known-scope set in `internal/system/auth/scopes.go`; remove duplicated production scope literals.
-- [ ] Validate configured requested portal scopes against the canonical scope registry during startup.
-- [ ] Implement `/auth/login`, `/auth/callback`, `/auth/refresh`, and `/auth/logout` with generic errors and token redaction.
+- [x] Validate configured requested portal scopes against the canonical scope registry during startup.
+- [x] Implement `/auth/login`, `/auth/callback`, `/auth/refresh`, and `/auth/logout` with generic errors and token redaction.
 - [ ] Serialize or otherwise make concurrent refresh requests safe for refresh-token rotation.
-- [ ] Reject cookie-only refresh/logout requests: refresh requires refresh-token part 1 in the body, while logout requires the partial Bearer header and matching access-token part-2 cookie.
-- [ ] Add `UserIdentity` context accessors and update identity middleware to resolve both `Principal.Subject` and `Principal.OrgID` into one request-scoped `UserIdentity`.
-- [ ] Retain explicit placeholder identity mode only for test/local use; reject it in production and never use it as an authentication fallback.
-- [ ] Configure and enforce the §4 scope, organization, and ownership policy for both `/me/*` and `/api/*` routes.
-- [ ] Return `401` with `WWW-Authenticate: Bearer` for authentication failures and `403` for authorization failures.
+- [x] Reject cookie-only refresh/logout requests: refresh requires refresh-token part 1 in the body, while logout requires the partial Bearer header and matching access-token part-2 cookie.
+- [x] Store the validated `Principal` containing user ID, organization ID, and scopes in request context, including equivalent placeholder-mode identity.
+- [x] Retain explicit placeholder identity mode only for test/local use; reject it in production and never use it as an authentication fallback.
+- [x] Configure and enforce the §4 scope, organization, and ownership policy for both `/me/*` and `/api/*` routes.
+- [x] Return `401` with `WWW-Authenticate: Bearer` for authentication failures and `403` without a bearer challenge for authorization failures; cover both behaviors in unit and integration tests.
 
 ### BFF Routes and Proxy
 
-- [ ] Enforce self-scoping and object ownership on `/me/*` routes; reuse only a fetched, owned consent's group ID for the corresponding upstream mutation.
-- [ ] Enforce the §4 scope-to-route policy for the existing controlled `/api/*` passthrough route.
-- [ ] Update `openapi/bff.yaml`: document auth endpoints and define `partialBearer` plus the part-2 cookie scheme as an AND security requirement. Document required route scopes explicitly because the browser-facing partial-token contract is not a standard OAuth2 flow, and generate or contract-test those names against `scopes.go`.
-- [ ] Maintain explicit method/path mappings to OpenFGC `/api/v1/*`.
-- [ ] Point `BFF_PROXY__OPENFGC_API_URL` to port `8060`.
-- [ ] Strip client-supplied trusted headers; inject user and organization context only from `UserIdentity`.
-- [ ] Remove generic placeholder/token-derived `group-id` injection; preserve only consent-bound group reuse for self-service mutations.
-- [ ] Apply body limits, timeouts, correlation IDs, and hop-by-hop header stripping.
+- [x] Enforce self-scoping and object ownership on `/me/*` routes; reuse only a fetched, owned consent's group ID for the corresponding upstream mutation.
+- [x] Enforce the §4 scope-to-route policy for the existing controlled `/api/*` passthrough route.
+- [x] Update `openapi/portal-backend.yaml`: document auth endpoints and define the documentation-only `PortalOAuthDocumentation` scheme plus `AccessTokenPart2` as an AND security requirement. Document required route scopes explicitly, explain the non-standard browser-facing split-token contract, and contract-test documented scopes against `scopes.go` route policies.
+- [x] Maintain explicit method/path mappings to OpenFGC `/api/v1/*`.
+- [x] Point `BFF_PROXY__OPENFGC_API_URL` to port `8060`.
+- [x] Strip client-supplied trusted headers; inject user and organization context only from `UserIdentity`.
+- [x] Remove generic placeholder/token-derived `group-id` injection; preserve only consent-bound group reuse for self-service mutations.
+- [x] Apply body limits, timeouts, correlation IDs, and hop-by-hop header stripping.
 
 ### Security and Operations
 
-- [ ] Configure exact CORS origins, permit the partial `Authorization` header, and enable credentials only for those origins.
-- [ ] Enforce secure host-only production cookies with explicit `SameSite`, correct expiry, HTTP-only access/refresh part-2 cookies, and intentionally JavaScript-readable ID-token parts.
+- [x] Configure exact CORS origins, permit the partial `Authorization` header, and enable credentials only for those origins.
+- [x] Enforce secure host-only production cookies with explicit `SameSite`, correct expiry, HTTP-only access/refresh part-2 cookies, and intentionally JavaScript-readable ID-token parts.
 - [ ] Store the OIDC client secret in the deployment secret manager and document rotation; do not introduce BFF-owned transaction or JWT-signing keys.
 - [ ] Apply security and no-store cache headers.
-- [ ] Ensure token halves, reconstructed tokens, codes, and client secrets are redacted from application, proxy, and observability logs.
+- [x] Ensure token halves, reconstructed tokens, codes, and client secrets are redacted from application, proxy, and observability logs.
 - [ ] Make OpenFGC port `8060` private-only and enforce BFF-only access.
 - [ ] Add infrastructure rate limiting and monitoring for failed authentication/JWKS availability.
 
-### Deferred Frontend XSS Hardening
+### Frontend XSS Hardening
 
-The following work is explicitly out of scope for the current authentication implementation and remains a later hardening tranche.
-
-- [ ] Define and enforce a static production React CSP with exact `connect-src` and other required origins; prohibit `'unsafe-inline'` and `'unsafe-eval'`.
-- [ ] Emit JavaScript and CSS as external same-origin build assets and verify that the production HTML contains no required inline scripts, inline event handlers, or inline styles. Do not implement CSP nonce/hash handling in the current stage.
-- [ ] Set `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'`, a constrained `form-action`, and `upgrade-insecure-requests` in production.
-- [ ] Remove unsafe DOM/code sinks; centrally sanitize explicitly required rich text with an allowlist and test known bypass payloads.
-- [ ] Treat decoded ID-token claims and all API content as untrusted display input and rely on React escaping.
-- [ ] Verify that token parts never enter web storage, persisted frontend state, analytics, devtools snapshots, or error-reporting context.
-- [ ] Self-host or explicitly approve third-party scripts, pin dependencies, and apply Subresource Integrity where external static assets remain.
-- [ ] Add enforced-CSP header tests, DOM-XSS tests, dependency vulnerability checks, and sanitized CSP reporting to CI/release verification.
+- [x] Define a production React CSP with an exact BFF `connect-src`, prohibit inline/eval scripts, embed the enforceable meta subset, and emit the complete policy for the static host as `dist/_headers`.
+- [x] Emit JavaScript and CSS build assets from the same origin and verify that production HTML contains no inline scripts, event handlers, style attributes, or style elements.
+- [x] Set `object-src 'none'`, `base-uri 'none'`, `frame-ancestors 'none'`, constrained `form-action`, and `upgrade-insecure-requests` for HTTPS production builds.
+- [x] Reject unsafe DOM/code sinks and web-storage use during production build verification; no trusted rich-text rendering currently requires a sanitizer.
+- [x] Treat decoded ID-token claims and API content as untrusted display input, rely on React escaping, and test markup-shaped profile claims.
+- [x] Verify that token parts never enter web storage or persisted frontend state. No analytics or frontend error-reporting integration is present.
+- [x] Self-host frontend scripts and styles and pin direct dependencies. No external static script or stylesheet currently requires Subresource Integrity.
+- [x] Add CSP policy tests, DOM-XSS rendering tests, production HTML/source-sink verification, and high-severity production dependency auditing to CI.
+- [ ] Replace the temporary `style-src 'unsafe-inline'` exception required by Oxygen UI/Emotion with per-response style nonces or a reviewed build-time styling migration. Test dynamic MUI/Oxygen components before enforcing the replacement.
+- [ ] Add sanitized CSP violation reporting when an approved reporting endpoint and data-retention policy are available; reports must exclude token and user data.
 
 ### Testing
 
-- [ ] Unit tests: token splitting/reconstruction, missing or duplicate halves, wrong half order, malformed partial Bearer header, cookie attributes, exact clearing, and token/cookie size limits.
-- [ ] Unit tests: callback errors and token-endpoint error mapping for the initial reference-compatible flow.
-- [ ] Unit tests: valid reconstructed token, invalid signature, unsupported algorithm, expired/not-yet-valid token, wrong issuer, wrong audience, missing subject, and wrong token type.
-- [ ] Unit tests: ID-token signature, issuer, audience, and time validation; nonce tests are deferred.
-- [ ] Unit tests: JWKS cache hits, unknown-`kid` refresh, rotation, and transient JWKS failure behavior.
-- [ ] Unit tests: canonical scope uniqueness, configured-scope validation, route-policy references, and OpenAPI scope parity.
-- [ ] Unit tests: claim mapping, scope policy, organization policy, and ownership policy.
-- [ ] Integration tests: login/callback cookie issuance and a portal-style partial Bearer plus HTTP-only-cookie request to every protected route.
-- [ ] Integration tests: missing part 1, missing part 2, complete-token injection, duplicate cookies, and tampered reconstruction all return `401`.
-- [ ] Integration tests: successful refresh, rotated refresh token, expired/invalid refresh, concurrent refresh, and atomic cookie replacement.
-- [ ] Integration tests: cookie-only refresh/logout rejection, logout cookie clearing, and IdP end-session behavior.
-- [ ] Integration tests: `401` versus `403` behavior and `WWW-Authenticate` response.
-- [ ] Integration tests: credentialed CORS preflight and exact `Authorization` header allowance.
-- [ ] Integration tests: OpenFGC path mapping, query preservation, port-8060 target, and header override prevention.
-- [ ] Integration tests: `/me/consents` always injects `UserIdentity.UserID` and ignores client user filters; `/api/*` rejects missing `:any` scopes and preserves authorized filters only within the injected organization.
+- [x] Unit tests: token splitting/reconstruction, missing or duplicate halves, wrong half order, malformed partial Bearer header, cookie attributes, exact clearing, and token/cookie size limits.
+- [x] Unit tests: callback errors and token-endpoint error mapping.
+- [x] Unit tests: OAuth state generation and constant-time matching, RFC 7636 S256 challenge generation, PKCE verifier validation, transaction-cookie attributes/consumption, missing/mismatched/duplicate state, and replay rejection.
+- [x] Unit tests: valid reconstructed token, invalid signature, unsupported algorithm, expired/not-yet-valid token, wrong issuer, wrong audience, missing subject, and wrong token type.
+- [x] Unit tests: ID-token signature, issuer, audience, and time validation; nonce tests are deferred.
+- [x] Unit tests: JWKS cache hits, unknown-`kid` refresh, rotation, and transient JWKS failure behavior.
+- [x] Unit tests: canonical scope uniqueness, configured-scope validation, route-policy references, and OpenAPI scope parity.
+- [x] Unit tests: claim mapping, scope policy, organization policy, and ownership policy.
+- [x] Integration tests: login/callback cookie issuance and portal-style partial Bearer plus HTTP-only-cookie authentication across every protected route policy.
+- [x] Integration tests: missing part 1, missing part 2, complete-token injection, duplicate cookies, and tampered reconstruction all return `401`.
+- [x] Integration tests: successful refresh, rotated and retained refresh tokens, expired/invalid refresh, concurrent non-rotating refresh, and atomic cookie replacement. Refresh-token rotation race serialization remains explicitly deferred.
+- [x] Integration tests: cookie-only refresh/logout rejection, logout cookie clearing, and IdP end-session and fallback behavior.
+- [x] Integration tests: `401` versus `403` behavior and `WWW-Authenticate` response.
+- [x] Integration tests: credentialed CORS preflight and exact `Authorization` header allowance.
+- [x] Integration tests: OpenFGC path mapping, query preservation, port-8060 target, and header override prevention.
+- [x] Integration tests: `/me/consents` always injects `Principal.UserID` and ignores client user filters; `/api/*` rejects missing `:any` scopes and preserves authorized filters only within `Principal.OrgID`.
 
 ### Deferred Final Hardening
 
-- [ ] Add OAuth `state`, OIDC `nonce`, and PKCE together as a separate final-stage change after the initial confidential-client authentication flow is complete and stable. Choose and document the correlation-storage mechanism, bind callbacks to one-time login transactions, generate an S256 PKCE challenge/verifier, validate nonce and replay behavior, and add dedicated unit and integration tests. Do not implement these protections as part of the current authentication stage.
+- [ ] Add OIDC `nonce` generation, one-time cookie storage, ID-token validation, replay tests, and cleanup using the existing stateless login-transaction mechanism.
 
 ---
 
@@ -725,4 +733,4 @@ The following work is explicitly out of scope for the current authentication imp
 - Configuration: centralized Koanf loading and startup validation.
 - API design: contract-first route and payload definitions; deny-by-default proxy routing.
 - Security model: confidential-client OIDC, split-token cross-site request protection, standards-based JWKS/JWT validation, least-privilege scopes, private downstream boundary, and externalized secrets/configuration.
-- Testing model: unit tests for split cookies, reconstruction, JWT validation, and policy logic plus integration tests for the current reference-compatible browser-to-BFF auth lifecycle and BFF-to-OpenFGC transformations. Correlation/PKCE and XSS tests remain deferred hardening work.
+- Testing model: unit tests for split cookies, reconstruction, state/PKCE correlation, JWT validation, and policy logic plus integration tests for the browser-to-BFF auth lifecycle and BFF-to-OpenFGC transformations. OIDC nonce and the remaining CSP items remain deferred hardening work.
