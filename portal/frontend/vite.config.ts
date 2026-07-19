@@ -18,7 +18,30 @@
 
 import react from '@vitejs/plugin-react'
 import { loadEnv } from 'vite'
+import type { Plugin } from 'vite'
 import { defineConfig } from 'vitest/config'
+import { contentSecurityPolicy, staticHeadersFile } from './src/security/contentSecurityPolicy'
+
+function securityHeadersPlugin(policy: string, metaPolicy: string): Plugin {
+  return {
+    name: 'portal-security-headers',
+    transformIndexHtml: {
+      order: 'pre',
+      handler() {
+        return [
+          {
+            tag: 'meta',
+            attrs: { 'http-equiv': 'Content-Security-Policy', content: metaPolicy },
+            injectTo: 'head-prepend',
+          },
+        ]
+      },
+    },
+    generateBundle() {
+      this.emitFile({ type: 'asset', fileName: '_headers', source: staticHeadersFile(policy) })
+    },
+  }
+}
 
 // https://vite.dev/config/
 export default defineConfig(({ mode }) => {
@@ -28,8 +51,31 @@ export default defineConfig(({ mode }) => {
     throw new Error('VITE_API_BASE_URL is required. Create a .env file from .env.example.')
   }
 
+  const production = mode === 'production'
+  const upgradeInsecureRequests = production && env.VITE_API_BASE_URL.startsWith('https://')
+  const policy = contentSecurityPolicy({
+    apiBaseURL: env.VITE_API_BASE_URL || 'http://localhost:8080',
+    upgradeInsecureRequests,
+  })
+  // frame-ancestors is supported only in the HTTP header, not a CSP meta element.
+  const metaPolicy = contentSecurityPolicy({
+    apiBaseURL: env.VITE_API_BASE_URL || 'http://localhost:8080',
+    includeFrameAncestors: false,
+    upgradeInsecureRequests,
+  })
+
   return {
-    plugins: [react()],
+    plugins: [react(), ...(production ? [securityHeadersPlugin(policy, metaPolicy)] : [])],
+    preview: {
+      headers: {
+        'Content-Security-Policy': policy,
+        'Cross-Origin-Opener-Policy': 'same-origin',
+        'Permissions-Policy': 'camera=(), geolocation=(), microphone=()',
+        'Referrer-Policy': 'strict-origin-when-cross-origin',
+        'X-Content-Type-Options': 'nosniff',
+        'X-Frame-Options': 'DENY',
+      },
+    },
     test: {
       environment: 'jsdom',
       setupFiles: './vitest.setup.ts',
