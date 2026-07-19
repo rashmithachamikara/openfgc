@@ -85,6 +85,22 @@ function buildURL(path: string, query?: RequestOptions['query']): string {
   return url.toString()
 }
 
+async function createAPIError(response: Response): Promise<APIError> {
+  let payload: APIErrorPayload | undefined
+
+  try {
+    payload = (await response.json()) as APIErrorPayload
+  } catch {
+    payload = undefined
+  }
+
+  return new APIError(
+    response.status,
+    payload?.code ?? 'API_REQUEST_FAILED',
+    payload?.message ?? `request failed with status ${response.status}`,
+  )
+}
+
 /**
  * Sends an API request and parses the response body as JSON.
  *
@@ -105,29 +121,18 @@ async function apiRequestInternal<T>(
   if (response.status === 401 && allowRefresh && isAuthEnabled()) {
     try {
       await refreshSession()
-      return await apiRequestInternal<T>(path, options, false)
     } catch {
       login()
+      throw await createAPIError(response)
     }
+    return apiRequestInternal<T>(path, options, false)
   }
   if (response.status === 401 && !allowRefresh && isAuthEnabled()) {
     login()
   }
 
   if (!response.ok) {
-    let payload: APIErrorPayload | undefined
-
-    try {
-      payload = (await response.json()) as APIErrorPayload
-    } catch {
-      payload = undefined
-    }
-
-    throw new APIError(
-      response.status,
-      payload?.code ?? 'API_REQUEST_FAILED',
-      payload?.message ?? `request failed with status ${response.status}`,
-    )
+    throw await createAPIError(response)
   }
 
   if (response.status === 204) {
@@ -165,30 +170,19 @@ async function apiRequestNoContentInternal(
   if (response.status === 401 && allowRefresh && isAuthEnabled()) {
     try {
       await refreshSession()
-      await apiRequestNoContentInternal(path, options, false)
-      return
     } catch {
       login()
+      throw await createAPIError(response)
     }
+    await apiRequestNoContentInternal(path, options, false)
+    return
   }
   if (response.status === 401 && !allowRefresh && isAuthEnabled()) {
     login()
   }
 
   if (!response.ok) {
-    let payload: APIErrorPayload | undefined
-
-    try {
-      payload = (await response.json()) as APIErrorPayload
-    } catch {
-      payload = undefined
-    }
-
-    throw new APIError(
-      response.status,
-      payload?.code ?? 'API_REQUEST_FAILED',
-      payload?.message ?? `request failed with status ${response.status}`,
-    )
+    throw await createAPIError(response)
   }
 }
 

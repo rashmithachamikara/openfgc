@@ -143,6 +143,39 @@ func TestCORSMiddleware_HandlesPreflight(t *testing.T) {
 	}
 }
 
+func TestCORSMiddleware_PreflightExplicitlyAllowsAuthorizationWithCredentials(t *testing.T) {
+	nextCalled := false
+	handler := CORS(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		nextCalled = true
+		w.WriteHeader(http.StatusOK)
+	}), CORSOptions{
+		AllowedOrigins:   []string{"https://portal.example"},
+		AllowedMethods:   []string{"GET", "POST", "OPTIONS"},
+		AllowedHeaders:   []string{"Content-Type", "Authorization", "X-Correlation-ID"},
+		AllowCredentials: true,
+	})
+
+	req := httptest.NewRequest(http.MethodOptions, "https://bff.example/me/consents", nil)
+	req.Header.Set("Origin", "https://portal.example")
+	req.Header.Set("Access-Control-Request-Method", http.MethodGet)
+	req.Header.Set("Access-Control-Request-Headers", "Authorization")
+	res := httptest.NewRecorder()
+	handler.ServeHTTP(res, req)
+
+	if nextCalled || res.Code != http.StatusNoContent {
+		t.Fatalf("unexpected preflight handling: next=%v status=%d", nextCalled, res.Code)
+	}
+	if got := res.Header().Get("Access-Control-Allow-Origin"); got != "https://portal.example" {
+		t.Fatalf("unexpected allowed origin %q", got)
+	}
+	if got := res.Header().Get("Access-Control-Allow-Credentials"); got != "true" {
+		t.Fatalf("unexpected credentials header %q", got)
+	}
+	if got := res.Header().Get("Access-Control-Allow-Headers"); got != "Content-Type, Authorization, X-Correlation-ID" {
+		t.Fatalf("unexpected allowed headers %q", got)
+	}
+}
+
 func TestCORSMiddleware_AppendsVaryOrigin(t *testing.T) {
 	next := http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.WriteHeader(http.StatusOK)
