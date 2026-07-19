@@ -37,7 +37,7 @@
     "@types/react": "19.2.14",
     "@types/react-dom": "19.2.3",
     "@vitejs/plugin-react": "5.2.0",
-    "@vitest/coverage-v8": "3.2.4",
+    "@vitest/coverage-v8": "3.2.6",
     "eslint": "9.39.4",
     "eslint-config-airbnb": "19.0.4",
     "eslint-config-prettier": "10.1.8",
@@ -52,12 +52,20 @@
     "prettier": "3.8.1",
     "typescript": "5.9.3",
     "typescript-eslint": "8.57.1",
-    "vite": "7.3.1",
-    "vitest": "3.2.4"
+    "vite": "7.3.5",
+    "vitest": "3.2.6"
   },
   "pnpm": {
     "overrides": {
-      "yaml@>=1.0.0 <1.10.3": "1.10.3"
+      "yaml@>=1.0.0 <1.10.3": "1.10.3",
+      "brace-expansion@<1.1.13": "1.1.13",
+      "brace-expansion@>=2.0.0 <2.0.3": "2.0.3",
+      "picomatch@>=4.0.0 <4.0.4": "4.0.4",
+      "postcss@<8.5.10": "8.5.10",
+      "esbuild@>=0.27.3 <0.28.1": "0.28.1",
+      "js-yaml@>=4.0.0 <=4.1.1": "4.2.0",
+      "ws@>=8.0.0 <8.21.0": "8.21.0",
+      "@babel/core@<=7.29.0": "7.29.6"
     }
   }
 }
