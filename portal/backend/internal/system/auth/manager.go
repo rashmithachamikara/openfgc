@@ -110,6 +110,7 @@ func (m *Manager) Require(next http.Handler, requiredScopes ...string) http.Hand
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		principal, err := m.authenticate(r)
 		if err != nil {
+			w.Header().Set("WWW-Authenticate", "Bearer")
 			writeError(w, http.StatusUnauthorized, "UNAUTHORIZED", "authentication required")
 			return
 		}
