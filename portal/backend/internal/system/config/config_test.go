@@ -23,6 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 )
 
 func TestLoadFromEnv(t *testing.T) {
@@ -231,5 +232,77 @@ auth:
 	}
 	if cfg.Auth.ClientSecret != "environment-secret" {
 		t.Fatalf("unexpected client secret source")
+	}
+}
+
+func TestProductionAuthURLsRequireHTTPS(t *testing.T) {
+	tests := []struct {
+		name   string
+		field  string
+		update func(*AuthConfig)
+	}{
+		{name: "issuer URL", field: "auth.issuer_url", update: func(auth *AuthConfig) { auth.IssuerURL = "http://idp.example.com" }},
+		{name: "portal URL", field: "auth.portal_url", update: func(auth *AuthConfig) { auth.PortalURL = "http://portal.example.com/consents" }},
+		{name: "redirect URI", field: "auth.redirect_uri", update: func(auth *AuthConfig) { auth.RedirectURI = "http://portal.example.com/auth/callback" }},
+		{name: "post-logout redirect URI", field: "auth.post_logout_redirect_uri", update: func(auth *AuthConfig) { auth.PostLogoutRedirectURI = "http://portal.example.com/" }},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			cfg := validAuthValidationConfig("production")
+			test.update(&cfg.Auth)
+
+			err := validateAuth(cfg)
+			if err == nil {
+				t.Fatal("expected production HTTP URL to be rejected")
+			}
+			if !strings.Contains(err.Error(), test.field) || !strings.Contains(err.Error(), "must use HTTPS in production") {
+				t.Fatalf("unexpected error: %v", err)
+			}
+		})
+	}
+}
+
+func TestProductionAuthURLsAcceptHTTPS(t *testing.T) {
+	if err := validateAuth(validAuthValidationConfig("PrOdUcTiOn")); err != nil {
+		t.Fatalf("expected production HTTPS URLs to be accepted: %v", err)
+	}
+}
+
+func TestDevelopmentAuthURLsAllowHTTP(t *testing.T) {
+	cfg := validAuthValidationConfig("development")
+	cfg.Auth.IssuerURL = "http://localhost:9443/oauth2/token"
+	cfg.Auth.PortalURL = "http://localhost:5173/consents"
+	cfg.Auth.RedirectURI = "http://localhost:8080/auth/callback"
+	cfg.Auth.PostLogoutRedirectURI = "http://localhost:5173/"
+	cfg.Auth.CookieSecure = false
+
+	if err := validateAuth(cfg); err != nil {
+		t.Fatalf("expected development HTTP URLs to be accepted: %v", err)
+	}
+}
+
+func TestAuthURLsRemainAbsoluteHTTPURLsInEveryEnvironment(t *testing.T) {
+	for _, value := range []string{"/relative", "ftp://idp.example.com", "https:///missing-host"} {
+		if err := validateAbsoluteHTTPURL(value, false); err == nil || !strings.Contains(err.Error(), "absolute HTTP(S) URL") {
+			t.Fatalf("expected %q to be rejected, got %v", value, err)
+		}
+	}
+}
+
+func validAuthValidationConfig(environment string) Config {
+	return Config{
+		Env: environment,
+		Auth: AuthConfig{
+			Enabled: true, IssuerURL: "https://idp.example.com", ClientID: "portal-client", ClientSecret: "secret",
+			PortalURL: "https://portal.example.com/consents", RedirectURI: "https://bff.example.com/auth/callback",
+			PostLogoutRedirectURI: "https://portal.example.com/", Scopes: []string{"openid"}, ResourceAudience: "portal-api",
+			AllowedSigningAlgorithms: []string{"RS256"}, HTTPTimeout: 5 * time.Second, RefreshTimeout: 5 * time.Second,
+			ScopeClaim: "scope", OrgIDClaim: "org_id", CookieSecure: true, CookieSameSite: "Lax",
+			RefreshCookieMaxAgeSeconds: 3600, MaxTokenPartBytes: 3800, MaxReconstructedTokenBytes: 7600,
+			AccessTokenPart1Cookie: "at-p1", AccessTokenPart2Cookie: "at-p2",
+			RefreshTokenPart1Cookie: "rt-p1", RefreshTokenPart2Cookie: "rt-p2",
+			IDTokenPart1Cookie: "id-p1", IDTokenPart2Cookie: "id-p2",
+		},
 	}
 }

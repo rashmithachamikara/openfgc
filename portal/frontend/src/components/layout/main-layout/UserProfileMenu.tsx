@@ -3,7 +3,8 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-import { UserMenu } from '@wso2/oxygen-ui'
+import { Alert, Button, Snackbar, UserMenu } from '@wso2/oxygen-ui'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { getUserProfile, logout } from '../../../utils/authClient'
 
@@ -30,23 +31,55 @@ function displayName(claims: UserClaims, fallback: string): string {
 
 function UserProfileMenu(): React.JSX.Element {
   const { t } = useTranslation('common')
-  const claims = getUserProfile() ?? {}
+  const [logoutFailed, setLogoutFailed] = useState(false)
+  const [logoutPending, setLogoutPending] = useState(false)
+  const [claims] = useState<UserClaims>(() => getUserProfile() ?? {})
   const name = displayName(claims, t('layout.userMenu.unknownUser'))
   const email = claim(claims, 'email') ?? claim(claims, 'sub') ?? t('layout.userMenu.noEmail')
   const avatar = claim(claims, 'picture')
 
+  const handleLogout = async (): Promise<void> => {
+    if (logoutPending) {
+      return
+    }
+
+    setLogoutFailed(false)
+    setLogoutPending(true)
+    try {
+      await logout()
+    } catch {
+      setLogoutFailed(true)
+    } finally {
+      setLogoutPending(false)
+    }
+  }
+
   return (
-    <UserMenu>
-      <UserMenu.Trigger name={name} avatar={avatar} />
-      <UserMenu.Header name={name} email={email} avatar={avatar} />
-      <UserMenu.Divider />
-      <UserMenu.Logout
-        label={t('layout.userMenu.signOut')}
-        onClick={() => {
-          logout().catch(() => undefined)
-        }}
-      />
-    </UserMenu>
+    <>
+      <UserMenu>
+        <UserMenu.Trigger name={name} avatar={avatar} />
+        <UserMenu.Header name={name} email={email} avatar={avatar} />
+        <UserMenu.Divider />
+        <UserMenu.Logout label={t('layout.userMenu.signOut')} onClick={handleLogout} />
+      </UserMenu>
+      <Snackbar
+        open={logoutFailed}
+        onClose={() => setLogoutFailed(false)}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert
+          severity="error"
+          variant="filled"
+          action={
+            <Button color="inherit" size="small" disabled={logoutPending} onClick={handleLogout}>
+              {t('layout.userMenu.tryAgain')}
+            </Button>
+          }
+        >
+          {t('layout.userMenu.signOutError')}
+        </Alert>
+      </Snackbar>
+    </>
   )
 }
 
