@@ -147,6 +147,7 @@ describe('portal auth client', () => {
 
   it('logs out with the readable access half and navigates to the returned URL', async () => {
     vi.stubEnv('VITE_API_BASE_URL', 'http://api.example')
+    vi.stubEnv('VITE_AUTH_LOGOUT_ALLOWED_ORIGINS', 'https://idp.example')
     setCookie('portal-at-p1', 'access-part')
     const fetchMock = vi.fn().mockResolvedValue(
       new Response(JSON.stringify({ logoutUrl: 'https://idp.example/logout' }), {
@@ -166,6 +167,26 @@ describe('portal auth client', () => {
     expect(requestInit).toMatchObject({ method: 'POST', credentials: 'include' })
     expect(new Headers(requestInit?.headers).get('Authorization')).toBe('Bearer access-part')
     expect(assign).toHaveBeenCalledWith('https://idp.example/logout')
+  })
+
+  it('rejects a BFF-returned logout URL outside the navigation allowlist', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'http://api.example')
+    vi.stubEnv('VITE_AUTH_LOGOUT_ALLOWED_ORIGINS', 'https://idp.example')
+    setCookie('portal-at-p1', 'access-part')
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ logoutUrl: 'https://attacker.example/logout' }), {
+          status: 200,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    )
+    const assign = vi.fn()
+    vi.stubGlobal('window', { location: { assign, origin: 'http://portal.example' } })
+
+    await expect(logout()).rejects.toThrow('navigation URL origin is not allowed')
+    expect(assign).not.toHaveBeenCalled()
   })
 
   it.each([

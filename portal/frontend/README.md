@@ -49,19 +49,30 @@ pnpm install
 
 Create a local `.env` file from `.env.example` before running or building the portal.
 
-| Variable            | Description                                                                                 | Example                 |
-| ------------------- | ------------------------------------------------------------------------------------------- | ----------------------- |
-| `VITE_API_BASE_URL` | Required base URL for the OpenFGC Portal backend API. Vite embeds this value at build time. | `http://localhost:8080` |
+| Variable                           | Description                                                                                                               | Example                   |
+| ---------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
+| `VITE_API_BASE_URL`                | Required base URL for the OpenFGC Portal backend API. Vite embeds this value at build time.                               | `http://localhost:8080`   |
+| `VITE_AUTH_LOGOUT_ALLOWED_ORIGINS` | Exact comma-separated origins accepted for logout navigation. Include the IdP origin when using its end-session endpoint. | `https://idp.example.com` |
+
+## Production security headers
+
+`pnpm build` emits `dist/_headers`; configure the production static host to apply
+it and build with the deployment's `VITE_API_BASE_URL`.
 
 ## Scripts
 
 ```bash
+pnpm start
 pnpm dev
 pnpm lint
+pnpm lint:fix
+pnpm format
+pnpm format:check
 pnpm test
 pnpm test:watch
 pnpm test:coverage
 pnpm build
+pnpm security:verify
 pnpm preview
 ```
 

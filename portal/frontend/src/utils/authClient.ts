@@ -24,6 +24,38 @@ function apiURL(path: string): string {
   return `${normalizedBase}${path}`
 }
 
+function httpURL(value: string): URL {
+  const url = new URL(value)
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') {
+    throw new Error('navigation URL must use http or https')
+  }
+  return url
+}
+
+function allowedNavigationOrigins(): Set<string> {
+  const origins = new Set([httpURL(apiURL('/')).origin])
+  if (window.location.origin) {
+    origins.add(window.location.origin)
+  }
+
+  const configured = import.meta.env.VITE_AUTH_LOGOUT_ALLOWED_ORIGINS as string | undefined
+  configured
+    ?.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean)
+    .forEach((origin) => origins.add(httpURL(origin).origin))
+
+  return origins
+}
+
+function navigate(value: string): void {
+  const url = httpURL(value)
+  if (!allowedNavigationOrigins().has(url.origin)) {
+    throw new Error('navigation URL origin is not allowed')
+  }
+  window.location.assign(url.toString())
+}
+
 export function isAuthEnabled(): boolean {
   return import.meta.env.VITE_AUTH_ENABLED === 'true'
 }
@@ -82,7 +114,7 @@ export function getUserProfile(): UserProfile | undefined {
 }
 
 export function login(): void {
-  window.location.assign(apiURL('/auth/login'))
+  navigate(apiURL('/auth/login'))
 }
 
 export function refreshSession(): Promise<void> {
@@ -131,5 +163,5 @@ export async function logout(): Promise<void> {
   if (!payload.logoutUrl) {
     throw new Error('logout URL is unavailable')
   }
-  window.location.assign(payload.logoutUrl)
+  navigate(payload.logoutUrl)
 }

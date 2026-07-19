@@ -75,6 +75,16 @@ describe('UserProfileMenu', () => {
     expect(screen.getByText('No email available')).toBeInTheDocument()
   })
 
+  it('renders untrusted profile claims as text rather than executable markup', () => {
+    const payload = '<img src=x onerror=alert(1)>'
+    renderMenu({ name: payload, email: '<script>alert(1)</script>' })
+
+    expect(screen.getByText(payload)).toBeInTheDocument()
+    expect(screen.getByText('<script>alert(1)</script>')).toBeInTheDocument()
+    expect(document.querySelector('script')).not.toBeInTheDocument()
+    expect(document.querySelector('img[src="x"]')).not.toBeInTheDocument()
+  })
+
   it('shows a translated logout error and allows retry', async () => {
     renderMenu({ name: 'Portal User', email: 'user@example.com' })
     authMocks.logout.mockRejectedValueOnce(new Error('logout failed')).mockResolvedValueOnce()
