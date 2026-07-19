@@ -169,6 +169,29 @@ describe('portal auth client', () => {
     expect(assign).toHaveBeenCalledWith('https://idp.example/logout')
   })
 
+  it('ignores malformed logout origins without discarding valid configured origins', async () => {
+    vi.stubEnv('VITE_API_BASE_URL', 'http://api.example')
+    vi.stubEnv(
+      'VITE_AUTH_LOGOUT_ALLOWED_ORIGINS',
+      'not-a-url,ftp://unsupported.example,https://idp.example',
+    )
+    setCookie('portal-at-p1', 'access-part')
+    const fetchMock = vi.fn().mockResolvedValue(
+      new Response(JSON.stringify({ logoutUrl: 'https://idp.example/logout' }), {
+        status: 200,
+        headers: { 'Content-Type': 'application/json' },
+      }),
+    )
+    vi.stubGlobal('fetch', fetchMock)
+    const assign = vi.fn()
+    vi.stubGlobal('window', { location: { assign, origin: 'http://portal.example' } })
+
+    await logout()
+
+    expect(fetchMock).toHaveBeenCalledOnce()
+    expect(assign).toHaveBeenCalledWith('https://idp.example/logout')
+  })
+
   it('rejects a BFF-returned logout URL outside the navigation allowlist', async () => {
     vi.stubEnv('VITE_API_BASE_URL', 'http://api.example')
     vi.stubEnv('VITE_AUTH_LOGOUT_ALLOWED_ORIGINS', 'https://idp.example')
