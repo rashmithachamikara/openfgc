@@ -34,6 +34,8 @@ const commonEn = {
       unknownUser: 'Unknown user',
       noEmail: 'No email available',
       signOut: 'Sign out',
+      signOutError: 'Unable to sign out. Please try again.',
+      tryAgain: 'Try again',
     },
   },
   dashboard: {

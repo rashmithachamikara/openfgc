@@ -75,14 +75,50 @@ describe('UserProfileMenu', () => {
     expect(screen.getByText('No email available')).toBeInTheDocument()
   })
 
-  it('invokes logout and consumes a rejected logout promise', async () => {
+  it('shows a translated logout error and allows retry', async () => {
     renderMenu({ name: 'Portal User', email: 'user@example.com' })
-    authMocks.logout.mockRejectedValueOnce(new Error('logout failed'))
+    authMocks.logout.mockRejectedValueOnce(new Error('logout failed')).mockResolvedValueOnce()
 
     fireEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }))
 
-    await waitFor(() => {
-      expect(authMocks.logout).toHaveBeenCalledOnce()
+    const alert = await screen.findByRole('alert')
+    expect(alert).toHaveTextContent('Unable to sign out. Please try again.')
+    expect(authMocks.logout).toHaveBeenCalledOnce()
+
+    fireEvent.click(screen.getByRole('button', { name: 'Try again' }))
+
+    await waitFor(() => expect(authMocks.logout).toHaveBeenCalledTimes(2))
+    await waitFor(() => expect(screen.queryByRole('alert')).not.toBeInTheDocument())
+  })
+
+  it('preserves the displayed profile while logout clears token cookies', async () => {
+    let completeLogout: (() => void) | undefined
+    authMocks.getUserProfile.mockReturnValue({
+      name: 'Portal User',
+      email: 'user@example.com',
     })
+    authMocks.logout.mockReturnValue(
+      new Promise<void>((resolve) => {
+        completeLogout = resolve
+      }),
+    )
+    render(
+      <OxygenUIThemeProvider theme={AcrylicOrangeTheme}>
+        <I18nextProvider i18n={i18n}>
+          <UserProfileMenu />
+        </I18nextProvider>
+      </OxygenUIThemeProvider>,
+    )
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+    fireEvent.click(screen.getByRole('menuitem', { name: 'Sign out' }))
+
+    authMocks.getUserProfile.mockReturnValue(undefined)
+    fireEvent.click(screen.getByRole('button', { name: 'Account' }))
+
+    expect(screen.getByText('Portal User')).toBeInTheDocument()
+    expect(screen.queryByText('Unknown user')).not.toBeInTheDocument()
+
+    completeLogout?.()
+    await waitFor(() => expect(authMocks.logout).toHaveBeenCalledOnce())
   })
 })

@@ -410,7 +410,7 @@ func validateAuth(cfg Config) error {
 		"auth.redirect_uri":             cfg.Auth.RedirectURI,
 		"auth.post_logout_redirect_uri": cfg.Auth.PostLogoutRedirectURI,
 	} {
-		if err := validateAbsoluteHTTPURL(value); err != nil {
+		if err := validateAbsoluteHTTPURL(value, strings.EqualFold(cfg.Env, "production")); err != nil {
 			return fmt.Errorf("%s %w", name, err)
 		}
 	}
@@ -461,10 +461,13 @@ func validateAuth(cfg Config) error {
 	return nil
 }
 
-func validateAbsoluteHTTPURL(raw string) error {
+func validateAbsoluteHTTPURL(raw string, requireHTTPS bool) error {
 	parsed, err := url.Parse(strings.TrimSpace(raw))
 	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
 		return fmt.Errorf("must be an absolute HTTP(S) URL")
+	}
+	if requireHTTPS && parsed.Scheme != "https" {
+		return fmt.Errorf("must use HTTPS in production")
 	}
 	return nil
 }
