@@ -399,6 +399,7 @@ type ConsentPurposeElementApprovalResponse struct {
 	Namespace   string      `json:"namespace"`
 	Version     string      `json:"version"` // "v1", "v2", ...
 	DisplayName *string     `json:"displayName,omitempty"`
+	Description *string     `json:"description,omitempty"`
 	Mandatory   bool        `json:"mandatory"`
 	Approved    bool        `json:"approved"`
 	Value       interface{} `json:"value,omitempty"`
@@ -410,6 +411,7 @@ type ConsentPurposeResponse struct {
 	Name        string                                  `json:"name"`
 	Version     string                                  `json:"version"` // "v1", "v2", ...
 	DisplayName *string                                 `json:"displayName,omitempty"`
+	Description *string                                 `json:"description,omitempty"`
 	Elements    []ConsentPurposeElementApprovalResponse `json:"elements"`
 }
 
