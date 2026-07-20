@@ -2051,11 +2051,15 @@ paths:
                         name: "user_email"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User email address"
+                        description: "The user's email address"
                         mandatory: true
                       - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                         name: "user_mobile"
                         namespace: "personal"
                         version: "v2"
+                        displayName: "User mobile number"
+                        description: "The user's mobile phone number"
                         mandatory: false
                     createdTime: 1742860800000
         "400":
@@ -2252,11 +2256,15 @@ paths:
                             name: "user_email"
                             namespace: "personal"
                             version: "v1"
+                            displayName: "User email address"
+                            description: "The user's email address"
                             mandatory: true
                           - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                             name: "user_mobile"
                             namespace: "personal"
                             version: "v2"
+                            displayName: "User mobile number"
+                            description: "The user's mobile phone number"
                             mandatory: false
                         createdTime: 1736467200000
                     metadata:
@@ -2338,16 +2346,22 @@ paths:
                     name: "user_email"
                     namespace: "personal"
                     version: "v1"
+                    displayName: "User email address"
+                    description: "The user's email address"
                     mandatory: true
                   - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                     name: "user_mobile"
                     namespace: "personal"
                     version: "v2"
+                    displayName: "User mobile number"
+                    description: "The user's mobile phone number"
                     mandatory: false
                   - elementId: "c3d4e5f6-a7b8-9012-cdef-123456789012"
                     name: "user_address"
                     namespace: "personal"
                     version: "v1"
+                    displayName: "User address"
+                    description: "The user's address"
                     mandatory: false
                 createdTime: 1736467200000
         "404":
@@ -2420,16 +2434,22 @@ paths:
                         name: "user_email"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User email address"
+                        description: "The user's email address"
                         mandatory: true
                       - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                         name: "user_mobile"
                         namespace: "personal"
                         version: "v2"
+                        displayName: "User mobile number"
+                        description: "The user's mobile phone number"
                         mandatory: false
                       - elementId: "c3d4e5f6-a7b8-9012-cdef-123456789012"
                         name: "user_address"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User address"
+                        description: "The user's address"
                         mandatory: false
                     createdTime: 1740787200000
                   - version: "v1"
@@ -2443,11 +2463,15 @@ paths:
                         name: "user_email"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User email address"
+                        description: "The user's email address"
                         mandatory: true
                       - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                         name: "user_mobile"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User mobile number"
+                        description: "The user's mobile phone number"
                         mandatory: false
                     createdTime: 1736467200000
         "404":
@@ -2547,11 +2571,15 @@ paths:
                     name: "patient_name"
                     namespace: "medical"
                     version: "v1"
+                    displayName: "Patient name"
+                    description: "The patient's name"
                     mandatory: true
                   - elementId: "e5f6a7b8-c9d0-1234-efab-345678901234"
                     name: "medical_history"
                     namespace: "medical"
                     version: "v2"
+                    displayName: "Medical history"
+                    description: "The patient's medical history"
                     mandatory: false
                 createdTime: 1740787200000
         "400":
@@ -2649,11 +2677,15 @@ paths:
                     name: "patient_name"
                     namespace: "medical"
                     version: "v1"
+                    displayName: "Patient name"
+                    description: "The patient's name"
                     mandatory: true
                   - elementId: "e5f6a7b8-c9d0-1234-efab-345678901234"
                     name: "medical_history"
                     namespace: "medical"
                     version: "v1"
+                    displayName: "Medical history"
+                    description: "The patient's medical history"
                     mandatory: false
                 createdTime: 1736467200000
         "404":
@@ -4853,6 +4885,16 @@ components:
           type: string
           description: The specific version of the element referenced in this purpose version (e.g., v1, v2)
           example: "v1"
+        displayName:
+          type: string
+          nullable: true
+          description: Human-readable display name of the element version.
+          example: "User email address"
+        description:
+          type: string
+          nullable: true
+          description: Description of the element version.
+          example: "The user's email address"
         mandatory:
           type: boolean
           description: |
