@@ -431,7 +431,7 @@ func buildConsentRecipe(ctx *seedContext, n int64, now int64) consentRecipe {
 			elements = append(elements, consentElementRequest{
 				Name:      purposeElement.Name,
 				Namespace: purposeElement.Namespace,
-				Approved:  true,
+				Approved:  targetStatus != "CREATED",
 				Value:     elementValue(consentShape{index: n, groupIndex: groupIndex, groupID: groupID, consentType: consentType, attributes: buildAttributes(ctx, n, consentType, groupIndex)}, elementDef),
 			})
 		}
@@ -464,6 +464,12 @@ func buildConsentRecipe(ctx *seedContext, n int64, now int64) consentRecipe {
 		}
 	case "CREATED":
 		userID = selectUserID(ctx, n, consentType, groupIndex, 0)
+		auths = append(auths, authorizationRequest{
+			UserID:    userID,
+			Type:      authTypeFor(consentType, 0),
+			Status:    "CREATED",
+			Resources: resourcePayload(consentType, groupIndex, n, 0),
+		})
 	}
 
 	return consentRecipe{
