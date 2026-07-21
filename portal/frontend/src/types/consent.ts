@@ -63,10 +63,7 @@ export interface ConsentElementApprovalItem {
   approved: boolean
   mandatory: boolean
   value?: unknown
-  type?: string
   description?: string
-  schema?: string
-  properties?: Record<string, string>
 }
 
 export interface ConsentApprovalSelection {
@@ -82,7 +79,6 @@ export interface ConsentPurposeItem {
   version: string
   displayName?: string
   description?: string
-  properties?: Record<string, string>
   elements: ConsentElementApprovalItem[]
 }
 

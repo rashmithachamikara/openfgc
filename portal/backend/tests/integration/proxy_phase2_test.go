@@ -103,7 +103,7 @@ func TestMeConsentsForcesUserIDs(t *testing.T) {
 	bff := newPortalServer(t, upstream.URL, nil)
 	defer bff.Close()
 
-	resp, err := http.Get(bff.URL + "/me/consents?userIds=attacker&limit=5")
+	resp, err := http.Get(bff.URL + "/me/consents?userIds=attacker&limit=5&details=false")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -111,23 +111,21 @@ func TestMeConsentsForcesUserIDs(t *testing.T) {
 		_ = resp.Body.Close()
 	}()
 	values, _ := url.ParseQuery(gotQuery)
-	if resp.StatusCode != http.StatusOK || values.Get("limit") != "5" || values.Get("userIds") != "user@example.com" {
+	if resp.StatusCode != http.StatusOK || values.Get("limit") != "5" || values.Get("details") != "true" || values.Get("userIds") != "user@example.com" {
 		t.Fatalf("unexpected forced query: status=%d query=%v", resp.StatusCode, values)
 	}
 }
 
-func TestConsentDetailsUseExactBoundVersions(t *testing.T) {
+func TestConsentDetailsUseSingleDetailedConsentRequest(t *testing.T) {
 	requested := make(map[string]int)
+	var gotDetails string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requested[r.URL.Path]++
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/api/v1/consents/" + consentID:
-			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"ACTIVE","createdTime":1702800000000,"updatedTime":1702800001000,"attributes":{},"authorizations":[],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","displayName":"Profile access","elements":[{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","displayName":"Email","mandatory":true,"approved":true}]}]}`))
-		case "/api/v1/consent-purposes/purpose-profile/versions/v2":
-			_, _ = w.Write([]byte(`{"purposeId":"purpose-profile","name":"profile_access","groupId":"GROUP-001","version":"v2","displayName":"Profile access v2","description":"Bound purpose version","properties":{"category":"profile"},"elements":[{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","mandatory":true}]}`))
-		case "/api/v1/consent-elements/element-email/versions/v3":
-			_, _ = w.Write([]byte(`{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","type":"basic","displayName":"Email v3","description":"Bound element version","schema":"email","properties":{"format":"email"}}`))
+			gotDetails = r.URL.Query().Get("details")
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"ACTIVE","createdTime":1702800000000,"updatedTime":1702800001000,"attributes":{},"authorizations":[],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","displayName":"Profile access","description":"Profile purpose","elements":[{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","displayName":"Email address","description":"User email address","mandatory":true,"approved":true}]}]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -136,7 +134,7 @@ func TestConsentDetailsUseExactBoundVersions(t *testing.T) {
 	bff := newPortalServer(t, upstream.URL, nil)
 	defer bff.Close()
 
-	resp, err := http.Get(bff.URL + "/me/consents/" + consentID)
+	resp, err := http.Get(bff.URL + "/me/consents/" + consentID + "?details=false&includeStatusHistory=true")
 	if err != nil {
 		t.Fatalf("request failed: %v", err)
 	}
@@ -154,15 +152,13 @@ func TestConsentDetailsUseExactBoundVersions(t *testing.T) {
 			DisplayName *string `json:"displayName"`
 			Description *string `json:"description"`
 			Elements    []struct {
-				ElementID   string            `json:"elementId"`
-				Namespace   string            `json:"namespace"`
-				Version     string            `json:"version"`
-				DisplayName *string           `json:"displayName"`
-				Approved    bool              `json:"approved"`
-				Mandatory   bool              `json:"mandatory"`
-				Type        string            `json:"type"`
-				Schema      *string           `json:"schema"`
-				Properties  map[string]string `json:"properties"`
+				ElementID   string  `json:"elementId"`
+				Namespace   string  `json:"namespace"`
+				Version     string  `json:"version"`
+				DisplayName *string `json:"displayName"`
+				Description *string `json:"description"`
+				Approved    bool    `json:"approved"`
+				Mandatory   bool    `json:"mandatory"`
 			} `json:"elements"`
 		} `json:"purposes"`
 	}
@@ -176,28 +172,27 @@ func TestConsentDetailsUseExactBoundVersions(t *testing.T) {
 	if element.ElementID != "element-email" || element.Namespace != "profile" || element.Version != "v3" || !element.Approved || !element.Mandatory {
 		t.Fatalf("unexpected element binding: %+v", element)
 	}
-	if element.Type != "basic" || element.Schema == nil || *element.Schema != "email" || element.Properties["format"] != "email" {
-		t.Fatalf("missing exact-version enrichment: %+v", element)
+	if payload.Purposes[0].DisplayName == nil || *payload.Purposes[0].DisplayName != "Profile access" ||
+		payload.Purposes[0].Description == nil || *payload.Purposes[0].Description != "Profile purpose" ||
+		element.DisplayName == nil || *element.DisplayName != "Email address" ||
+		element.Description == nil || *element.Description != "User email address" {
+		t.Fatalf("missing details from consent response: purpose=%+v element=%+v", payload.Purposes[0], element)
 	}
-	if requested["/api/v1/consent-purposes/purpose-profile/versions/v2"] != 1 || requested["/api/v1/consent-elements/element-email/versions/v3"] != 1 {
-		t.Fatalf("expected exact version lookups, got %v", requested)
+	if gotDetails != "true" || len(requested) != 1 || requested["/api/v1/consents/"+consentID] != 1 {
+		t.Fatalf("expected one detailed consent request, details=%q requests=%v", gotDetails, requested)
 	}
 }
 
 func TestApprovalBuildsVersionedUpdateAndTrustedGroupHeader(t *testing.T) {
 	var updateBody map[string]any
 	var updateGroup string
+	var consentDetails string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/"+consentID:
+			consentDetails = r.URL.Query().Get("details")
 			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-BOUND","type":"accounts","status":"CREATED","frequency":0,"expirationTime":0,"recurringIndicator":false,"dataAccessValidityDuration":86400,"attributes":{"region":"APAC"},"authorizations":[{"id":"auth-1","userId":"existing@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800000000,"resources":{}}],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true,"approved":false},{"elementId":"element-last","name":"last_name","namespace":"profile","version":"v2","mandatory":false,"approved":false},{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","mandatory":false,"approved":true}]}]}`))
-		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consent-purposes/purpose-profile/versions/v2":
-			_, _ = w.Write([]byte(`{"purposeId":"purpose-profile","name":"profile_access","groupId":"GROUP-BOUND","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true},{"elementId":"element-last","name":"last_name","namespace":"profile","version":"v2","mandatory":false},{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","mandatory":false}]}`))
-		case r.Method == http.MethodGet && strings.HasPrefix(r.URL.Path, "/api/v1/consent-elements/"):
-			parts := strings.Split(r.URL.Path, "/")
-			name := map[string]string{"element-first": "first_name", "element-last": "last_name", "element-email": "email"}[parts[4]]
-			_, _ = w.Write([]byte(`{"elementId":"` + parts[4] + `","name":"` + name + `","namespace":"profile","version":"` + parts[6] + `","type":"basic"}`))
 		case r.Method == http.MethodPut && r.URL.Path == "/api/v1/consents/"+consentID:
 			updateGroup = r.Header.Get("group-id")
 			_ = json.NewDecoder(r.Body).Decode(&updateBody)
@@ -220,8 +215,8 @@ func TestApprovalBuildsVersionedUpdateAndTrustedGroupHeader(t *testing.T) {
 	defer func() {
 		_ = resp.Body.Close()
 	}()
-	if resp.StatusCode != http.StatusOK || updateGroup != "GROUP-BOUND" {
-		t.Fatalf("unexpected approval result: status=%d group=%q", resp.StatusCode, updateGroup)
+	if resp.StatusCode != http.StatusOK || updateGroup != "GROUP-BOUND" || consentDetails != "true" {
+		t.Fatalf("unexpected approval result: status=%d group=%q details=%q", resp.StatusCode, updateGroup, consentDetails)
 	}
 	if updateBody["expirationTime"] != float64(0) {
 		t.Fatalf("expected expirationTime to be preserved, got %v", updateBody)
@@ -271,11 +266,10 @@ func approvalReadOnlyUpstream(t *testing.T) *httptest.Server {
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/api/v1/consents/" + consentID:
+			if r.URL.Query().Get("details") != "true" {
+				t.Errorf("expected details=true, got %v", r.URL.Query())
+			}
 			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"CREATED","attributes":{},"authorizations":[],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true,"approved":false}]}]}`))
-		case "/api/v1/consent-purposes/purpose-profile/versions/v2":
-			_, _ = w.Write([]byte(`{"purposeId":"purpose-profile","name":"profile_access","groupId":"GROUP-001","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true}]}`))
-		case "/api/v1/consent-elements/element-first/versions/v1":
-			_, _ = w.Write([]byte(`{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","type":"basic"}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -420,25 +414,5 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 		if resp.StatusCode != http.StatusServiceUnavailable || called {
 			t.Fatalf("%s %s: expected local 503, got status=%d called=%v", tc.method, tc.path, resp.StatusCode, called)
 		}
-	}
-}
-
-func TestConsentDetailsFailClosedWhenExactMetadataIsMissing(t *testing.T) {
-	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.URL.Path == "/api/v1/consents/"+consentID {
-			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"ACTIVE","attributes":{},"authorizations":[],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[]}]}`))
-			return
-		}
-		w.WriteHeader(http.StatusNotFound)
-	}))
-	defer upstream.Close()
-	bff := newPortalServer(t, upstream.URL, nil)
-	defer bff.Close()
-	resp, _ := http.Get(bff.URL + "/me/consents/" + consentID)
-	defer func() {
-		_ = resp.Body.Close()
-	}()
-	if resp.StatusCode != http.StatusBadGateway {
-		t.Fatalf("expected 502, got %d", resp.StatusCode)
 	}
 }

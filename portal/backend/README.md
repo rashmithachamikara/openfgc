@@ -61,9 +61,9 @@ When credentials are enabled, origins must be explicitly allowlisted (wildcard o
 
 Portal-facing user endpoints:
 
-- `GET /me/consents` -> upstream `GET /api/v1/consents` with forced `userIds=<placeholder>`
-- `GET /me/consents/{consentId}` -> upstream `GET /api/v1/consents/{consentId}`
-- `POST /me/consents/{consentId}/approve` -> BFF fetches the current consent, resolves its exact bound purpose and element versions, validates selected optional elements by stable IDs and versions, automatically approves mandatory elements, preserves existing approvals, and sends a full upstream consent update with the consent's immutable `groupId` as the trusted `group-id` header
+- `GET /me/consents` -> upstream `GET /api/v1/consents` with forced `userIds=<placeholder>` and `details=true`
+- `GET /me/consents/{consentId}` -> one upstream `GET /api/v1/consents/{consentId}?details=true`; the detailed consent snapshot is returned unchanged
+- `POST /me/consents/{consentId}/approve` -> BFF fetches the current consent with `details=true`, validates selected optional elements against its embedded stable IDs and versions, automatically approves mandatory elements, preserves existing approvals, and sends a full upstream consent update with the consent's immutable `groupId` as the trusted `group-id` header
 - `POST /me/consents/{consentId}/revoke` -> upstream `POST /api/v1/consents/{consentId}/revoke`
 
 Proxy hardening:

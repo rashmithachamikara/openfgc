@@ -40,7 +40,8 @@ paths:
       description: >-
         Proxies to `GET /api/v1/consents`, preserving supported search filters
         while replacing any browser-supplied `userIds` with the trusted current
-        user. Response payload shape is inherited from consent-management API.
+        user and forcing `details=true` so purpose and element display details
+        are included.
       parameters:
         - in: query
           name: consentStatuses
@@ -77,18 +78,16 @@ paths:
   /me/consents/{consentId}:
     get:
       tags: [User]
-      summary: Get enriched current-user consent details
+      summary: Get current-user consent details
       description: >-
-        Fetches the consent from `GET /api/v1/consents/{consentId}` and enriches
-        its purposes and elements using their exact bound version endpoints.
-        Purpose descriptions/properties and element type, description, schema,
-        and properties are added without falling back to newer definitions.
-        Status audit history is not exposed by this `/me` route.
+        Fetches one consent with `details=true` and returns its embedded purpose
+        and element display names and descriptions unchanged. Status audit
+        history is not exposed by this `/me` route.
       parameters:
         - $ref: '#/components/parameters/ConsentID'
       responses:
         '200':
-          description: Enriched consent
+          description: Detailed consent snapshot
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ConsentDetail' }
@@ -101,9 +100,9 @@ paths:
       tags: [User]
       summary: Approve selected optional elements
       description: >-
-        Fetches the current consent and exact bound metadata, validates selected
-        optional elements by purpose/element ID and version, and builds a full
-        `PUT /api/v1/consents/{consentId}` update. Mandatory and selected
+        Fetches the current consent with `details=true`, validates selected
+        optional elements against its embedded IDs and versions, and builds a
+        full `PUT /api/v1/consents/{consentId}` update. Mandatory and selected
         elements are approved, existing approvals and consent fields are
         preserved, and the trusted user's authorization is set to `APPROVED`.
         The consent's immutable `groupId` is sent as the trusted upstream
@@ -123,7 +122,7 @@ paths:
               items: { $ref: '#/components/schemas/ConsentApprovalSelection' }
       responses:
         '200':
-          description: Consent server update response, returned without additional enrichment.
+          description: Consent server update response, returned unchanged.
           content:
             application/json:
               schema: { $ref: '#/components/schemas/ConsentDetail' }
@@ -410,9 +409,6 @@ components:
         version: { type: string }
         displayName: { type: string }
         description: { type: string }
-        properties:
-          type: object
-          additionalProperties: { type: string }
         elements:
           type: array
           items: { $ref: '#/components/schemas/ConsentElement' }
@@ -427,12 +423,7 @@ components:
         displayName: { type: string }
         approved: { type: boolean }
         mandatory: { type: boolean }
-        type: { type: string }
         description: { type: string }
-        schema: { type: string }
-        properties:
-          type: object
-          additionalProperties: { type: string }
         value: {}
     ConsentApprovalSelection:
       type: object
