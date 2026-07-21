@@ -61,7 +61,7 @@ function DetailGrid({ fields }: { fields: DetailField[] }): React.JSX.Element {
     >
       {fields.map((field) => (
         <Stack key={field.label} spacing={0.5} minWidth={0}>
-          <Typography variant="caption" color="text.secondary">
+          <Typography variant="caption" color="text.secondary" fontWeight={700}>
             {field.label}
           </Typography>
           <Typography component="div" variant="body2" sx={{ overflowWrap: 'anywhere' }}>
@@ -263,7 +263,7 @@ function PurposeDetailsPage(): React.JSX.Element {
               >
                 {propertyEntries.map(([key, value]) => (
                   <Stack key={key} spacing={0.5}>
-                    <Typography variant="caption" color="text.secondary">
+                    <Typography variant="caption" color="text.secondary" fontWeight={700}>
                       {key}
                     </Typography>
                     <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
