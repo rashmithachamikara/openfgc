@@ -181,7 +181,9 @@ func TestHandlerCreateConsent_ServiceError(t *testing.T) {
 func TestHandlerGetConsent_Success(t *testing.T) {
 	mockSvc := NewMockConsentService(t)
 	purposeDisplayName := "Account management"
+	purposeDescription := "Manage account access"
 	elementDisplayName := "User email address"
+	elementDescription := "The user's email address"
 
 	out := &model.ConsentOutput{
 		ConsentID:     handlerTestConsentID,
@@ -193,12 +195,53 @@ func TestHandlerGetConsent_Success(t *testing.T) {
 			Name:        "account_management",
 			VersionNum:  1,
 			DisplayName: &purposeDisplayName,
+			Description: &purposeDescription,
 			Elements: []model.ConsentElementApprovalOutput{{
 				ElementID:   "element-1",
 				Name:        "user_email",
 				Namespace:   "default",
 				VersionNum:  1,
 				DisplayName: &elementDisplayName,
+				Description: &elementDescription,
+			}},
+		}},
+	}
+	mockSvc.On("GetConsent", mock.Anything, handlerTestConsentID, handlerTestOrgID).Return(out, nil)
+
+	handler := newConsentHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/consents/"+handlerTestConsentID+"?details=true", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	req.SetPathValue("consentId", handlerTestConsentID)
+	rr := httptest.NewRecorder()
+
+	handler.getConsent(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+
+	var resp model.ConsentResponse
+	require.NoError(t, json.NewDecoder(rr.Body).Decode(&resp))
+	require.Equal(t, handlerTestConsentID, resp.ConsentID)
+	require.Equal(t, purposeDisplayName, *resp.Purposes[0].DisplayName)
+	require.Equal(t, purposeDescription, *resp.Purposes[0].Description)
+	require.Equal(t, elementDisplayName, *resp.Purposes[0].Elements[0].DisplayName)
+	require.Equal(t, elementDescription, *resp.Purposes[0].Elements[0].Description)
+}
+
+func TestHandlerGetConsent_DefaultOmitsDefinitionDetails(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	purposeDisplayName := "Account management"
+	purposeDescription := "Manage account access"
+	elementDisplayName := "User email address"
+	elementDescription := "The user's email address"
+
+	out := &model.ConsentOutput{
+		ConsentID: handlerTestConsentID,
+		Purposes: []model.ConsentPurposeOutput{{
+			DisplayName: &purposeDisplayName,
+			Description: &purposeDescription,
+			Elements: []model.ConsentElementApprovalOutput{{
+				DisplayName: &elementDisplayName,
+				Description: &elementDescription,
 			}},
 		}},
 	}
@@ -213,12 +256,8 @@ func TestHandlerGetConsent_Success(t *testing.T) {
 	handler.getConsent(rr, req)
 
 	require.Equal(t, http.StatusOK, rr.Code)
-
-	var resp model.ConsentResponse
-	require.NoError(t, json.NewDecoder(rr.Body).Decode(&resp))
-	require.Equal(t, handlerTestConsentID, resp.ConsentID)
-	require.Equal(t, purposeDisplayName, *resp.Purposes[0].DisplayName)
-	require.Equal(t, elementDisplayName, *resp.Purposes[0].Elements[0].DisplayName)
+	require.NotContains(t, rr.Body.String(), "displayName")
+	require.NotContains(t, rr.Body.String(), "description")
 }
 
 func TestHandlerGetConsent_NotFound(t *testing.T) {
@@ -259,7 +298,9 @@ func TestHandlerGetConsent_MissingOrgID(t *testing.T) {
 func TestHandlerListConsents_Success(t *testing.T) {
 	mockSvc := NewMockConsentService(t)
 	purposeDisplayName := "Account management"
+	purposeDescription := "Manage account access"
 	elementDisplayName := "User email address"
+	elementDescription := "The user's email address"
 
 	listOut := &model.ConsentListOutput{
 		Data: []model.ConsentOutput{{
@@ -270,10 +311,12 @@ func TestHandlerListConsents_Success(t *testing.T) {
 				Name:        "account_management",
 				VersionNum:  1,
 				DisplayName: &purposeDisplayName,
+				Description: &purposeDescription,
 				Elements: []model.ConsentElementApprovalOutput{{
 					Name:        "user_email",
 					VersionNum:  1,
 					DisplayName: &elementDisplayName,
+					Description: &elementDescription,
 				}},
 			}},
 		}},
@@ -285,7 +328,7 @@ func TestHandlerListConsents_Success(t *testing.T) {
 	mockSvc.On("SearchConsents", mock.Anything, mock.Anything).Return(listOut, nil)
 
 	handler := newConsentHandler(mockSvc)
-	req := httptest.NewRequest(http.MethodGet, "/consents", nil)
+	req := httptest.NewRequest(http.MethodGet, "/consents?details=true", nil)
 	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
 	rr := httptest.NewRecorder()
 
@@ -297,7 +340,42 @@ func TestHandlerListConsents_Success(t *testing.T) {
 	require.NoError(t, json.NewDecoder(rr.Body).Decode(&resp))
 	require.Len(t, resp.Data, 1)
 	require.Equal(t, purposeDisplayName, *resp.Data[0].Purposes[0].DisplayName)
+	require.Equal(t, purposeDescription, *resp.Data[0].Purposes[0].Description)
 	require.Equal(t, elementDisplayName, *resp.Data[0].Purposes[0].Elements[0].DisplayName)
+	require.Equal(t, elementDescription, *resp.Data[0].Purposes[0].Elements[0].Description)
+}
+
+func TestHandlerListConsents_DefaultOmitsDefinitionDetails(t *testing.T) {
+	mockSvc := NewMockConsentService(t)
+	purposeDisplayName := "Account management"
+	purposeDescription := "Manage account access"
+	elementDisplayName := "User email address"
+	elementDescription := "The user's email address"
+
+	listOut := &model.ConsentListOutput{
+		Data: []model.ConsentOutput{{
+			Purposes: []model.ConsentPurposeOutput{{
+				DisplayName: &purposeDisplayName,
+				Description: &purposeDescription,
+				Elements: []model.ConsentElementApprovalOutput{{
+					DisplayName: &elementDisplayName,
+					Description: &elementDescription,
+				}},
+			}},
+		}},
+	}
+	mockSvc.On("SearchConsents", mock.Anything, mock.Anything).Return(listOut, nil)
+
+	handler := newConsentHandler(mockSvc)
+	req := httptest.NewRequest(http.MethodGet, "/consents", nil)
+	req.Header.Set(constants.HeaderOrgID, handlerTestOrgID)
+	rr := httptest.NewRecorder()
+
+	handler.listConsents(rr, req)
+
+	require.Equal(t, http.StatusOK, rr.Code)
+	require.NotContains(t, rr.Body.String(), "displayName")
+	require.NotContains(t, rr.Body.String(), "description")
 }
 
 func TestHandlerListConsents_MissingOrgID(t *testing.T) {

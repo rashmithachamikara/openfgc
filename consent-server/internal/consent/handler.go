@@ -101,6 +101,7 @@ func (h *consentHandler) getConsent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	includeStatusHistory := r.URL.Query().Get("includeStatusHistory") == "true"
+	details := r.URL.Query().Get("details") == "true"
 	var out *model.ConsentOutput
 	var serviceErr *serviceerror.ServiceError
 	if includeStatusHistory {
@@ -114,7 +115,7 @@ func (h *consentHandler) getConsent(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
-	json.NewEncoder(w).Encode(consentOutputToResponse(out))
+	json.NewEncoder(w).Encode(consentOutputToResponseWithDetails(out, details))
 }
 
 // getConsentHistory handles GET /consents/{consentId}/history
@@ -270,7 +271,8 @@ func (h *consentHandler) listConsents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set(constants.HeaderContentType, constants.ContentTypeJSON)
-	json.NewEncoder(w).Encode(consentListOutputToResponse(listOut))
+	details := r.URL.Query().Get("details") == "true"
+	json.NewEncoder(w).Encode(consentListOutputToResponse(listOut, details))
 }
 
 // updateConsent handles PUT /consents/{consentId}
@@ -537,6 +539,18 @@ func authorizationRequestToInput(ar model.AuthorizationRequest) authmodel.Create
 
 // consentOutputToResponse converts a ConsentOutput to the JSON-ready ConsentResponse.
 func consentOutputToResponse(out *model.ConsentOutput) *model.ConsentResponse {
+	// Preserve the existing create/update and internal snapshot response shape:
+	// display names are included, while descriptions remain GET/search details.
+	return consentOutputToResponseWithOptions(out, true, false)
+}
+
+// consentOutputToResponseWithDetails converts a ConsentOutput to a response and
+// includes purpose/element definition details only when requested.
+func consentOutputToResponseWithDetails(out *model.ConsentOutput, details bool) *model.ConsentResponse {
+	return consentOutputToResponseWithOptions(out, details, details)
+}
+
+func consentOutputToResponseWithOptions(out *model.ConsentOutput, includeDisplayNames, includeDescriptions bool) *model.ConsentResponse {
 	if out == nil {
 		return nil
 	}
@@ -545,22 +559,38 @@ func consentOutputToResponse(out *model.ConsentOutput) *model.ConsentResponse {
 	for _, p := range out.Purposes {
 		elements := make([]model.ConsentPurposeElementApprovalResponse, 0, len(p.Elements))
 		for _, e := range p.Elements {
+			var elementDisplayName, elementDescription *string
+			if includeDisplayNames {
+				elementDisplayName = e.DisplayName
+			}
+			if includeDescriptions {
+				elementDescription = e.Description
+			}
 			elements = append(elements, model.ConsentPurposeElementApprovalResponse{
 				ElementID:   e.ElementID,
 				Name:        e.Name,
 				Namespace:   e.Namespace,
 				Version:     formatVersion(e.VersionNum),
-				DisplayName: e.DisplayName,
+				DisplayName: elementDisplayName,
+				Description: elementDescription,
 				Mandatory:   e.Mandatory,
 				Approved:    e.Approved,
 				Value:       valueStringToInterface(e.Value, e.ElementType),
 			})
 		}
+		var purposeDisplayName, purposeDescription *string
+		if includeDisplayNames {
+			purposeDisplayName = p.DisplayName
+		}
+		if includeDescriptions {
+			purposeDescription = p.Description
+		}
 		purposes = append(purposes, model.ConsentPurposeResponse{
 			PurposeID:   p.PurposeID,
 			Name:        p.Name,
 			Version:     formatVersion(p.VersionNum),
-			DisplayName: p.DisplayName,
+			DisplayName: purposeDisplayName,
+			Description: purposeDescription,
 			Elements:    elements,
 		})
 	}
@@ -606,10 +636,10 @@ func consentOutputToResponse(out *model.ConsentOutput) *model.ConsentResponse {
 }
 
 // consentListOutputToResponse converts a ConsentListOutput to the JSON-ready ConsentListResponse.
-func consentListOutputToResponse(out *model.ConsentListOutput) *model.ConsentListResponse {
+func consentListOutputToResponse(out *model.ConsentListOutput, details bool) *model.ConsentListResponse {
 	data := make([]model.ConsentResponse, 0, len(out.Data))
 	for i := range out.Data {
-		r := consentOutputToResponse(&out.Data[i])
+		r := consentOutputToResponseWithDetails(&out.Data[i], details)
 		data = append(data, *r)
 	}
 	return &model.ConsentListResponse{

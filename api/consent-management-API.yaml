@@ -120,6 +120,9 @@ paths:
       summary: Search for consents
       description: |
         Provides a powerful search capability to find consents based on various filter criteria like consent type, status, group ID, user ID, purpose, and element. Supports pagination.
+        By default (`details=false`), purpose and element entries contain only their identifiers,
+        versions, and consent approval state. Set `details=true` to include the display name and
+        description for every purpose and element version.
         If purposeVersion is specified, purposeName must also be provided.
         If elementVersion is specified, at least one of elementName or elementNamespace must also be provided.
 
@@ -217,6 +220,12 @@ paths:
             type: integer
             format: int32
           example: 0
+        - name: details
+          in: query
+          description: Include purpose and element display names and descriptions when set to `true`.
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
           description: OK. Returns a list of consents matching the search criteria, along with pagination metadata.
@@ -224,6 +233,63 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConsentSearchResponse"
+              examples:
+                minimal:
+                  summary: Search response with details=false (default)
+                  value:
+                    data:
+                      - id: "30000001-0003-0003-0003-000000000002"
+                        groupId: "app-group-001"
+                        type: "Account management"
+                        status: "ACTIVE"
+                        createdTime: 1702900000000
+                        updatedTime: 1702900000000
+                        purposes:
+                          - purposeId: "550e8400-e29b-41d4-a716-446655440000"
+                            name: "account_management"
+                            version: "v1"
+                            elements:
+                              - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                                name: "user_email"
+                                namespace: "default"
+                                version: "v1"
+                                mandatory: true
+                                approved: true
+                    metadata:
+                      total: 1
+                      offset: 0
+                      count: 1
+                      limit: 10
+                detailed:
+                  summary: Search response with details=true
+                  value:
+                    data:
+                      - id: "30000001-0003-0003-0003-000000000002"
+                        groupId: "app-group-001"
+                        type: "Account management"
+                        status: "ACTIVE"
+                        createdTime: 1702900000000
+                        updatedTime: 1702900000000
+                        purposes:
+                          - purposeId: "550e8400-e29b-41d4-a716-446655440000"
+                            name: "account_management"
+                            version: "v1"
+                            displayName: "Account management"
+                            description: "Manage account access"
+                            elements:
+                              - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                                name: "user_email"
+                                namespace: "default"
+                                version: "v1"
+                                displayName: "User email address"
+                                description: "The user's email address"
+                                mandatory: true
+                                approved: true
+                    metadata:
+                      total: 1
+                      offset: 0
+                      count: 1
+                      limit: 10
         "400":
           description: Bad Request. The search parameters provided are invalid.
           content:
@@ -299,8 +365,10 @@ paths:
     get:
       summary: Retrieve a consent by its ID
       description: |
-        Fetches the complete details of a specific consent resource using
-        its unique `consentID`. This is used to check the status and details of a consent.
+        Fetches a specific consent resource using its unique `consentID`.
+        By default (`details=false`), purpose and element entries contain only their
+        identifiers, versions, and consent approval state. Set `details=true` to include
+        the display name and description for every purpose and element version.
 
       operationId: consents-GET
       tags:
@@ -326,38 +394,48 @@ paths:
           schema:
             type: boolean
             default: false
+        - in: query
+          name: details
+          required: false
+          description: Include purpose and element display names and descriptions when set to `true`.
+          schema:
+            type: boolean
+            default: false
       responses:
         "200":
-          description: OK. The full details of the requested consent are returned in the response body.
+          description: OK. Returns the requested consent, with purpose and element definition details controlled by the `details` query parameter.
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ConsentRetrievalResponse"
               examples:
                 withoutStatusHistory:
-                  summary: Consent response without status history
+                  summary: Consent response without status history (details=false)
                   value:
                     id: "30000001-0003-0003-0003-000000000002"
                     purposes:
-                      - name: "Account management"
+                      - purposeId: "550e8400-e29b-41d4-a716-446655440000"
+                        name: "account_management"
                         version: "v1"
-                        displayName: "Account management"
                         elements:
-                          - name: "User email"
+                          - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                            name: "user_email"
                             namespace: "default"
                             version: "v1"
-                            displayName: "User email address"
+                            mandatory: false
                             approved: false
-                          - name: "User address"
+                          - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                            name: "user_address"
                             namespace: "default"
                             version: "v1"
-                            displayName: "User postal address"
+                            mandatory: false
                             approved: false
                     createdTime: 1702900000000
                     updatedTime: 1702900000000
                     groupId: "app-group-001"
                     type: "Account management"
                     status: "ACTIVE"
+                    frequency: 0
                     expirationTime: 1798741800000
                     recurringIndicator: true
                     dataAccessValidityDuration: 0
@@ -376,24 +454,26 @@ paths:
                             - "acc-789"
                             - "acc-101"
                 withStatusHistory:
-                  summary: Consent response with status history
+                  summary: Consent response with status history (details=false)
                   value:
                     id: "30000001-0003-0003-0003-000000000002"
                     purposes:
-                      - name: "Account management"
+                      - purposeId: "550e8400-e29b-41d4-a716-446655440000"
+                        name: "account_management"
                         version: "v1"
-                        displayName: "Account management"
                         elements:
-                          - name: "User email"
+                          - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                            name: "user_email"
                             namespace: "default"
                             version: "v1"
-                            displayName: "User email address"
+                            mandatory: false
                             approved: false
                     createdTime: 1702900000000
                     updatedTime: 1702900000000
                     groupId: "app-group-001"
                     type: "Account management"
                     status: "ACTIVE"
+                    frequency: 0
                     expirationTime: 1798741800000
                     recurringIndicator: true
                     dataAccessValidityDuration: 0
@@ -423,6 +503,56 @@ paths:
                         actionTime: 1745000000000
                         actionBy: "client-app-123"
                         reason: "Consent created"
+                withDetails:
+                  summary: Consent response with details=true (status history disabled)
+                  value:
+                    id: "30000001-0003-0003-0003-000000000002"
+                    purposes:
+                      - purposeId: "550e8400-e29b-41d4-a716-446655440000"
+                        name: "account_management"
+                        version: "v1"
+                        displayName: "Account management"
+                        description: "Manage account access"
+                        elements:
+                          - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
+                            name: "user_email"
+                            namespace: "default"
+                            version: "v1"
+                            displayName: "User email address"
+                            description: "The user's email address"
+                            mandatory: false
+                            approved: false
+                          - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
+                            name: "user_address"
+                            namespace: "default"
+                            version: "v1"
+                            displayName: "User postal address"
+                            description: "The user's postal address"
+                            mandatory: false
+                            approved: false
+                    createdTime: 1702900000000
+                    updatedTime: 1702900000000
+                    groupId: "app-group-001"
+                    type: "Account management"
+                    status: "ACTIVE"
+                    frequency: 0
+                    expirationTime: 1798741800000
+                    recurringIndicator: true
+                    dataAccessValidityDuration: 0
+                    attributes:
+                      department: "customer_service"
+                      gdpr_compliant: "true"
+                      region: "EU"
+                    authorizations:
+                      - id: "a1b2c3d4-e5f6-7890-abcd-ef1234567891"
+                        userId: "user2@example.com"
+                        type: "authorisation"
+                        status: "APPROVED"
+                        updatedTime: 1702900000000
+                        resources:
+                          accountIds:
+                            - "acc-789"
+                            - "acc-101"
         "400":
           description: Bad Request. The request was invalid, possibly due to a malformed `consentID` or missing headers.
           content:
@@ -1937,11 +2067,15 @@ paths:
                         name: "user_email"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User email address"
+                        description: "The user's email address"
                         mandatory: true
                       - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                         name: "user_mobile"
                         namespace: "personal"
                         version: "v2"
+                        displayName: "User mobile number"
+                        description: "The user's mobile phone number"
                         mandatory: false
                     createdTime: 1742860800000
         "400":
@@ -2138,11 +2272,15 @@ paths:
                             name: "user_email"
                             namespace: "personal"
                             version: "v1"
+                            displayName: "User email address"
+                            description: "The user's email address"
                             mandatory: true
                           - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                             name: "user_mobile"
                             namespace: "personal"
                             version: "v2"
+                            displayName: "User mobile number"
+                            description: "The user's mobile phone number"
                             mandatory: false
                         createdTime: 1736467200000
                     metadata:
@@ -2224,16 +2362,22 @@ paths:
                     name: "user_email"
                     namespace: "personal"
                     version: "v1"
+                    displayName: "User email address"
+                    description: "The user's email address"
                     mandatory: true
                   - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                     name: "user_mobile"
                     namespace: "personal"
                     version: "v2"
+                    displayName: "User mobile number"
+                    description: "The user's mobile phone number"
                     mandatory: false
                   - elementId: "c3d4e5f6-a7b8-9012-cdef-123456789012"
                     name: "user_address"
                     namespace: "personal"
                     version: "v1"
+                    displayName: "User address"
+                    description: "The user's address"
                     mandatory: false
                 createdTime: 1736467200000
         "404":
@@ -2306,16 +2450,22 @@ paths:
                         name: "user_email"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User email address"
+                        description: "The user's email address"
                         mandatory: true
                       - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                         name: "user_mobile"
                         namespace: "personal"
                         version: "v2"
+                        displayName: "User mobile number"
+                        description: "The user's mobile phone number"
                         mandatory: false
                       - elementId: "c3d4e5f6-a7b8-9012-cdef-123456789012"
                         name: "user_address"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User address"
+                        description: "The user's address"
                         mandatory: false
                     createdTime: 1740787200000
                   - version: "v1"
@@ -2329,11 +2479,15 @@ paths:
                         name: "user_email"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User email address"
+                        description: "The user's email address"
                         mandatory: true
                       - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                         name: "user_mobile"
                         namespace: "personal"
                         version: "v1"
+                        displayName: "User mobile number"
+                        description: "The user's mobile phone number"
                         mandatory: false
                     createdTime: 1736467200000
         "404":
@@ -2433,11 +2587,15 @@ paths:
                     name: "patient_name"
                     namespace: "medical"
                     version: "v1"
+                    displayName: "Patient name"
+                    description: "The patient's name"
                     mandatory: true
                   - elementId: "e5f6a7b8-c9d0-1234-efab-345678901234"
                     name: "medical_history"
                     namespace: "medical"
                     version: "v2"
+                    displayName: "Medical history"
+                    description: "The patient's medical history"
                     mandatory: false
                 createdTime: 1740787200000
         "400":
@@ -2535,11 +2693,15 @@ paths:
                     name: "patient_name"
                     namespace: "medical"
                     version: "v1"
+                    displayName: "Patient name"
+                    description: "The patient's name"
                     mandatory: true
                   - elementId: "e5f6a7b8-c9d0-1234-efab-345678901234"
                     name: "medical_history"
                     namespace: "medical"
                     version: "v1"
+                    displayName: "Medical history"
+                    description: "The patient's medical history"
                     mandatory: false
                 createdTime: 1736467200000
         "404":
@@ -2677,8 +2839,13 @@ components:
         displayName:
           type: string
           nullable: true
-          description: Human-readable display name of the purpose version. Present in responses; omitted in requests.
+          description: Human-readable display name of the purpose version. Included in responses when `details=true`; omitted from minimal responses and requests.
           example: "Marketing Communication Preferences"
+        description:
+          type: string
+          nullable: true
+          description: Description of the purpose version. Included in responses when `details=true`; omitted from minimal responses and requests.
+          example: "Manage account access"
         elements:
           type: array
           description: |
@@ -2728,8 +2895,13 @@ components:
         displayName:
           type: string
           nullable: true
-          description: Human-readable display name of the element version. Present in responses; omitted in requests.
+          description: Human-readable display name of the element version. Included in responses when `details=true`; omitted from minimal responses and requests.
           example: "User email address"
+        description:
+          type: string
+          nullable: true
+          description: Description of the element version. Included in responses when `details=true`; omitted from minimal responses and requests.
+          example: "The user's email address"
         approved:
           type: boolean
           description: |
@@ -3100,20 +3272,17 @@ components:
           - purposeId: "550e8400-e29b-41d4-a716-446655440000"
             name: "marketing_communication_preferences"
             version: "v1"
-            displayName: "Marketing Communication Preferences"
             elements:
               - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 name: "user_email"
                 namespace: "personal"
                 version: "v1"
-                displayName: "User email address"
                 approved: true
                 value: {}
               - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                 name: "user_mobile"
                 namespace: "personal"
                 version: "v1"
-                displayName: "User mobile number"
                 approved: true
                 value: {}
         createdTime: 1702800000000
@@ -3207,11 +3376,15 @@ components:
               - elementId: "a1b2c3d4-e5f6-7890-abcd-ef1234567890"
                 name: "user_email"
                 namespace: "personal"
+                version: "v1"
+                mandatory: true
                 approved: true
                 value: {}
               - elementId: "b2c3d4e5-f6a7-8901-bcde-f12345678901"
                 name: "user_mobile"
                 namespace: "personal"
+                version: "v1"
+                mandatory: false
                 approved: true
                 value: {}
         createdTime: 1702800000000
@@ -4732,6 +4905,16 @@ components:
           type: string
           description: The specific version of the element referenced in this purpose version (e.g., v1, v2)
           example: "v1"
+        displayName:
+          type: string
+          nullable: true
+          description: Human-readable display name of the element version.
+          example: "User email address"
+        description:
+          type: string
+          nullable: true
+          description: Description of the element version.
+          example: "The user's email address"
         mandatory:
           type: boolean
           description: |
