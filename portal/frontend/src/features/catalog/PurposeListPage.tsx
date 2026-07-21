@@ -467,7 +467,7 @@ function PurposeListPage(): React.JSX.Element {
           </Paper>
         ) : null}
 
-        <TableContainer component={Paper} variant="outlined">
+        <TableContainer component={Paper} elevation={1}>
           <Box
             sx={{
               px: 2,
@@ -489,7 +489,19 @@ function PurposeListPage(): React.JSX.Element {
             ) : null}
           </Box>
           <Table aria-label={t('catalog.purposes.tableLabel')} sx={{ tableLayout: 'fixed' }}>
-            <TableHead>
+            <TableHead
+              sx={(theme) => ({
+                '& .MuiTableCell-head': {
+                  fontWeight: 600,
+                  ...theme.applyStyles('light', {
+                    backgroundColor: theme.palette.grey[50],
+                  }),
+                  ...theme.applyStyles('dark', {
+                    backgroundColor: 'rgba(255, 255, 255, 0.04)',
+                  }),
+                },
+              })}
+            >
               <TableRow>
                 <TableCell sx={{ width: '21%' }}>{t('catalog.fields.purpose')}</TableCell>
                 <TableCell sx={{ width: '16%' }}>{t('catalog.fields.groupId')}</TableCell>
