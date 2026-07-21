@@ -17,7 +17,7 @@
  */
 
 import { Sidebar } from '@wso2/oxygen-ui'
-import { Clock3, House, ShieldCheck } from '@wso2/oxygen-ui-icons-react'
+import { Blocks, Clock3, House, ShieldCheck, Target } from '@wso2/oxygen-ui-icons-react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 
@@ -56,7 +56,22 @@ const CONSENT_ITEMS: SidebarItem[] = [
   },
 ]
 
-const SIDEBAR_ITEMS: SidebarItem[] = [...DASHBOARD_ITEMS, ...CONSENT_ITEMS]
+const CATALOG_ITEMS: SidebarItem[] = [
+  {
+    id: 'purposes',
+    labelKey: 'sidebar.purposes',
+    path: '/purposes',
+    icon: <Target size={18} />,
+  },
+  {
+    id: 'elements',
+    labelKey: 'sidebar.elements',
+    path: '/elements',
+    icon: <Blocks size={18} />,
+  },
+]
+
+const SIDEBAR_ITEMS: SidebarItem[] = [...DASHBOARD_ITEMS, ...CONSENT_ITEMS, ...CATALOG_ITEMS]
 
 function mapPathToMenuId(pathname: string, search: string): string {
   if (pathname.startsWith('/dashboard')) {
@@ -71,6 +86,14 @@ function mapPathToMenuId(pathname: string, search: string): string {
     }
 
     return 'all-consents'
+  }
+
+  if (pathname.startsWith('/purposes')) {
+    return 'purposes'
+  }
+
+  if (pathname.startsWith('/elements')) {
+    return 'elements'
   }
 
   return 'dashboard'
@@ -109,6 +132,16 @@ function AppSidebar({ collapsed }: AppSidebarProps): React.JSX.Element {
         <Sidebar.Category>
           <Sidebar.CategoryLabel>{t('sidebar.consent')}</Sidebar.CategoryLabel>
           {CONSENT_ITEMS.map((item) => (
+            <Sidebar.Item key={item.id} id={item.id}>
+              <Sidebar.ItemIcon>{item.icon}</Sidebar.ItemIcon>
+              <Sidebar.ItemLabel>{t(item.labelKey)}</Sidebar.ItemLabel>
+            </Sidebar.Item>
+          ))}
+        </Sidebar.Category>
+
+        <Sidebar.Category>
+          <Sidebar.CategoryLabel>{t('sidebar.catalog')}</Sidebar.CategoryLabel>
+          {CATALOG_ITEMS.map((item) => (
             <Sidebar.Item key={item.id} id={item.id}>
               <Sidebar.ItemIcon>{item.icon}</Sidebar.ItemIcon>
               <Sidebar.ItemLabel>{t(item.labelKey)}</Sidebar.ItemLabel>
