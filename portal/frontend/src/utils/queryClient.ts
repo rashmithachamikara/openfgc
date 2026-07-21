@@ -18,7 +18,7 @@
 
 import { QueryClient } from '@tanstack/react-query'
 
-const STALE_TIME_IN_MS = 1 * 60 * 1000
+const STALE_TIME_IN_MS = 0.5 * 60 * 1000
 
 const queryClient = new QueryClient({
   defaultOptions: {

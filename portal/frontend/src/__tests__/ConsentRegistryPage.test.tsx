@@ -268,6 +268,41 @@ describe('ConsentRegistryPage', () => {
     expect(String(requestUrl)).toContain('offset=25')
   })
 
+  it('prefetches exactly one next page when more consents are available', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockImplementation(async (input: RequestInfo | URL) => {
+      const url = new URL(String(input))
+      const offset = Number(url.searchParams.get('offset') ?? 0)
+
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({
+          data: [],
+          metadata: {
+            total: 25,
+            offset,
+            count: 0,
+            limit: 10,
+          },
+        }),
+      }
+    })
+
+    renderConsentRegistryPage(createQueryClient())
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalledTimes(2)
+    })
+
+    const requestedOffsets = fetchMock.mock.calls.map(([requestUrl]) => {
+      const url = new URL(String(requestUrl))
+      return Number(url.searchParams.get('offset'))
+    })
+
+    expect(requestedOffsets).toEqual([0, 10])
+  })
+
   it('maps URL filters to v0.3 consent search parameters', async () => {
     vi.stubGlobal('fetch', fetchMock)
     fetchMock.mockResolvedValue({
