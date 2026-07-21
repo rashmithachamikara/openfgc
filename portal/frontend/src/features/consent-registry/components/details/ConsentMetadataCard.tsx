@@ -27,7 +27,17 @@ import {
   Tooltip,
   Typography,
 } from '@wso2/oxygen-ui'
-import { CircleHelp } from '@wso2/oxygen-ui-icons-react'
+import {
+  CalendarClock,
+  CalendarPlus,
+  CircleHelp,
+  Fingerprint,
+  Gauge,
+  History,
+  RefreshCw,
+  Repeat2,
+  Users,
+} from '@wso2/oxygen-ui-icons-react'
 import { useTranslation } from 'react-i18next'
 import type { ConsentDetailAPI } from '../../../../types/consent'
 import { formatEpochTimestamp } from '../../../../utils/dateTime'
@@ -43,6 +53,43 @@ interface DurationDisplayParts {
 interface ConsentMetadataCardProps {
   consentId: string
   detail: ConsentDetailAPI
+}
+
+interface MetadataLabelProps {
+  help: string | undefined
+  icon: React.ReactNode
+  label: string
+}
+
+function MetadataLabel({ help, icon, label }: MetadataLabelProps): React.JSX.Element {
+  return (
+    <Typography
+      variant="caption"
+      color="text.secondary"
+      fontWeight={700}
+      sx={{
+        display: 'inline-flex',
+        alignItems: 'center',
+        gap: 0.5,
+        mb: 1,
+        textTransform: 'uppercase',
+        letterSpacing: 0.5,
+      }}
+    >
+      {icon}
+      {label}
+      {help ? (
+        <Tooltip title={help}>
+          <Box
+            component="span"
+            sx={{ display: 'inline-flex', alignItems: 'center', color: 'text.disabled' }}
+          >
+            <CircleHelp size={14} />
+          </Box>
+        </Tooltip>
+      ) : null}
+    </Typography>
+  )
 }
 
 function getDurationDisplayParts(
@@ -101,6 +148,7 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
       <CardHeader
         title={
           <Stack direction="row" spacing={1} alignItems="center">
+            <Fingerprint size={15} />
             <Typography variant="body2" fontWeight={400}>
               {t('consentRegistry.details.consentId', 'Consent ID')}: {consentId}
             </Typography>
@@ -129,40 +177,31 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
           }}
         >
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              fontWeight={700}
-              sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-            >
-              {t('consentRegistry.details.created', 'Created')}
-            </Typography>
+            <MetadataLabel
+              help={undefined}
+              icon={<CalendarPlus size={14} />}
+              label={t('consentRegistry.details.created', 'Created')}
+            />
             <Typography variant="body2" fontWeight={500}>
               {formatEpochTimestamp(detail.createdTime)}
             </Typography>
           </Box>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              fontWeight={700}
-              sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-            >
-              {t('consentRegistry.details.updated', 'Updated')}
-            </Typography>
+            <MetadataLabel
+              help={undefined}
+              icon={<RefreshCw size={14} />}
+              label={t('consentRegistry.details.updated', 'Updated')}
+            />
             <Typography variant="body2" fontWeight={500}>
               {formatEpochTimestamp(detail.updatedTime)}
             </Typography>
           </Box>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              fontWeight={700}
-              sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-            >
-              {t('consentRegistry.details.validUntil', 'Valid Until')}
-            </Typography>
+            <MetadataLabel
+              help={undefined}
+              icon={<CalendarClock size={14} />}
+              label={t('consentRegistry.details.validUntil', 'Valid Until')}
+            />
             <Typography variant="body2" fontWeight={500}>
               <Box
                 component="span"
@@ -175,27 +214,21 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
             </Typography>
           </Box>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              fontWeight={700}
-              sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-            >
-              {t('consentRegistry.details.groupId', 'Group ID')}
-            </Typography>
+            <MetadataLabel
+              help={undefined}
+              icon={<Users size={14} />}
+              label={t('consentRegistry.details.groupId', 'Group ID')}
+            />
             <Typography variant="body2" fontWeight={500}>
               {detail.groupId}
             </Typography>
           </Box>
           <Box>
-            <Typography
-              variant="caption"
-              color="text.secondary"
-              fontWeight={700}
-              sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-            >
-              {t('consentRegistry.details.recurring', 'Recurring')}
-            </Typography>
+            <MetadataLabel
+              help={undefined}
+              icon={<Repeat2 size={14} />}
+              label={t('consentRegistry.details.recurring', 'Recurring')}
+            />
             <Typography variant="body2" fontWeight={500}>
               {detail.recurringIndicator
                 ? t('consentRegistry.details.values.yes', 'Yes')
@@ -204,32 +237,14 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
           </Box>
           {hasFrequency ? (
             <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight={700}
-                sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-              >
-                <Box
-                  component="span"
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                >
-                  {t('consentRegistry.details.frequency', 'Access Limit')}
-                  <Tooltip
-                    title={t(
-                      'consentRegistry.details.frequencyHelp',
-                      'This indicates how many times this consent can be accessed per day.',
-                    )}
-                  >
-                    <Box
-                      component="span"
-                      sx={{ display: 'inline-flex', alignItems: 'center', color: 'text.disabled' }}
-                    >
-                      <CircleHelp size={14} />
-                    </Box>
-                  </Tooltip>
-                </Box>
-              </Typography>
+              <MetadataLabel
+                icon={<Gauge size={14} />}
+                label={t('consentRegistry.details.frequency', 'Access Limit')}
+                help={t(
+                  'consentRegistry.details.frequencyHelp',
+                  'This indicates how many times this consent can be accessed per day.',
+                )}
+              />
               <Typography variant="body2" fontWeight={500}>
                 {detail.frequency}{' '}
                 {detail.frequency === 1
@@ -240,32 +255,14 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
           ) : null}
           {hasDuration ? (
             <Box>
-              <Typography
-                variant="caption"
-                color="text.secondary"
-                fontWeight={700}
-                sx={{ display: 'block', mb: 1, textTransform: 'uppercase', letterSpacing: 0.5 }}
-              >
-                <Box
-                  component="span"
-                  sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                >
-                  {t('consentRegistry.details.duration', 'Lookback Period')}
-                  <Tooltip
-                    title={t(
-                      'consentRegistry.details.durationHelp',
-                      'This defines how far back data can be accessed. For example, if set to 6 months, data from up to 6 months ago is accessible.',
-                    )}
-                  >
-                    <Box
-                      component="span"
-                      sx={{ display: 'inline-flex', alignItems: 'center', color: 'text.disabled' }}
-                    >
-                      <CircleHelp size={14} />
-                    </Box>
-                  </Tooltip>
-                </Box>
-              </Typography>
+              <MetadataLabel
+                icon={<History size={14} />}
+                label={t('consentRegistry.details.duration', 'Lookback Period')}
+                help={t(
+                  'consentRegistry.details.durationHelp',
+                  'This defines how far back data can be accessed. For example, if set to 6 months, data from up to 6 months ago is accessible.',
+                )}
+              />
               <Typography variant="body2" fontWeight={500}>
                 {durationDisplay ? `${durationDisplay.value} ${durationUnitLabel}` : '-'}
               </Typography>
