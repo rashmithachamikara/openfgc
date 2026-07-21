@@ -4,8 +4,12 @@
  */
 
 import {
+  Alert,
+  Autocomplete,
+  Box,
   Button,
   Checkbox,
+  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -15,9 +19,10 @@ import {
   MenuItem,
   Stack,
   TextField,
+  Tooltip,
   Typography,
 } from '@wso2/oxygen-ui'
-import { Plus, Trash2 } from '@wso2/oxygen-ui-icons-react'
+import { CircleHelp, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
@@ -28,17 +33,21 @@ import type {
   PurposeVersionCreateRequest,
 } from '../../../types/catalog'
 import { useElementOptionsQuery } from '../hooks/useCatalogQueries'
-import PropertyEditor from './PropertyEditor'
 import {
   entriesToProperties,
   propertiesToEntries,
   type PropertyEntry,
 } from '../utils/formProperties'
+import PropertyEditor from './PropertyEditor'
+
+const ORG_ID = String(import.meta.env.VITE_ORG_ID ?? '').trim()
 
 interface PurposeElementFormRow extends PurposeElementRequest {
   id: number
   elementKey: string
 }
+
+type PurposeOwnership = 'organization' | 'group'
 
 interface PurposeFormDialogProps {
   open: boolean
@@ -54,6 +63,10 @@ function elementKey(element: Pick<ElementSummary, 'name' | 'namespace'>): string
   return `${element.namespace}::${element.name}`
 }
 
+function elementLabel(element: ElementSummary): string {
+  return `${element.displayName ?? element.name} (${element.namespace})`
+}
+
 function PurposeFormDialog({
   open,
   initialValue,
@@ -66,6 +79,7 @@ function PurposeFormDialog({
   const { t } = useTranslation('common')
   const optionsQuery = useElementOptionsQuery(open)
   const [name, setName] = useState(initialValue?.name ?? '')
+  const [ownership, setOwnership] = useState<PurposeOwnership>('organization')
   const [groupId, setGroupId] = useState('')
   const [displayName, setDisplayName] = useState(initialValue?.displayName ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
@@ -84,12 +98,24 @@ function PurposeFormDialog({
   )
   const [validationError, setValidationError] = useState('')
   const versionMode = Boolean(initialValue)
-
   const availableElements = optionsQuery.data?.data ?? []
+  const organizationWide = Boolean(ORG_ID) && initialValue?.groupId === ORG_ID
+  const immutablePurposeMessage = organizationWide
+    ? t('catalog.messages.immutableOrganizationPurpose', { name: initialValue?.name })
+    : t('catalog.messages.immutableGroupPurpose', {
+        name: initialValue?.name,
+        groupId: initialValue?.groupId,
+      })
 
   const handleSubmit = (): void => {
+    setValidationError('')
+
     if (!versionMode && !name.trim()) {
       setValidationError(t('catalog.validation.nameRequired'))
+      return
+    }
+    if (!versionMode && ownership === 'group' && !groupId.trim()) {
+      setValidationError(t('catalog.validation.groupIdRequired'))
       return
     }
     if (elements.length === 0 || elements.some((element) => !element.name)) {
@@ -98,6 +124,12 @@ function PurposeFormDialog({
     }
     if (new Set(elements.map((element) => element.elementKey)).size !== elements.length) {
       setValidationError(t('catalog.validation.duplicateElements'))
+      return
+    }
+
+    const propertyKeys = properties.map((property) => property.key.trim()).filter(Boolean)
+    if (new Set(propertyKeys).size !== propertyKeys.length) {
+      setValidationError(t('catalog.validation.duplicatePropertyKeys'))
       return
     }
 
@@ -121,177 +153,305 @@ function PurposeFormDialog({
       return
     }
 
-    onCreate({ ...versionPayload, name: name.trim() }, groupId.trim() || undefined)
+    onCreate(
+      { ...versionPayload, name: name.trim() },
+      ownership === 'group' ? groupId.trim() : undefined,
+    )
+  }
+
+  const addElementRow = (): void => {
+    setElements([
+      ...elements,
+      {
+        id: Date.now(),
+        elementKey: '',
+        name: '',
+        namespace: '',
+        version: '',
+        mandatory: false,
+      },
+    ])
   }
 
   return (
-    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
-        {versionMode ? t('catalog.purposes.newVersion') : t('catalog.purposes.createTitle')}
-      </DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2.5} sx={{ pt: 0.5 }}>
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth={false}
+      fullWidth
+      PaperProps={{
+        sx: {
+          width: 'calc(100% - 32px)',
+          maxWidth: 720,
+          maxHeight: 'calc(100vh - 48px)',
+        },
+      }}
+    >
+      <DialogTitle
+        sx={{ px: 2.5, py: 2, borderBottom: 1, borderColor: 'divider', fontWeight: 700 }}
+      >
+        <Stack direction="row" spacing={0.75} alignItems="center">
+          <Box component="span">
+            {versionMode ? t('catalog.purposes.newVersion') : t('catalog.purposes.createTitle')}
+          </Box>
           {versionMode ? (
-            <Typography variant="body2" color="text.secondary">
-              {t('catalog.messages.immutablePurpose', {
-                name: initialValue?.name,
-                groupId: initialValue?.groupId,
-              })}
-            </Typography>
-          ) : (
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+            <Tooltip arrow title={immutablePurposeMessage}>
+              <Box
+                component="span"
+                sx={{ display: 'inline-flex', alignItems: 'center', color: 'text.disabled' }}
+              >
+                <CircleHelp size={16} />
+              </Box>
+            </Tooltip>
+          ) : null}
+        </Stack>
+      </DialogTitle>
+      <DialogContent sx={{ p: 2.5, overflowY: 'auto' }}>
+        <Stack spacing={2}>
+          {validationError || error ? (
+            <Alert severity="error">{validationError || error}</Alert>
+          ) : null}
+
+          <Box>
+            <Stack spacing={2}>
+              <Typography variant="subtitle2" fontWeight={600}>
+                {t('catalog.purposes.detailsSection')}
+              </Typography>
+              {!versionMode ? (
+                <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+                  <TextField
+                    required
+                    fullWidth
+                    size="small"
+                    label={t('catalog.fields.name')}
+                    value={name}
+                    slotProps={{ htmlInput: { maxLength: 255 } }}
+                    onChange={(event) => setName(event.target.value)}
+                  />
+                  <TextField
+                    select
+                    required
+                    fullWidth
+                    size="small"
+                    label={t('catalog.fields.purposeScope')}
+                    value={ownership}
+                    onChange={(event) => {
+                      const nextOwnership = event.target.value as PurposeOwnership
+                      setOwnership(nextOwnership)
+                      if (nextOwnership === 'organization') setGroupId('')
+                    }}
+                  >
+                    <MenuItem value="organization">{t('catalog.purposes.orgWide')}</MenuItem>
+                    <MenuItem value="group">{t('catalog.values.specificGroup')}</MenuItem>
+                  </TextField>
+                </Stack>
+              ) : null}
+              {!versionMode && ownership === 'group' ? (
+                <TextField
+                  required
+                  fullWidth
+                  size="small"
+                  label={t('catalog.fields.groupId')}
+                  value={groupId}
+                  onChange={(event) => setGroupId(event.target.value)}
+                />
+              ) : null}
               <TextField
-                required
                 fullWidth
-                label={t('catalog.fields.name')}
-                value={name}
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-                onChange={(event) => setName(event.target.value)}
+                size="small"
+                label={t('catalog.fields.displayName')}
+                value={displayName}
+                onChange={(event) => setDisplayName(event.target.value)}
               />
               <TextField
                 fullWidth
-                label={t('catalog.fields.groupId')}
-                helperText={t('catalog.help.organizationPurpose')}
-                value={groupId}
-                onChange={(event) => setGroupId(event.target.value)}
+                size="small"
+                multiline
+                minRows={2}
+                label={t('catalog.fields.description')}
+                value={description}
+                slotProps={{ htmlInput: { maxLength: 1024 } }}
+                onChange={(event) => setDescription(event.target.value)}
               />
             </Stack>
-          )}
-          <TextField
-            fullWidth
-            label={t('catalog.fields.displayName')}
-            value={displayName}
-            onChange={(event) => setDisplayName(event.target.value)}
-          />
-          <TextField
-            fullWidth
-            multiline
-            minRows={2}
-            label={t('catalog.fields.description')}
-            value={description}
-            slotProps={{ htmlInput: { maxLength: 1024 } }}
-            onChange={(event) => setDescription(event.target.value)}
-          />
-          <PropertyEditor entries={properties} onChange={setProperties} />
+          </Box>
 
-          <Stack spacing={1.5}>
-            <Stack direction="row" alignItems="center" justifyContent="space-between">
-              <Typography variant="subtitle2">{t('catalog.fields.elements')}</Typography>
+          <Box>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 1 }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="subtitle2" fontWeight={600}>
+                  {t('catalog.fields.properties')}
+                </Typography>
+                <Chip size="small" variant="outlined" label={t('catalog.values.optional')} />
+                {properties.length > 0 ? (
+                  <Chip
+                    size="small"
+                    color="primary"
+                    label={t('catalog.values.itemCount', { count: properties.length })}
+                  />
+                ) : null}
+              </Stack>
+            </Stack>
+            <PropertyEditor entries={properties} embedded onChange={setProperties} />
+          </Box>
+
+          <Box>
+            <Stack
+              direction="row"
+              alignItems="center"
+              justifyContent="space-between"
+              sx={{ mb: 1 }}
+            >
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Typography variant="subtitle2" fontWeight={600}>
+                  {t('catalog.fields.elements')}
+                </Typography>
+                <Chip
+                  size="small"
+                  color={elements.length > 0 ? 'primary' : 'default'}
+                  label={t('catalog.values.itemCount', { count: elements.length })}
+                />
+              </Stack>
               <Button
                 size="small"
                 startIcon={<Plus size={16} />}
                 disabled={availableElements.length === 0}
-                onClick={() => {
-                  setElements([
-                    ...elements,
-                    {
-                      id: Date.now(),
-                      elementKey: '',
-                      name: '',
-                      namespace: '',
-                      version: '',
-                      mandatory: false,
-                    },
-                  ])
-                }}
+                onClick={addElementRow}
               >
                 {t('catalog.actions.addElement')}
               </Button>
             </Stack>
-            {optionsQuery.isLoading ? (
-              <Typography variant="body2">{t('catalog.messages.loadingElements')}</Typography>
-            ) : null}
-            {!optionsQuery.isLoading && availableElements.length === 0 ? (
-              <Typography variant="body2" color="text.secondary">
-                {t('catalog.messages.createElementFirst')}
-              </Typography>
-            ) : null}
-            {elements.map((row) => (
-              <Stack
-                key={row.id}
-                direction={{ xs: 'column', sm: 'row' }}
-                spacing={1}
-                alignItems={{ sm: 'center' }}
-              >
-                <TextField
-                  select
-                  required
-                  fullWidth
-                  size="small"
-                  label={t('catalog.fields.element')}
-                  value={row.elementKey}
-                  onChange={(event) => {
-                    const selected = availableElements.find(
-                      (element) => elementKey(element) === event.target.value,
-                    )
-                    setElements(
-                      elements.map((item) =>
-                        item.id === row.id
-                          ? {
-                              ...item,
-                              elementKey: event.target.value,
-                              name: selected?.name ?? '',
-                              namespace: selected?.namespace ?? '',
-                              version: selected?.version ?? '',
-                            }
-                          : item,
-                      ),
-                    )
+
+            <Stack spacing={1.25}>
+              {optionsQuery.isLoading ? (
+                <Typography variant="body2">{t('catalog.messages.loadingElements')}</Typography>
+              ) : null}
+              {!optionsQuery.isLoading && availableElements.length === 0 ? (
+                <Typography variant="body2" color="text.secondary">
+                  {t('catalog.messages.createElementFirst')}
+                </Typography>
+              ) : null}
+              {!optionsQuery.isLoading && availableElements.length > 0 && elements.length === 0 ? (
+                <Box
+                  sx={{
+                    py: 3,
+                    px: 2,
+                    border: 1,
+                    borderStyle: 'dashed',
+                    borderColor: 'divider',
+                    borderRadius: 1,
+                    textAlign: 'center',
                   }}
                 >
-                  {availableElements.map((element) => (
-                    <MenuItem key={element.elementId} value={elementKey(element)}>
-                      {element.displayName ?? element.name} ({element.namespace})
-                    </MenuItem>
-                  ))}
-                </TextField>
-                <TextField
-                  size="small"
-                  label={t('catalog.fields.version')}
-                  value={row.version ?? ''}
-                  onChange={(event) => {
-                    setElements(
-                      elements.map((item) =>
-                        item.id === row.id ? { ...item, version: event.target.value } : item,
-                      ),
-                    )
-                  }}
-                  sx={{ width: { sm: 130 } }}
-                />
-                <FormControlLabel
-                  control={
-                    <Checkbox
-                      checked={row.mandatory}
-                      onChange={(event) => {
-                        setElements(
-                          elements.map((item) =>
-                            item.id === row.id
-                              ? { ...item, mandatory: event.target.checked }
-                              : item,
-                          ),
-                        )
+                  <Typography variant="body2" color="text.secondary">
+                    {t('catalog.messages.noPurposeElements')}
+                  </Typography>
+                </Box>
+              ) : null}
+              {elements.map((row) => {
+                const selectedElement =
+                  availableElements.find((element) => elementKey(element) === row.elementKey) ??
+                  null
+
+                return (
+                  <Box key={row.id} sx={{ py: 0.5 }}>
+                    <Box
+                      sx={{
+                        display: 'grid',
+                        gridTemplateColumns: {
+                          xs: '1fr',
+                          sm: 'minmax(0, 1fr) 110px auto 36px',
+                        },
+                        gap: 1,
+                        alignItems: 'center',
                       }}
-                    />
-                  }
-                  label={t('catalog.fields.mandatory')}
-                />
-                <IconButton
-                  aria-label={t('catalog.actions.removeElement')}
-                  onClick={() => setElements(elements.filter((item) => item.id !== row.id))}
-                >
-                  <Trash2 size={17} />
-                </IconButton>
-              </Stack>
-            ))}
-          </Stack>
-          {validationError || error ? (
-            <Typography color="error.main" variant="body2">
-              {validationError || error}
-            </Typography>
-          ) : null}
+                    >
+                      <Autocomplete
+                        size="small"
+                        options={availableElements}
+                        value={selectedElement}
+                        getOptionLabel={elementLabel}
+                        isOptionEqualToValue={(option, value) =>
+                          option.elementId === value.elementId
+                        }
+                        getOptionDisabled={(option) =>
+                          elements.some(
+                            (item) => item.id !== row.id && item.elementKey === elementKey(option),
+                          )
+                        }
+                        noOptionsText={t('catalog.messages.noElementsFound')}
+                        onChange={(_, selected) => {
+                          setElements(
+                            elements.map((item) =>
+                              item.id === row.id
+                                ? {
+                                    ...item,
+                                    elementKey: selected ? elementKey(selected) : '',
+                                    name: selected?.name ?? '',
+                                    namespace: selected?.namespace ?? '',
+                                    version: selected?.version ?? '',
+                                  }
+                                : item,
+                            ),
+                          )
+                        }}
+                        renderInput={(params) => (
+                          // Oxygen UI Autocomplete requires forwarding its generated input props.
+                          // eslint-disable-next-line react/jsx-props-no-spreading
+                          <TextField {...params} required label={t('catalog.fields.element')} />
+                        )}
+                      />
+                      <TextField
+                        size="small"
+                        label={t('catalog.fields.version')}
+                        value={row.version ?? ''}
+                        onChange={(event) => {
+                          setElements(
+                            elements.map((item) =>
+                              item.id === row.id ? { ...item, version: event.target.value } : item,
+                            ),
+                          )
+                        }}
+                      />
+                      <FormControlLabel
+                        sx={{ m: 0, whiteSpace: 'nowrap' }}
+                        control={
+                          <Checkbox
+                            checked={row.mandatory}
+                            onChange={(event) => {
+                              setElements(
+                                elements.map((item) =>
+                                  item.id === row.id
+                                    ? { ...item, mandatory: event.target.checked }
+                                    : item,
+                                ),
+                              )
+                            }}
+                          />
+                        }
+                        label={t('catalog.fields.mandatory')}
+                      />
+                      <IconButton
+                        size="small"
+                        aria-label={t('catalog.actions.removeElement')}
+                        onClick={() => setElements(elements.filter((item) => item.id !== row.id))}
+                      >
+                        <Trash2 size={17} />
+                      </IconButton>
+                    </Box>
+                  </Box>
+                )
+              })}
+            </Stack>
+          </Box>
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
+      <DialogActions sx={{ px: 2.5, py: 1.75, borderTop: 1, borderColor: 'divider', gap: 0.5 }}>
         <Button onClick={onClose} disabled={loading}>
           {t('catalog.actions.cancel')}
         </Button>

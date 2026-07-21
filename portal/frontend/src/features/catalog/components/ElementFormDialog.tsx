@@ -168,7 +168,7 @@ function ElementFormDialog({
               onChange={(event) => setSchema(event.target.value)}
             />
           ) : null}
-          <PropertyEditor entries={properties} onChange={setProperties} />
+          <PropertyEditor entries={properties} embedded={false} onChange={setProperties} />
           {validationError || error ? (
             <Typography color="error.main" variant="body2">
               {validationError || error}
