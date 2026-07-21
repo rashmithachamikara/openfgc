@@ -27,7 +27,19 @@ import {
   Tooltip,
   Typography,
 } from '@wso2/oxygen-ui'
-import { Eye, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react'
+import {
+  AlignLeft,
+  CalendarClock,
+  Eye,
+  Fingerprint,
+  GitBranch,
+  KeyRound,
+  Plus,
+  Tag,
+  Trash2,
+  Type as TypeIcon,
+  Users,
+} from '@wso2/oxygen-ui-icons-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
@@ -46,6 +58,7 @@ import {
 const ORG_ID = String(import.meta.env.VITE_ORG_ID ?? '').trim()
 
 interface DetailField {
+  icon: React.ReactNode
   label: string
   value: React.ReactNode
 }
@@ -61,7 +74,13 @@ function DetailGrid({ fields }: { fields: DetailField[] }): React.JSX.Element {
     >
       {fields.map((field) => (
         <Stack key={field.label} spacing={0.5} minWidth={0}>
-          <Typography variant="caption" color="text.secondary" fontWeight={700}>
+          <Typography
+            variant="caption"
+            color="text.secondary"
+            fontWeight={700}
+            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+          >
+            {field.icon}
             {field.label}
           </Typography>
           <Typography component="div" variant="body2" sx={{ overflowWrap: 'anywhere' }}>
@@ -197,12 +216,18 @@ function PurposeDetailsPage(): React.JSX.Element {
           <CardContent>
             <DetailGrid
               fields={[
-                { label: t('catalog.fields.purposeId'), value: detail.purposeId },
                 {
+                  icon: <Fingerprint size={14} />,
+                  label: t('catalog.fields.purposeId'),
+                  value: detail.purposeId,
+                },
+                {
+                  icon: <Tag size={14} />,
                   label: t('catalog.fields.name'),
                   value: <Box component="code">{detail.name}</Box>,
                 },
                 {
+                  icon: <Users size={14} />,
                   label: t('catalog.fields.scope'),
                   value: organizationWide ? (
                     <Chip size="small" color="primary" label={t('catalog.purposes.orgWide')} />
@@ -227,18 +252,22 @@ function PurposeDetailsPage(): React.JSX.Element {
             <DetailGrid
               fields={[
                 {
+                  icon: <GitBranch size={14} />,
                   label: t('catalog.fields.version'),
                   value: <Chip size="small" color="primary" label={displayedVersion.version} />,
                 },
                 {
+                  icon: <TypeIcon size={14} />,
                   label: t('catalog.fields.displayName'),
                   value: displayedVersion.displayName ?? '-',
                 },
                 {
+                  icon: <CalendarClock size={14} />,
                   label: t('catalog.fields.created'),
                   value: formatEpochTimestamp(displayedVersion.createdTime),
                 },
                 {
+                  icon: <AlignLeft size={14} />,
                   label: t('catalog.fields.description'),
                   value: displayedVersion.description ?? '-',
                 },
@@ -263,7 +292,13 @@ function PurposeDetailsPage(): React.JSX.Element {
               >
                 {propertyEntries.map(([key, value]) => (
                   <Stack key={key} spacing={0.5}>
-                    <Typography variant="caption" color="text.secondary" fontWeight={700}>
+                    <Typography
+                      variant="caption"
+                      color="text.secondary"
+                      fontWeight={700}
+                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                    >
+                      <KeyRound size={13} />
                       {key}
                     </Typography>
                     <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
