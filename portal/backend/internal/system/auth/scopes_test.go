@@ -102,11 +102,24 @@ func TestEveryAPIRouteHasCanonicalScopePolicy(t *testing.T) {
 		}
 	}
 	for _, test := range []struct{ method, path string }{
-		{"PATCH", "/api/consents/c1"}, {"GET", "/api/unknown"}, {"GET", "/not-api/consents"},
+		{"PATCH", "/api/consents/c1"},
+		{"GET", "/api/unknown"},
+		{"GET", "/not-api/consents"},
+		{"POST", "/api/consents/c1/export"},
+		{"DELETE", "/api/consent-elements/e1"},
 	} {
 		if scope, ok := ScopeForAPIRequest(test.method, test.path); ok {
 			t.Errorf("unexpected policy for %s %s: %q", test.method, test.path, scope)
 		}
+	}
+}
+
+func TestKnownAPIPathIgnoresMethod(t *testing.T) {
+	if !isKnownAPIPath("/api/consents/c1/revoke") {
+		t.Fatal("documented API path should be known")
+	}
+	if isKnownAPIPath("/api/consents/c1/export") {
+		t.Fatal("undocumented API path should not be known")
 	}
 }
 
