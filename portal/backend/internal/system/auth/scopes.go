@@ -5,7 +5,10 @@
 
 package auth
 
-import "strings"
+import (
+	"net/http"
+	"strings"
+)
 
 // ScopePrefix and the remaining constants define the canonical portal authorization scopes.
 const (
@@ -31,34 +34,73 @@ var AllPortalScopes = []string{
 	ScopePurposesRead, ScopePurposesWrite,
 }
 
-// ScopeForAPIRequest returns the canonical scope for an allowlisted /api request.
+type apiScopePolicy struct {
+	method, pattern, scope string
+}
+
+// apiScopePolicies explicitly allowlists operations exposed through the
+// catch-all API proxy. New upstream operations require a deliberate policy.
+var apiScopePolicies = []apiScopePolicy{
+	{http.MethodGet, "/api/consents", ScopeConsentsReadAny},
+	{http.MethodPost, "/api/consents", ScopeConsentsWriteAny},
+	{http.MethodGet, "/api/consents/attributes", ScopeConsentsReadAny},
+	{http.MethodPost, "/api/consents/validate", ScopeConsentsReadAny},
+	{http.MethodGet, "/api/consents/{consentId}", ScopeConsentsReadAny},
+	{http.MethodPut, "/api/consents/{consentId}", ScopeConsentsWriteAny},
+	{http.MethodGet, "/api/consents/{consentId}/history", ScopeConsentsReadAny},
+	{http.MethodPost, "/api/consents/{consentId}/revoke", ScopeConsentsWriteAny},
+	{http.MethodGet, "/api/consents/{consentId}/authorizations", ScopeConsentsReadAny},
+	{http.MethodPost, "/api/consents/{consentId}/authorizations", ScopeConsentsWriteAny},
+	{http.MethodGet, "/api/consents/{consentId}/authorizations/{authorizationId}", ScopeConsentsReadAny},
+	{http.MethodPut, "/api/consents/{consentId}/authorizations/{authorizationId}", ScopeConsentsWriteAny},
+	{http.MethodGet, "/api/consent-elements", ScopeElementsRead},
+	{http.MethodPost, "/api/consent-elements", ScopeElementsWrite},
+	{http.MethodGet, "/api/consent-elements/{elementId}", ScopeElementsRead},
+	{http.MethodGet, "/api/consent-elements/{elementId}/versions", ScopeElementsRead},
+	{http.MethodPost, "/api/consent-elements/{elementId}/versions", ScopeElementsWrite},
+	{http.MethodGet, "/api/consent-elements/{elementId}/versions/{version}", ScopeElementsRead},
+	{http.MethodDelete, "/api/consent-elements/{elementId}/versions/{version}", ScopeElementsWrite},
+	{http.MethodGet, "/api/consent-purposes", ScopePurposesRead},
+	{http.MethodPost, "/api/consent-purposes", ScopePurposesWrite},
+	{http.MethodGet, "/api/consent-purposes/{purposeId}", ScopePurposesRead},
+	{http.MethodGet, "/api/consent-purposes/{purposeId}/versions", ScopePurposesRead},
+	{http.MethodPost, "/api/consent-purposes/{purposeId}/versions", ScopePurposesWrite},
+	{http.MethodGet, "/api/consent-purposes/{purposeId}/versions/{version}", ScopePurposesRead},
+	{http.MethodDelete, "/api/consent-purposes/{purposeId}/versions/{version}", ScopePurposesWrite},
+}
+
+// ScopeForAPIRequest returns the canonical scope for an explicitly allowlisted
+// API operation.
 func ScopeForAPIRequest(method, path string) (string, bool) {
 	method = strings.ToUpper(method)
-	parts := strings.Split(strings.Trim(strings.TrimPrefix(path, "/api/"), "/"), "/")
-	if len(parts) == 0 || parts[0] == "" {
-		return "", false
+	for _, policy := range apiScopePolicies {
+		if method == policy.method && matchAPIPath(policy.pattern, path) {
+			return policy.scope, true
+		}
 	}
-	write := method == "POST" || method == "PUT" || method == "DELETE"
-	switch parts[0] {
-	case "consents":
-		if len(parts) == 2 && parts[1] == "validate" && method == "POST" {
-			return ScopeConsentsReadAny, true
+	return "", false
+}
+
+func isKnownAPIPath(path string) bool {
+	for _, policy := range apiScopePolicies {
+		if matchAPIPath(policy.pattern, path) {
+			return true
 		}
-		if write {
-			return ScopeConsentsWriteAny, true
-		}
-		return ScopeConsentsReadAny, method == "GET"
-	case "consent-elements":
-		if write {
-			return ScopeElementsWrite, true
-		}
-		return ScopeElementsRead, method == "GET"
-	case "consent-purposes":
-		if write {
-			return ScopePurposesWrite, true
-		}
-		return ScopePurposesRead, method == "GET"
-	default:
-		return "", false
 	}
+	return false
+}
+
+func matchAPIPath(pattern, path string) bool {
+	patternParts := strings.Split(strings.Trim(pattern, "/"), "/")
+	pathParts := strings.Split(strings.Trim(path, "/"), "/")
+	if len(patternParts) != len(pathParts) {
+		return false
+	}
+	for i, patternPart := range patternParts {
+		placeholder := strings.HasPrefix(patternPart, "{") && strings.HasSuffix(patternPart, "}")
+		if (!placeholder && patternPart != pathParts[i]) || pathParts[i] == "" {
+			return false
+		}
+	}
+	return true
 }

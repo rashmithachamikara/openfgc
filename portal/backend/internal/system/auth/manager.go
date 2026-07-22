@@ -130,8 +130,11 @@ func (m *Manager) RequireAPI(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		required, ok := ScopeForAPIRequest(r.Method, r.URL.Path)
 		if !ok {
-			// Preserve the proxy's canonical 404/405 behavior for unknown routes.
-			next.ServeHTTP(w, r)
+			if isKnownAPIPath(r.URL.Path) {
+				writeError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
+				return
+			}
+			writeError(w, http.StatusNotFound, "NOT_FOUND", "route not found")
 			return
 		}
 		m.Require(next, required).ServeHTTP(w, r)
