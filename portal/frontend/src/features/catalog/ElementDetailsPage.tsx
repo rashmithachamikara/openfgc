@@ -72,17 +72,29 @@ function DetailGrid({ fields }: { fields: DetailField[] }): React.JSX.Element {
       }}
     >
       {fields.map((field) => (
-        <Stack key={field.label} spacing={0.5} minWidth={0}>
+        <Stack key={field.label} spacing={0} minWidth={0}>
           <Typography
             variant="caption"
             color="text.secondary"
             fontWeight={700}
-            sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+            sx={{
+              display: 'inline-flex',
+              alignItems: 'center',
+              gap: 0.5,
+              mb: 1,
+              textTransform: 'uppercase',
+              letterSpacing: 0.5,
+            }}
           >
             {field.icon}
             {field.label}
           </Typography>
-          <Typography component="div" variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+          <Typography
+            component="div"
+            variant="body2"
+            fontWeight={500}
+            sx={{ overflowWrap: 'anywhere' }}
+          >
             {field.value || '-'}
           </Typography>
         </Stack>
@@ -167,32 +179,33 @@ function ElementDetailsPage(): React.JSX.Element {
           spacing={2}
         >
           <Stack spacing={0.75} minWidth={0}>
-            <HeaderBreadcrumbs />
+            <HeaderBreadcrumbs currentLabel={`${detail.namespace}:${detail.name}`} />
             <Typography variant="h4" fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
               {displayedVersion.displayName ?? detail.name}
             </Typography>
           </Stack>
           <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} spacing={1}>
-            <Chip size="small" color="primary" label={displayedVersion.version} />
-            {displayedVersion.version === detail.version ? (
-              <Chip size="small" variant="outlined" label={t('catalog.values.latest')} />
-            ) : null}
             <TextField
               select
               size="small"
-              label={t('catalog.fields.elementVersion')}
               value={displayedVersion.version}
               disabled={versionsQuery.isLoading || versionOptions.length === 0}
+              slotProps={{
+                select: {
+                  inputProps: {
+                    'aria-label': t('catalog.fields.elementVersion'),
+                  },
+                },
+              }}
               onChange={(event) => {
                 const version = event.target.value
                 setSelectedVersion(version === detail.version ? undefined : version)
               }}
-              sx={{ minWidth: 150 }}
+              sx={{ width: 80 }}
             >
               {versionOptions.map((version) => (
                 <MenuItem key={version.version} value={version.version}>
                   {version.version}
-                  {version.version === detail.version ? ` · ${t('catalog.values.latest')}` : ''}
                 </MenuItem>
               ))}
             </TextField>
@@ -208,17 +221,20 @@ function ElementDetailsPage(): React.JSX.Element {
 
         <Card sx={{ boxShadow: 1 }}>
           <CardHeader
-            title={<Typography fontWeight={600}>{t('catalog.details.elementIdentity')}</Typography>}
+            title={
+              <Stack direction="row" spacing={1} alignItems="center">
+                <Fingerprint size={15} />
+                <Typography variant="body2" fontWeight={400}>
+                  {t('catalog.fields.elementId')}: {detail.elementId}
+                </Typography>
+              </Stack>
+            }
+            sx={{ pb: 1 }}
           />
           <Divider />
-          <CardContent>
+          <CardContent sx={{ pt: 3 }}>
             <DetailGrid
               fields={[
-                {
-                  icon: <Fingerprint size={14} />,
-                  label: t('catalog.fields.elementId'),
-                  value: detail.elementId,
-                },
                 {
                   icon: <Tag size={14} />,
                   label: t('catalog.fields.name'),
@@ -241,7 +257,12 @@ function ElementDetailsPage(): React.JSX.Element {
 
         <Card sx={{ boxShadow: 1 }}>
           <CardHeader
-            title={<Typography fontWeight={600}>{t('catalog.details.versionDetails')}</Typography>}
+            title={
+              <Typography variant="h5" fontWeight={600}>
+                {t('catalog.details.versionDetails')}
+              </Typography>
+            }
+            sx={{ pb: 1 }}
           />
           <Divider />
           <CardContent>
@@ -275,7 +296,12 @@ function ElementDetailsPage(): React.JSX.Element {
         {detail.type !== 'basic' ? (
           <Card sx={{ boxShadow: 1 }}>
             <CardHeader
-              title={<Typography fontWeight={600}>{t('catalog.fields.schema')}</Typography>}
+              title={
+                <Typography variant="h5" fontWeight={600}>
+                  {t('catalog.fields.schema')}
+                </Typography>
+              }
+              sx={{ pb: 1 }}
             />
             <Divider />
             <CardContent>
@@ -305,7 +331,12 @@ function ElementDetailsPage(): React.JSX.Element {
 
         <Card sx={{ boxShadow: 1 }}>
           <CardHeader
-            title={<Typography fontWeight={600}>{t('catalog.fields.properties')}</Typography>}
+            title={
+              <Typography variant="h5" fontWeight={600}>
+                {t('catalog.fields.properties')}
+              </Typography>
+            }
+            sx={{ pb: 1 }}
           />
           <Divider />
           <CardContent>
@@ -318,17 +349,24 @@ function ElementDetailsPage(): React.JSX.Element {
                 }}
               >
                 {propertyEntries.map(([key, value]) => (
-                  <Stack key={key} spacing={0.5}>
+                  <Stack key={key} spacing={0}>
                     <Typography
                       variant="caption"
                       color="text.secondary"
                       fontWeight={700}
-                      sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
+                      sx={{
+                        display: 'inline-flex',
+                        alignItems: 'center',
+                        gap: 0.5,
+                        mb: 1,
+                        textTransform: 'uppercase',
+                        letterSpacing: 0.5,
+                      }}
                     >
                       <KeyRound size={13} />
                       {key}
                     </Typography>
-                    <Typography variant="body2" sx={{ overflowWrap: 'anywhere' }}>
+                    <Typography variant="body2" fontWeight={500} sx={{ overflowWrap: 'anywhere' }}>
                       {value}
                     </Typography>
                   </Stack>
@@ -344,7 +382,12 @@ function ElementDetailsPage(): React.JSX.Element {
 
         <Card sx={{ boxShadow: 1 }}>
           <CardHeader
-            title={<Typography fontWeight={600}>{t('catalog.details.versions')}</Typography>}
+            title={
+              <Typography variant="h5" fontWeight={600}>
+                {t('catalog.details.versions')}
+              </Typography>
+            }
+            sx={{ pb: 1 }}
           />
           <Divider />
           {versionsQuery.isLoading ? (
@@ -368,11 +411,17 @@ function ElementDetailsPage(): React.JSX.Element {
               <Table size="small">
                 <TableHead>
                   <TableRow>
-                    <TableCell>{t('catalog.fields.version')}</TableCell>
-                    <TableCell>{t('catalog.fields.displayName')}</TableCell>
-                    <TableCell>{t('catalog.fields.description')}</TableCell>
-                    <TableCell>{t('catalog.fields.created')}</TableCell>
-                    <TableCell align="right">{t('catalog.fields.actions')}</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t('catalog.fields.version')}</TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>
+                      {t('catalog.fields.displayName')}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>
+                      {t('catalog.fields.description')}
+                    </TableCell>
+                    <TableCell sx={{ fontWeight: 700 }}>{t('catalog.fields.created')}</TableCell>
+                    <TableCell align="right" sx={{ fontWeight: 700 }}>
+                      {t('catalog.fields.actions')}
+                    </TableCell>
                   </TableRow>
                 </TableHead>
                 <TableBody>

@@ -4,23 +4,17 @@
  */
 
 import { Chip } from '@wso2/oxygen-ui'
-import { Braces, CodeXml, Type as TypeIcon } from '@wso2/oxygen-ui-icons-react'
 import type { ElementType } from '../../../types/catalog'
+import { ELEMENT_TYPE_PRESENTATION } from '../utils/elementTypePresentation'
 
 interface ElementTypeChipProps {
   type: ElementType
 }
 
 function ElementTypeChip({ type }: ElementTypeChipProps): React.JSX.Element {
-  if (type === 'json') {
-    return <Chip size="small" sx={{ px: 0.5 }} icon={<Braces size={14} />} label="JSON" />
-  }
+  const { Icon, label } = ELEMENT_TYPE_PRESENTATION[type]
 
-  if (type === 'xml') {
-    return <Chip size="small" sx={{ px: 0.5 }} icon={<CodeXml size={14} />} label="XML" />
-  }
-
-  return <Chip size="small" sx={{ px: 0.5 }} icon={<TypeIcon size={14} />} label="Basic" />
+  return <Chip size="small" sx={{ px: 0.5 }} icon={<Icon size={14} />} label={label} />
 }
 
 export default ElementTypeChip

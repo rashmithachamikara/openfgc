@@ -165,7 +165,7 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
             <Chip label={detail.type} color="default" size="small" variant="outlined" />
           </Stack>
         }
-        sx={{ pb: 2 }}
+        sx={{ pb: 1 }}
       />
       <Divider />
       <CardContent sx={{ pt: 3 }}>

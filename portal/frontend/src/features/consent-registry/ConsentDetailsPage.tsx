@@ -84,7 +84,7 @@ function ConsentDetailsLoading(): React.JSX.Element {
               <Skeleton variant="rounded" width={84} height={24} />
             </Stack>
           }
-          sx={{ pb: 2 }}
+          sx={{ pb: 1 }}
         />
         <Divider />
         <CardContent sx={{ pt: 3 }}>
@@ -107,7 +107,7 @@ function ConsentDetailsLoading(): React.JSX.Element {
 
       {['purpose', 'table', 'lifecycle'].map((section) => (
         <Card key={`details-${section}-skeleton`} sx={{ boxShadow: 1 }}>
-          <CardHeader title={<Skeleton variant="text" width={180} />} sx={{ pb: 0 }} />
+          <CardHeader title={<Skeleton variant="text" width={180} />} sx={{ pb: 1 }} />
           <Divider />
           <CardContent sx={{ p: 2 }}>
             {Array.from({ length: section === 'purpose' ? 2 : 4 }).map((_, index) => (
@@ -197,23 +197,19 @@ function ConsentDetailsPage(): React.JSX.Element {
       component="main"
       sx={{ p: { xs: 2, md: 4 }, display: 'flex', flexDirection: 'column', gap: 3 }}
     >
-      <Box sx={{ position: 'relative' }}>
-        <Stack spacing={1}>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ md: 'flex-end' }}
+        spacing={2}
+      >
+        <Stack spacing={0.75} minWidth={0}>
           <HeaderBreadcrumbs />
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          <Typography variant="h4" fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
             {t('consentRegistry.details.title', 'Consent Details')}
           </Typography>
         </Stack>
-        <Stack
-          direction="row"
-          spacing={1.5}
-          sx={{
-            mt: { xs: 2, md: 0 },
-            position: { xs: 'static', md: 'absolute' },
-            right: { md: 0 },
-            bottom: { md: 0 },
-          }}
-        >
+        <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} spacing={1}>
           {canApprove ? (
             <Button
               variant="contained"
@@ -239,7 +235,7 @@ function ConsentDetailsPage(): React.JSX.Element {
             {t('consentRegistry.actions.revoke')}
           </Button>
         </Stack>
-      </Box>
+      </Stack>
 
       <ConsentMetadataCard consentId={id} detail={detail} />
       <ConsentPurposesSection purposes={detail.purposes} />

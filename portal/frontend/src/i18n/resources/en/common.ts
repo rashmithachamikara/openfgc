@@ -264,9 +264,12 @@ const commonEn = {
       organizationPurpose: 'Leave empty to create an organization-level purpose',
       purposeVersionRequiresName: 'Enter a purpose name first',
       schemaElementTypes: 'Schemas are supported only for JSON and XML elements.',
+      selectElementFirst: 'Select an element first',
     },
     values: {
       all: 'All',
+      customNamespace: 'Custom Namespace',
+      defaultNamespace: 'Default Namespace',
       mandatory: 'Mandatory',
       matches: 'Matches',
       noDescription: 'No description',
@@ -335,6 +338,7 @@ const commonEn = {
       immutableGroupPurpose:
         '{{name}} is scoped to group {{groupId}}. Its identity and scope cannot change between versions.',
       loadingElements: 'Loading available elements...',
+      loadingVersions: 'Loading element versions...',
       noElementsFound: 'No matching elements',
       noElements: 'No elements are configured for this version.',
       noProperties: 'No custom properties.',
@@ -349,6 +353,7 @@ const commonEn = {
       elementRequired: 'Select at least one element.',
       groupIdRequired: 'Group ID is required for a group-specific purpose.',
       nameRequired: 'Name is required.',
+      namespaceRequired: 'Namespace is required when Custom is selected.',
       schemaRequired: 'Schema is required for JSON and XML elements.',
     },
     delete: {

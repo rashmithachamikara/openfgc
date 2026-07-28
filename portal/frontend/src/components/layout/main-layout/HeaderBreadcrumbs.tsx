@@ -27,6 +27,10 @@ interface BreadcrumbItem {
   isCurrent: boolean
 }
 
+interface HeaderBreadcrumbsProps {
+  currentLabel?: string
+}
+
 function safeDecodeURIComponent(value: string): string {
   try {
     return decodeURIComponent(value)
@@ -121,7 +125,7 @@ function buildBreadcrumbItems(
   ]
 }
 
-function HeaderBreadcrumbs(): React.JSX.Element {
+function HeaderBreadcrumbs({ currentLabel }: HeaderBreadcrumbsProps): React.JSX.Element {
   const { t } = useTranslation('common')
   const location = useLocation()
 
@@ -131,7 +135,7 @@ function HeaderBreadcrumbs(): React.JSX.Element {
     t('sidebar.allConsents'),
     t('sidebar.purposes'),
     t('sidebar.elements'),
-  )
+  ).map((item) => (item.isCurrent && currentLabel ? { ...item, label: currentLabel } : item))
 
   return (
     <Box component="nav" aria-label={t('layout.breadcrumbAriaLabel')}>
@@ -171,6 +175,10 @@ function HeaderBreadcrumbs(): React.JSX.Element {
       </Breadcrumbs>
     </Box>
   )
+}
+
+HeaderBreadcrumbs.defaultProps = {
+  currentLabel: undefined,
 }
 
 export default HeaderBreadcrumbs
