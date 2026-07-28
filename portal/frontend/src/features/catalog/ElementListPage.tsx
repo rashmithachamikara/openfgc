@@ -25,7 +25,7 @@ import {
   Tooltip,
   Typography,
 } from '@wso2/oxygen-ui'
-import { Eye, ListFilter, Plus, Search } from '@wso2/oxygen-ui-icons-react'
+import { ListFilter, Plus, Search } from '@wso2/oxygen-ui-icons-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -414,22 +414,19 @@ function ElementListPage(): React.JSX.Element {
               })}
             >
               <TableRow>
-                <TableCell sx={{ width: '22%' }}>{t('catalog.fields.element')}</TableCell>
-                <TableCell sx={{ width: '15%' }}>{t('catalog.fields.namespace')}</TableCell>
-                <TableCell sx={{ width: '10%' }}>{t('catalog.fields.type')}</TableCell>
+                <TableCell sx={{ width: '20%' }}>{t('catalog.fields.element')}</TableCell>
+                <TableCell sx={{ width: '14%' }}>{t('catalog.fields.namespace')}</TableCell>
+                <TableCell sx={{ width: '11%' }}>{t('catalog.fields.type')}</TableCell>
                 <TableCell sx={{ width: '10%' }}>{t('catalog.fields.version')}</TableCell>
-                <TableCell sx={{ width: '25%' }}>{t('catalog.fields.description')}</TableCell>
-                <TableCell sx={{ width: '12%' }}>{t('catalog.fields.created')}</TableCell>
-                <TableCell sx={{ width: '6%' }} align="right">
-                  {t('catalog.fields.actions')}
-                </TableCell>
+                <TableCell sx={{ width: '28%' }}>{t('catalog.fields.description')}</TableCell>
+                <TableCell sx={{ width: '17%' }}>{t('catalog.fields.created')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {query.isPending
                 ? Array.from({ length: 5 }).map((_, index) => (
                     <TableRow key={`element-skeleton-${String(index)}`}>
-                      {Array.from({ length: 7 }).map((__, cell) => (
+                      {Array.from({ length: 6 }).map((__, cell) => (
                         <TableCell key={`element-skeleton-${String(index)}-${String(cell)}`}>
                           <Skeleton />
                         </TableCell>
@@ -491,31 +488,15 @@ function ElementListPage(): React.JSX.Element {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">
+                        <Typography fontFamily="monospace" variant="body2">
                           {formatEpochTimestamp(element.createdTime)}
                         </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title={t('catalog.actions.view')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('catalog.actions.viewElement', {
-                              name: element.displayName ?? element.name,
-                            })}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              navigate(`/elements/${encodeURIComponent(element.elementId)}`)
-                            }}
-                          >
-                            <Eye size={17} />
-                          </IconButton>
-                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
               {!query.isPending && !query.isError && rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} align="center" sx={{ py: 8 }}>
+                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
                     <Stack spacing={1} alignItems="center">
                       <Search size={28} aria-hidden="true" />
                       <Typography fontWeight={600}>{t('catalog.elements.emptyTitle')}</Typography>

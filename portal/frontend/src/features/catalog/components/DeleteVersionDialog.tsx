@@ -34,9 +34,32 @@ function DeleteVersionDialog({
   const { t } = useTranslation('common')
 
   return (
-    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="xs" fullWidth>
-      <DialogTitle>{t('catalog.delete.title')}</DialogTitle>
-      <DialogContent dividers>
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth="xs"
+      fullWidth
+      PaperProps={{
+        sx: (theme) => ({
+          borderRadius: 1,
+          ...theme.applyStyles('light', { bgcolor: theme.palette.grey[50] }),
+          ...theme.applyStyles('dark', { bgcolor: 'rgba(255, 255, 255, 0.06)' }),
+        }),
+      }}
+    >
+      <DialogTitle
+        sx={{
+          p: 3,
+          borderBottom: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.default',
+        }}
+      >
+        <Typography variant="h4" fontWeight={700}>
+          {t('catalog.delete.title')}
+        </Typography>
+      </DialogTitle>
+      <DialogContent sx={{ px: 3, mt: 3, pb: 3 }}>
         <Stack spacing={2}>
           <Typography>{t('catalog.delete.message', { version })}</Typography>
           <Typography variant="body2" color="text.secondary">
@@ -49,11 +72,21 @@ function DeleteVersionDialog({
           ) : null}
         </Stack>
       </DialogContent>
-      <DialogActions>
-        <Button onClick={onClose} disabled={loading}>
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2.5,
+          borderTop: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.default',
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1.25,
+        }}
+      >
+        <Button fullWidth variant="outlined" onClick={onClose} disabled={loading}>
           {t('catalog.actions.cancel')}
         </Button>
-        <Button color="error" variant="contained" onClick={onConfirm} disabled={loading}>
+        <Button fullWidth color="error" variant="contained" onClick={onConfirm} disabled={loading}>
           {loading ? t('catalog.actions.deleting') : t('catalog.actions.delete')}
         </Button>
       </DialogActions>

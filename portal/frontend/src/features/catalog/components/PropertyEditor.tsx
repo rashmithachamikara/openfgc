@@ -26,7 +26,9 @@ function PropertyEditor({ entries, embedded, onChange }: PropertyEditorProps): R
         justifyContent={isEmbedded ? 'flex-end' : 'space-between'}
       >
         {!isEmbedded ? (
-          <Typography variant="subtitle2">{t('catalog.fields.properties')}</Typography>
+          <Typography variant="subtitle2" fontWeight={600}>
+            {t('catalog.fields.properties')}
+          </Typography>
         ) : null}
         <Button
           size="small"

@@ -10,13 +10,11 @@ import {
   DialogActions,
   DialogContent,
   DialogTitle,
-  FormControl,
-  InputLabel,
-  MenuItem,
-  Select,
   Stack,
   TextField,
   Tooltip,
+  ToggleButton,
+  ToggleButtonGroup,
   Typography,
 } from '@wso2/oxygen-ui'
 import { CircleHelp } from '@wso2/oxygen-ui-icons-react'
@@ -34,6 +32,7 @@ import {
   propertiesToEntries,
   type PropertyEntry,
 } from '../utils/formProperties'
+import { ELEMENT_TYPE_PRESENTATION } from '../utils/elementTypePresentation'
 
 interface ElementFormDialogProps {
   open: boolean
@@ -44,6 +43,8 @@ interface ElementFormDialogProps {
   onCreate: (payload: ElementCreateRequest) => void
   onCreateVersion: ((payload: ElementVersionCreateRequest) => void) | undefined
 }
+
+type NamespaceMode = 'default' | 'custom'
 
 function ElementFormDialog({
   open,
@@ -57,6 +58,9 @@ function ElementFormDialog({
   const { t } = useTranslation('common')
   const [name, setName] = useState(initialValue?.name ?? '')
   const [namespace, setNamespace] = useState(initialValue?.namespace ?? '')
+  const [namespaceMode, setNamespaceMode] = useState<NamespaceMode>(
+    initialValue?.namespace ? 'custom' : 'default',
+  )
   const [type, setType] = useState<ElementType>(initialValue?.type ?? 'basic')
   const [displayName, setDisplayName] = useState(initialValue?.displayName ?? '')
   const [description, setDescription] = useState(initialValue?.description ?? '')
@@ -66,10 +70,18 @@ function ElementFormDialog({
   )
   const [validationError, setValidationError] = useState('')
   const versionMode = Boolean(initialValue)
+  const requiredFieldsComplete =
+    (versionMode || Boolean(name.trim())) &&
+    (versionMode || namespaceMode === 'default' || Boolean(namespace.trim())) &&
+    (type === 'basic' || Boolean(schema.trim()))
 
   const handleSubmit = (): void => {
     if (!versionMode && !name.trim()) {
       setValidationError(t('catalog.validation.nameRequired'))
+      return
+    }
+    if (!versionMode && namespaceMode === 'custom' && !namespace.trim()) {
+      setValidationError(t('catalog.validation.namespaceRequired'))
       return
     }
     if ((type === 'json' || type === 'xml') && !schema.trim()) {
@@ -92,18 +104,37 @@ function ElementFormDialog({
     onCreate({
       ...versionPayload,
       name: name.trim(),
-      namespace: namespace.trim() || undefined,
+      namespace: namespaceMode === 'custom' ? namespace.trim() || undefined : undefined,
       type,
     })
   }
 
   return (
-    <Dialog open={open} onClose={loading ? undefined : onClose} maxWidth="md" fullWidth>
-      <DialogTitle>
+    <Dialog
+      open={open}
+      onClose={loading ? undefined : onClose}
+      maxWidth="md"
+      fullWidth
+      PaperProps={{
+        sx: (theme) => ({
+          borderRadius: 1,
+          ...theme.applyStyles('light', { bgcolor: theme.palette.grey[50] }),
+          ...theme.applyStyles('dark', { bgcolor: 'rgba(255, 255, 255, 0.06)' }),
+        }),
+      }}
+    >
+      <DialogTitle
+        sx={{
+          p: 3,
+          borderBottom: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.default',
+        }}
+      >
         <Stack direction="row" spacing={0.75} alignItems="center">
-          <Box component="span">
+          <Typography variant="h4" fontWeight={700}>
             {versionMode ? t('catalog.elements.newVersion') : t('catalog.elements.createTitle')}
-          </Box>
+          </Typography>
           {versionMode ? (
             <Tooltip
               arrow
@@ -123,58 +154,85 @@ function ElementFormDialog({
           ) : null}
         </Stack>
       </DialogTitle>
-      <DialogContent dividers>
-        <Stack spacing={2.5} sx={{ pt: 0.5 }}>
+      <DialogContent sx={{ px: 3, mt: 3, pb: 3, '&&': { pt: 1.5 } }}>
+        <Stack spacing={2.5}>
           {!versionMode ? (
-            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-              <TextField
-                required
-                fullWidth
-                label={t('catalog.fields.name')}
-                value={name}
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-                onChange={(event) => setName(event.target.value)}
-              />
-              <TextField
-                fullWidth
-                label={t('catalog.fields.namespace')}
-                helperText={t('catalog.help.defaultNamespace')}
-                value={namespace}
-                slotProps={{ htmlInput: { maxLength: 255 } }}
-                onChange={(event) => setNamespace(event.target.value)}
-              />
-              <FormControl fullWidth required>
-                <InputLabel id="element-type-label">
-                  <Box
-                    component="span"
-                    sx={{ display: 'inline-flex', alignItems: 'center', gap: 0.5 }}
-                  >
-                    {t('catalog.fields.type')}
-                    <Tooltip arrow title={t('catalog.help.schemaElementTypes')}>
-                      <Box
-                        component="span"
-                        sx={{
-                          display: 'inline-flex',
-                          alignItems: 'center',
-                          color: 'text.disabled',
-                        }}
-                      >
-                        <CircleHelp size={14} />
-                      </Box>
-                    </Tooltip>
-                  </Box>
-                </InputLabel>
-                <Select
-                  labelId="element-type-label"
+            <Stack spacing={2}>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={2}
+                alignItems={{ sm: 'flex-start' }}
+              >
+                <TextField
+                  required
+                  fullWidth
+                  label={t('catalog.fields.name')}
+                  value={name}
+                  slotProps={{ htmlInput: { maxLength: 255 } }}
+                  onChange={(event) => setName(event.target.value)}
+                />
+                <ToggleButtonGroup
+                  exclusive
+                  color="primary"
+                  size="small"
                   value={type}
-                  label={t('catalog.fields.type')}
-                  onChange={(event) => setType(event.target.value as ElementType)}
+                  aria-label={t('catalog.fields.type')}
+                  sx={{
+                    flexShrink: 0,
+                    '& .MuiToggleButton-root': { textTransform: 'none' },
+                  }}
+                  onChange={(_, nextType: ElementType | null) => {
+                    if (nextType) setType(nextType)
+                  }}
                 >
-                  <MenuItem value="basic">basic</MenuItem>
-                  <MenuItem value="json">json</MenuItem>
-                  <MenuItem value="xml">xml</MenuItem>
-                </Select>
-              </FormControl>
+                  {(['basic', 'json', 'xml'] as const).map((elementType) => {
+                    const { Icon, label } = ELEMENT_TYPE_PRESENTATION[elementType]
+
+                    return (
+                      <ToggleButton key={elementType} value={elementType}>
+                        <Stack direction="row" spacing={0.75} alignItems="center">
+                          <Icon size={14} />
+                          <Box component="span">{label}</Box>
+                        </Stack>
+                      </ToggleButton>
+                    )
+                  })}
+                </ToggleButtonGroup>
+              </Stack>
+              <Stack
+                direction={{ xs: 'column', sm: 'row' }}
+                spacing={1}
+                alignItems={{ sm: 'center' }}
+              >
+                <ToggleButtonGroup
+                  exclusive
+                  color="primary"
+                  size="small"
+                  value={namespaceMode}
+                  aria-label={t('catalog.fields.namespace')}
+                  sx={{ '& .MuiToggleButton-root': { textTransform: 'none' } }}
+                  onChange={(_, nextMode: NamespaceMode | null) => {
+                    if (!nextMode) return
+                    setNamespaceMode(nextMode)
+                    if (nextMode === 'default') setNamespace('')
+                  }}
+                >
+                  <ToggleButton value="default">
+                    {t('catalog.values.defaultNamespace')}
+                  </ToggleButton>
+                  <ToggleButton value="custom">{t('catalog.values.customNamespace')}</ToggleButton>
+                </ToggleButtonGroup>
+                {namespaceMode === 'custom' ? (
+                  <TextField
+                    required
+                    label={t('catalog.fields.namespace')}
+                    value={namespace}
+                    slotProps={{ htmlInput: { maxLength: 255 } }}
+                    onChange={(event) => setNamespace(event.target.value)}
+                    sx={{ width: { xs: '100%', sm: 220 } }}
+                  />
+                ) : null}
+              </Stack>
             </Stack>
           ) : null}
           <TextField
@@ -211,11 +269,26 @@ function ElementFormDialog({
           ) : null}
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ p: 2 }}>
-        <Button onClick={onClose} disabled={loading}>
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2.5,
+          borderTop: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.default',
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1.25,
+        }}
+      >
+        <Button fullWidth variant="outlined" onClick={onClose} disabled={loading}>
           {t('catalog.actions.cancel')}
         </Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={loading}>
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={loading || !requiredFieldsComplete}
+        >
           {loading ? t('catalog.actions.saving') : t('catalog.actions.create')}
         </Button>
       </DialogActions>

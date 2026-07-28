@@ -21,6 +21,14 @@ const EMPTY_DATE_PLACEHOLDER = '-'
 // The cutoff is before all expected consent timestamps.
 const EPOCH_MILLISECONDS_CUTOFF = 100_000_000_000
 
+export const DEFAULT_DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit',
+}
+
 export function toEpochMilliseconds(epochTimestamp: number | null | undefined): number | null {
   if (epochTimestamp == null || !Number.isFinite(epochTimestamp)) {
     return null
@@ -60,7 +68,10 @@ export function formatEpochTimestamp(
     return EMPTY_DATE_PLACEHOLDER
   }
 
-  return new Date(epochMilliseconds).toLocaleString(locales, options)
+  return new Date(epochMilliseconds).toLocaleString(
+    locales,
+    options ?? DEFAULT_DATE_TIME_FORMAT_OPTIONS,
+  )
 }
 
 export function formatIsoDateTime(
@@ -78,5 +89,5 @@ export function formatIsoDateTime(
     return EMPTY_DATE_PLACEHOLDER
   }
 
-  return parsedDate.toLocaleString(locales, options)
+  return parsedDate.toLocaleString(locales, options ?? DEFAULT_DATE_TIME_FORMAT_OPTIONS)
 }

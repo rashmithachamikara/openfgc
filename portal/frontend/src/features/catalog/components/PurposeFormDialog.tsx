@@ -9,7 +9,6 @@ import {
   Box,
   Button,
   Checkbox,
-  Chip,
   Dialog,
   DialogActions,
   DialogContent,
@@ -38,6 +37,7 @@ import {
   propertiesToEntries,
   type PropertyEntry,
 } from '../utils/formProperties'
+import ElementVersionSelect from './ElementVersionSelect'
 import PropertyEditor from './PropertyEditor'
 
 const ORG_ID = String(import.meta.env.VITE_ORG_ID ?? '').trim()
@@ -99,6 +99,11 @@ function PurposeFormDialog({
   const [validationError, setValidationError] = useState('')
   const versionMode = Boolean(initialValue)
   const availableElements = optionsQuery.data?.data ?? []
+  const requiredFieldsComplete =
+    (versionMode || Boolean(name.trim())) &&
+    (versionMode || ownership !== 'group' || Boolean(groupId.trim())) &&
+    elements.length > 0 &&
+    elements.every((element) => Boolean(element.name.trim()))
   const organizationWide = Boolean(ORG_ID) && initialValue?.groupId === ORG_ID
   const immutablePurposeMessage = organizationWide
     ? t('catalog.messages.immutableOrganizationPurpose', { name: initialValue?.name })
@@ -180,20 +185,28 @@ function PurposeFormDialog({
       maxWidth={false}
       fullWidth
       PaperProps={{
-        sx: {
+        sx: (theme) => ({
           width: 'calc(100% - 32px)',
           maxWidth: 720,
           maxHeight: 'calc(100vh - 48px)',
-        },
+          borderRadius: 1,
+          ...theme.applyStyles('light', { bgcolor: theme.palette.grey[50] }),
+          ...theme.applyStyles('dark', { bgcolor: 'rgba(255, 255, 255, 0.06)' }),
+        }),
       }}
     >
       <DialogTitle
-        sx={{ px: 2.5, py: 2, borderBottom: 1, borderColor: 'divider', fontWeight: 700 }}
+        sx={{
+          p: 3,
+          borderBottom: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.default',
+        }}
       >
         <Stack direction="row" spacing={0.75} alignItems="center">
-          <Box component="span">
+          <Typography variant="h4" fontWeight={700}>
             {versionMode ? t('catalog.purposes.newVersion') : t('catalog.purposes.createTitle')}
-          </Box>
+          </Typography>
           {versionMode ? (
             <Tooltip arrow title={immutablePurposeMessage}>
               <Box
@@ -206,7 +219,7 @@ function PurposeFormDialog({
           ) : null}
         </Stack>
       </DialogTitle>
-      <DialogContent sx={{ p: 2.5, overflowY: 'auto' }}>
+      <DialogContent sx={{ px: 3, mt: 3, pb: 3, overflowY: 'auto' }}>
         <Stack spacing={2}>
           {validationError || error ? (
             <Alert severity="error">{validationError || error}</Alert>
@@ -277,27 +290,7 @@ function PurposeFormDialog({
           </Box>
 
           <Box>
-            <Stack
-              direction="row"
-              alignItems="center"
-              justifyContent="space-between"
-              sx={{ mb: 1 }}
-            >
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="subtitle2" fontWeight={600}>
-                  {t('catalog.fields.properties')}
-                </Typography>
-                <Chip size="small" variant="outlined" label={t('catalog.values.optional')} />
-                {properties.length > 0 ? (
-                  <Chip
-                    size="small"
-                    color="primary"
-                    label={t('catalog.values.itemCount', { count: properties.length })}
-                  />
-                ) : null}
-              </Stack>
-            </Stack>
-            <PropertyEditor entries={properties} embedded onChange={setProperties} />
+            <PropertyEditor entries={properties} onChange={setProperties} />
           </Box>
 
           <Box>
@@ -307,16 +300,9 @@ function PurposeFormDialog({
               justifyContent="space-between"
               sx={{ mb: 1 }}
             >
-              <Stack direction="row" spacing={1} alignItems="center">
-                <Typography variant="subtitle2" fontWeight={600}>
-                  {t('catalog.fields.elements')}
-                </Typography>
-                <Chip
-                  size="small"
-                  color={elements.length > 0 ? 'primary' : 'default'}
-                  label={t('catalog.values.itemCount', { count: elements.length })}
-                />
-              </Stack>
+              <Typography variant="subtitle2" fontWeight={600}>
+                {t('catalog.fields.elements')} *
+              </Typography>
               <Button
                 size="small"
                 startIcon={<Plus size={16} />}
@@ -365,7 +351,7 @@ function PurposeFormDialog({
                         display: 'grid',
                         gridTemplateColumns: {
                           xs: '1fr',
-                          sm: 'minmax(0, 1fr) 110px auto 36px',
+                          sm: 'minmax(0, 1fr) 80px auto 36px',
                         },
                         gap: 1,
                         alignItems: 'center',
@@ -406,14 +392,14 @@ function PurposeFormDialog({
                           <TextField {...params} required label={t('catalog.fields.element')} />
                         )}
                       />
-                      <TextField
-                        size="small"
-                        label={t('catalog.fields.version')}
+                      <ElementVersionSelect
+                        elementId={selectedElement?.elementId}
+                        latestVersion={selectedElement?.version}
                         value={row.version ?? ''}
-                        onChange={(event) => {
-                          setElements(
-                            elements.map((item) =>
-                              item.id === row.id ? { ...item, version: event.target.value } : item,
+                        onChange={(version) => {
+                          setElements((currentElements) =>
+                            currentElements.map((item) =>
+                              item.id === row.id ? { ...item, version } : item,
                             ),
                           )
                         }}
@@ -451,11 +437,26 @@ function PurposeFormDialog({
           </Box>
         </Stack>
       </DialogContent>
-      <DialogActions sx={{ px: 2.5, py: 1.75, borderTop: 1, borderColor: 'divider', gap: 0.5 }}>
-        <Button onClick={onClose} disabled={loading}>
+      <DialogActions
+        sx={{
+          px: 3,
+          py: 2.5,
+          borderTop: 1,
+          borderColor: 'divider',
+          bgcolor: 'background.default',
+          flexDirection: { xs: 'column-reverse', sm: 'row' },
+          gap: 1.25,
+        }}
+      >
+        <Button fullWidth variant="outlined" onClick={onClose} disabled={loading}>
           {t('catalog.actions.cancel')}
         </Button>
-        <Button variant="contained" onClick={handleSubmit} disabled={loading}>
+        <Button
+          fullWidth
+          variant="contained"
+          onClick={handleSubmit}
+          disabled={loading || !requiredFieldsComplete}
+        >
           {loading ? t('catalog.actions.saving') : t('catalog.actions.create')}
         </Button>
       </DialogActions>

@@ -68,11 +68,11 @@ function ConsentPurposesSection({ purposes }: ConsentPurposesSectionProps): Reac
     <Card sx={{ boxShadow: 1 }}>
       <CardHeader
         title={
-          <Typography variant="subtitle1" fontWeight={600}>
+          <Typography variant="h5" fontWeight={600}>
             {t('consentRegistry.details.section.purposes', 'Consent Purposes')}
           </Typography>
         }
-        sx={{ pb: 0 }}
+        sx={{ pb: 1 }}
       />
       <Divider />
       <CardContent sx={{ p: 2 }}>

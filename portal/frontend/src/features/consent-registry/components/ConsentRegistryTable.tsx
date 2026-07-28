@@ -52,15 +52,6 @@ interface ConsentRegistryTableProps {
 type SortField = 'type' | 'status' | 'updatedAt' | 'expirationTime'
 type SortDirection = 'asc' | 'desc'
 
-const DATE_TIME_FORMAT_OPTIONS: Intl.DateTimeFormatOptions = {
-  month: 'short',
-  day: '2-digit',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-  hour12: false,
-}
-
 const PURPOSE_PREVIEW_COUNT = 2
 
 const CONSENT_REGISTRY_COLUMN_WIDTHS = {
@@ -366,8 +357,13 @@ function ConsentRegistryTable({
                             variant="outlined"
                           />
                         </ListingTable.Cell>
-                        <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.updated }}>
-                          {formatIsoDateTime(row.updatedAt, DATE_TIME_FORMAT_OPTIONS)}
+                        <ListingTable.Cell
+                          sx={{
+                            width: CONSENT_REGISTRY_COLUMN_WIDTHS.updated,
+                            fontFamily: 'monospace',
+                          }}
+                        >
+                          {formatIsoDateTime(row.updatedAt)}
                         </ListingTable.Cell>
                         <ListingTable.Cell
                           sx={
@@ -375,15 +371,17 @@ function ConsentRegistryTable({
                               ? {
                                   width: CONSENT_REGISTRY_COLUMN_WIDTHS.expiration,
                                   color: 'text.disabled',
+                                  fontFamily: 'monospace',
                                 }
                               : {
                                   width: CONSENT_REGISTRY_COLUMN_WIDTHS.expiration,
+                                  fontFamily: 'monospace',
                                 }
                           }
                         >
                           {row.expirationTime === 0
                             ? t('consentRegistry.table.notApplicable')
-                            : formatEpochTimestamp(row.expirationTime, DATE_TIME_FORMAT_OPTIONS)}
+                            : formatEpochTimestamp(row.expirationTime)}
                         </ListingTable.Cell>
                         <ListingTable.Cell
                           align="center"

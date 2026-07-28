@@ -26,7 +26,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@wso2/oxygen-ui'
-import { Eye, ListFilter, Plus, Search } from '@wso2/oxygen-ui-icons-react'
+import { ListFilter, Plus, Search } from '@wso2/oxygen-ui-icons-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -503,21 +503,18 @@ function PurposeListPage(): React.JSX.Element {
               })}
             >
               <TableRow>
-                <TableCell sx={{ width: '21%' }}>{t('catalog.fields.purpose')}</TableCell>
-                <TableCell sx={{ width: '16%' }}>{t('catalog.fields.groupId')}</TableCell>
+                <TableCell sx={{ width: '22%' }}>{t('catalog.fields.purpose')}</TableCell>
+                <TableCell sx={{ width: '17%' }}>{t('catalog.fields.groupId')}</TableCell>
                 <TableCell sx={{ width: '10%' }}>{t('catalog.fields.version')}</TableCell>
-                <TableCell sx={{ width: '31%' }}>{t('catalog.fields.description')}</TableCell>
-                <TableCell sx={{ width: '16%' }}>{t('catalog.fields.created')}</TableCell>
-                <TableCell sx={{ width: '6%' }} align="right">
-                  {t('catalog.fields.actions')}
-                </TableCell>
+                <TableCell sx={{ width: '34%' }}>{t('catalog.fields.description')}</TableCell>
+                <TableCell sx={{ width: '17%' }}>{t('catalog.fields.created')}</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
               {query.isPending
                 ? Array.from({ length: 5 }).map((_, index) => (
                     <TableRow key={`purpose-skeleton-${String(index)}`}>
-                      {Array.from({ length: 6 }).map((__, cell) => (
+                      {Array.from({ length: 5 }).map((__, cell) => (
                         <TableCell key={`purpose-skeleton-${String(index)}-${String(cell)}`}>
                           <Skeleton />
                         </TableCell>
@@ -584,31 +581,15 @@ function PurposeListPage(): React.JSX.Element {
                         </Typography>
                       </TableCell>
                       <TableCell>
-                        <Typography variant="body2">
+                        <Typography variant="body2" fontFamily="monospace">
                           {formatEpochTimestamp(purpose.createdTime)}
                         </Typography>
-                      </TableCell>
-                      <TableCell align="right">
-                        <Tooltip title={t('catalog.actions.view')}>
-                          <IconButton
-                            size="small"
-                            aria-label={t('catalog.actions.viewPurpose', {
-                              name: purpose.displayName ?? purpose.name,
-                            })}
-                            onClick={(event) => {
-                              event.stopPropagation()
-                              navigate(`/purposes/${encodeURIComponent(purpose.purposeId)}`)
-                            }}
-                          >
-                            <Eye size={17} />
-                          </IconButton>
-                        </Tooltip>
                       </TableCell>
                     </TableRow>
                   ))}
               {!query.isPending && !query.isError && rows.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} align="center" sx={{ py: 8 }}>
+                  <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
                     <Stack spacing={1} alignItems="center">
                       <Search size={28} aria-hidden="true" />
                       <Typography fontWeight={600}>{t('catalog.purposes.emptyTitle')}</Typography>
