@@ -84,10 +84,27 @@ type ConsentStatus string
 // AuthStatus represents a typed authorization status
 type AuthStatus string
 
+// PeriodicalExpirationConfig holds all configuration for the background expiration job
+type PeriodicalExpirationConfig struct {
+	// Enabled controls whether the background expiration job runs at startup.
+	Enabled bool `yaml:"enabled"`
+	// Frequency is how often the scheduler runs. Supports Go duration format: "30s", "5m", "1h".
+	Frequency string `yaml:"frequency"`
+	// EligibleStatuses lists the consent statuses that are eligible for expiration checks.
+	EligibleStatuses []string `yaml:"eligible_statuses"`
+}
+
 // ConsentConfig holds consent-related configuration
 type ConsentConfig struct {
-	StatusMappings     ConsentStatusMappings `yaml:"status_mappings"`
-	AuthStatusMappings AuthStatusMappings    `yaml:"auth_status_mappings"`
+	PeriodicalExpiration PeriodicalExpirationConfig `yaml:"periodical_expiration"`
+	StatusMappings       ConsentStatusMappings      `yaml:"status_mappings"`
+	AuthStatusMappings   AuthStatusMappings         `yaml:"auth_status_mappings"`
+	History              ConsentHistoryConfig       `yaml:"history"`
+}
+
+// ConsentHistoryConfig holds consent history related configuration.
+type ConsentHistoryConfig struct {
+	Enabled bool `yaml:"enabled"`
 }
 
 // ConsentStatusMappings holds the mapping of specific consent lifecycle states
@@ -158,6 +175,20 @@ func (c *ConsentConfig) GetSystemRevokedAuthStatus() AuthStatus {
 	return AuthStatus(c.AuthStatusMappings.SystemRevokedState)
 }
 
+// GetExpirationFrequency parses and returns the periodical expiration frequency duration
+func (c *ConsentConfig) GetExpirationFrequency() time.Duration {
+	d, err := time.ParseDuration(c.PeriodicalExpiration.Frequency)
+	if err != nil {
+		return 1 * time.Hour // default fallback
+	}
+	return d
+}
+
+// GetEligibleConsentStatuses returns the list of consent statuses eligible for expiration
+func (c *ConsentConfig) GetEligibleConsentStatuses() []string {
+	return c.PeriodicalExpiration.EligibleStatuses
+}
+
 // Load reads configuration from file and environment variables
 func Load(configPath string) (*Config, error) {
 	logger := log.GetLogger()
@@ -168,6 +199,7 @@ func Load(configPath string) (*Config, error) {
 	if configPath != "" {
 		finalPath = configPath
 	} else {
+
 		// Default configuration lookup order:
 		// 1. ./repository/conf/deployment.yaml (production - relative to binary)
 		// 2. ./cmd/server/repository/conf/deployment.yaml (development)
@@ -282,7 +314,7 @@ func validateConfig(config *Config) error {
 		if config.Database.Consent.Database == "" {
 			return fmt.Errorf("database name is required")
 		}
-	default: // mysql and empty (defaults to mysql)
+	default:
 		if config.Database.Consent.Hostname == "" {
 			return fmt.Errorf("database hostname is required")
 		}
@@ -369,7 +401,7 @@ func (d *DatabaseConfig) GetDSN() string {
 			dsn += " " + d.Options
 		}
 		return dsn
-	default: // mysql
+	default:
 		return fmt.Sprintf("%s:%s@tcp(%s:%d)/%s?parseTime=true&multiStatements=true",
 			d.User,
 			d.Password,
@@ -377,80 +409,5 @@ func (d *DatabaseConfig) GetDSN() string {
 			d.Port,
 			d.Database,
 		)
-	}
-}
-
-// GetServerAddress returns the server address in host:port format
-func (s *ServerConfig) GetServerAddress() string {
-	return fmt.Sprintf("%s:%d", s.Hostname, s.Port)
-}
-
-// IsStatusAllowed checks if a given status is a valid consent status
-func (c *ConsentConfig) IsStatusAllowed(status ConsentStatus) bool {
-	return status == c.GetActiveConsentStatus() ||
-		status == c.GetExpiredConsentStatus() ||
-		status == c.GetRevokedConsentStatus() ||
-		status == c.GetCreatedConsentStatus() ||
-		status == c.GetRejectedConsentStatus()
-}
-
-// IsActiveStatus checks if the given status represents an active consent
-func (c *ConsentConfig) IsActiveStatus(status ConsentStatus) bool {
-	return status == c.GetActiveConsentStatus()
-}
-
-// IsExpiredStatus checks if the given status represents an expired consent
-func (c *ConsentConfig) IsExpiredStatus(status ConsentStatus) bool {
-	return status == c.GetExpiredConsentStatus()
-}
-
-// IsRevokedStatus checks if the given status represents a revoked consent
-func (c *ConsentConfig) IsRevokedStatus(status ConsentStatus) bool {
-	return status == c.GetRevokedConsentStatus()
-}
-
-// IsCreatedStatus checks if the given status represents a created consent
-func (c *ConsentConfig) IsCreatedStatus(status ConsentStatus) bool {
-	return status == c.GetCreatedConsentStatus()
-}
-
-// IsRejectedStatus checks if the given status represents a rejected consent
-func (c *ConsentConfig) IsRejectedStatus(status ConsentStatus) bool {
-	return status == c.GetRejectedConsentStatus()
-}
-
-// IsTerminalStatus checks if the given status is a terminal state (expired or revoked)
-func (c *ConsentConfig) IsTerminalStatus(status ConsentStatus) bool {
-	return c.IsExpiredStatus(status) || c.IsRevokedStatus(status)
-}
-
-// GetAllowedConsentStatuses returns a list of all valid consent statuses
-func (c *ConsentConfig) GetAllowedConsentStatuses() []ConsentStatus {
-	return []ConsentStatus{
-		c.GetCreatedConsentStatus(),
-		c.GetActiveConsentStatus(),
-		c.GetRejectedConsentStatus(),
-		c.GetRevokedConsentStatus(),
-		c.GetExpiredConsentStatus(),
-	}
-}
-
-// IsAuthStatusAllowed checks if a given status is a valid authorization status
-func (c *ConsentConfig) IsAuthStatusAllowed(status AuthStatus) bool {
-	return status == c.GetCreatedAuthStatus() ||
-		status == c.GetApprovedAuthStatus() ||
-		status == c.GetRejectedAuthStatus() ||
-		status == c.GetSystemExpiredAuthStatus() ||
-		status == c.GetSystemRevokedAuthStatus()
-}
-
-// GetAllowedAuthStatuses returns a list of all valid authorization statuses
-func (c *ConsentConfig) GetAllowedAuthStatuses() []AuthStatus {
-	return []AuthStatus{
-		c.GetCreatedAuthStatus(),
-		c.GetApprovedAuthStatus(),
-		c.GetRejectedAuthStatus(),
-		c.GetSystemExpiredAuthStatus(),
-		c.GetSystemRevokedAuthStatus(),
 	}
 }
