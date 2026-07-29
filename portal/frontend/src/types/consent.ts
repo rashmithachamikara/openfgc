@@ -97,6 +97,15 @@ export interface ConsentAuthorizationResource {
   resources?: unknown
 }
 
+export interface ConsentStatusAuditItem {
+  statusAuditId: string
+  previousStatus?: string
+  currentStatus: ConsentAPIStatus | string
+  actionTime: number
+  actionBy?: string | null
+  reason?: string | null
+}
+
 export interface ConsentDetailAPI {
   id: string
   groupId: string
@@ -111,6 +120,7 @@ export interface ConsentDetailAPI {
   purposes: ConsentPurposeItem[]
   attributes?: Record<string, string>
   authorizations?: ConsentAuthorizationResource[]
+  statusHistory?: ConsentStatusAuditItem[]
 }
 
 export interface ConsentSearchMetadata {

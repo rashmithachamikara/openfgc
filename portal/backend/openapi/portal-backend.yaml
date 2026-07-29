@@ -179,7 +179,7 @@ paths:
       description: >-
         Fetches one consent with `details=true` and returns its embedded purpose
         and element display names and descriptions unchanged. Status audit
-        history is not exposed by this `/me` route.
+        history is included by forcing `includeStatusHistory=true` upstream.
       parameters:
         - $ref: '#/components/parameters/ConsentID'
       responses:
@@ -651,6 +651,19 @@ components:
         purposes:
           type: array
           items: { $ref: '#/components/schemas/ConsentPurpose' }
+        statusHistory:
+          type: array
+          items: { $ref: '#/components/schemas/ConsentStatusAuditItem' }
+    ConsentStatusAuditItem:
+      type: object
+      required: [statusAuditId, currentStatus, actionTime]
+      properties:
+        statusAuditId: { type: string }
+        previousStatus: { type: string }
+        currentStatus: { type: string }
+        actionTime: { type: integer, format: int64 }
+        actionBy: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
     ConsentPurpose:
       type: object
       required: [purposeId, name, version, elements]

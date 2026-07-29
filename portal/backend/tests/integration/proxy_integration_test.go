@@ -118,13 +118,15 @@ func TestMeConsentsForcesUserIDs(t *testing.T) {
 func TestConsentDetailsUseSingleDetailedConsentRequest(t *testing.T) {
 	requested := make(map[string]int)
 	var gotDetails string
+	var gotStatusHistory string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		requested[r.URL.Path]++
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/api/v1/consents/" + consentID:
 			gotDetails = r.URL.Query().Get("details")
-			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"ACTIVE","createdTime":1702800000000,"updatedTime":1702800001000,"attributes":{},"authorizations":[{"userId":"user@example.com","type":"authorisation","status":"APPROVED"}],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","displayName":"Profile access","description":"Profile purpose","elements":[{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","displayName":"Email address","description":"User email address","mandatory":true,"approved":true}]}]}`))
+			gotStatusHistory = r.URL.Query().Get("includeStatusHistory")
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"ACTIVE","createdTime":1702800000000,"updatedTime":1702800001000,"attributes":{},"authorizations":[{"userId":"user@example.com","type":"authorisation","status":"APPROVED"}],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","displayName":"Profile access","description":"Profile purpose","elements":[{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","displayName":"Email address","description":"User email address","mandatory":true,"approved":true}]}],"statusHistory":[{"statusAuditId":"audit-1","currentStatus":"CREATED","actionTime":1702800000000,"actionBy":"client","reason":"Consent created"}]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -144,7 +146,11 @@ func TestConsentDetailsUseSingleDetailedConsentRequest(t *testing.T) {
 		t.Fatalf("expected 200, got %d", resp.StatusCode)
 	}
 	var payload struct {
-		GroupID  string `json:"groupId"`
+		GroupID       string `json:"groupId"`
+		StatusHistory []struct {
+			StatusAuditID string `json:"statusAuditId"`
+			CurrentStatus string `json:"currentStatus"`
+		} `json:"statusHistory"`
 		Purposes []struct {
 			PurposeID   string  `json:"purposeId"`
 			Version     string  `json:"version"`
@@ -177,8 +183,13 @@ func TestConsentDetailsUseSingleDetailedConsentRequest(t *testing.T) {
 		element.Description == nil || *element.Description != "User email address" {
 		t.Fatalf("missing details from consent response: purpose=%+v element=%+v", payload.Purposes[0], element)
 	}
-	if gotDetails != "true" || len(requested) != 1 || requested["/api/v1/consents/"+consentID] != 1 {
-		t.Fatalf("expected one detailed consent request, details=%q requests=%v", gotDetails, requested)
+	if len(payload.StatusHistory) != 1 || payload.StatusHistory[0].CurrentStatus != "CREATED" {
+		t.Fatalf("missing status history from consent response: %+v", payload.StatusHistory)
+	}
+	if gotDetails != "true" || gotStatusHistory != "true" || len(requested) != 1 ||
+		requested["/api/v1/consents/"+consentID] != 1 {
+		t.Fatalf("expected one detailed consent request with history, details=%q statusHistory=%q requests=%v",
+			gotDetails, gotStatusHistory, requested)
 	}
 }
 
