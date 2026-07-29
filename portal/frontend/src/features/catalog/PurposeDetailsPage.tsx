@@ -43,6 +43,7 @@ import {
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate, useParams } from 'react-router-dom'
+import CopyableText from '../../components/CopyableText'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
 import type { PurposeVersionItem } from '../../types/catalog'
 import { formatEpochTimestamp } from '../../utils/dateTime'
@@ -227,8 +228,23 @@ function PurposeDetailsPage(): React.JSX.Element {
               <Stack direction="row" spacing={1} alignItems="center">
                 <Fingerprint size={15} />
                 <Typography variant="body2" fontWeight={400}>
-                  {t('catalog.fields.purposeId')}: {detail.purposeId}
+                  {t('catalog.fields.purposeId')}:
                 </Typography>
+                <CopyableText
+                  value={detail.purposeId}
+                  monospace
+                  textAriaLabel={t('copyableText.valueAriaLabel', {
+                    label: t('catalog.fields.purposeId'),
+                    value: detail.purposeId,
+                  })}
+                  copyTooltip={t('copyableText.copyLabel', {
+                    label: t('catalog.fields.purposeId'),
+                  })}
+                  copyAriaLabel={t('copyableText.copyValue', {
+                    label: t('catalog.fields.purposeId'),
+                    value: detail.purposeId,
+                  })}
+                />
               </Stack>
             }
             sx={{ pb: 1 }}

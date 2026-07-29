@@ -131,7 +131,12 @@ describe('ConsentRegistryPage', () => {
       'href',
       '/consents/CON%2F8291%3Fdraft',
     )
-    expect(screen.queryByText('Consent ID')).not.toBeInTheDocument()
+    expect(screen.getByText('Consent ID')).toBeInTheDocument()
+    expect(screen.getByLabelText('Consent ID: CON/8291?draft')).toHaveTextContent('CON/8291…')
+    expect(
+      screen.getByRole('button', { name: 'Copy consent ID CON/8291?draft' }),
+    ).toBeInTheDocument()
+    expect(screen.queryByText('Type')).not.toBeInTheDocument()
   })
 
   it('shows an error message when consent fetch fails', async () => {
