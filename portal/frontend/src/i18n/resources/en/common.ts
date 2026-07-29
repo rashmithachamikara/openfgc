@@ -119,6 +119,11 @@ const commonEn = {
         date: 'Date',
         time: 'Time',
       },
+      lifecycle: {
+        tableAriaLabel: 'Consent lifecycle',
+        empty: 'No lifecycle events are available.',
+        noDescription: 'No description available.',
+      },
       actions: {
         viewResources: 'View Resources',
         noResourcesTooltip: 'No resources available',

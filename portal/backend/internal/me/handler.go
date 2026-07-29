@@ -98,7 +98,7 @@ func (h *Handler) ConsentByID(w http.ResponseWriter, r *http.Request) {
 
 	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+url.PathEscape(consentID), func(q url.Values) {
 		q.Set("details", "true")
-		q.Del("includeStatusHistory")
+		q.Set("includeStatusHistory", "true")
 	}, nil)
 	if err != nil {
 		writeProxyError(w, err)

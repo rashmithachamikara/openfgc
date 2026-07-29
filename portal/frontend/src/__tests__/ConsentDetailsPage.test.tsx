@@ -17,17 +17,21 @@
  */
 
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import { cleanup, render, screen } from '@testing-library/react'
+import { cleanup, render, screen, within } from '@testing-library/react'
 import { AcrylicOrangeTheme, CssBaseline, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Route, Routes } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ConsentDetailsPage from '../features/consent-registry/ConsentDetailsPage'
 import i18n from '../i18n/i18n'
+import type { ConsentStatusAuditItem } from '../types/consent'
 
 const fetchMock = vi.fn()
 
-function renderConsentDetailsPage(status: string): void {
+function renderConsentDetailsPage(
+  status: string,
+  statusHistory: ConsentStatusAuditItem[] = [],
+): void {
   vi.stubGlobal('fetch', fetchMock)
   fetchMock.mockResolvedValue({
     ok: true,
@@ -42,6 +46,7 @@ function renderConsentDetailsPage(status: string): void {
       purposes: [],
       attributes: {},
       authorizations: [],
+      statusHistory,
     }),
   })
 
@@ -103,4 +108,43 @@ describe('ConsentDetailsPage lifecycle actions', () => {
       expect(screen.queryByRole('button', { name: 'Revoke' })).not.toBeInTheDocument()
     },
   )
+
+  it('renders actual status history in chronological order', async () => {
+    renderConsentDetailsPage('ACTIVE', [
+      {
+        statusAuditId: 'audit-active',
+        previousStatus: 'CREATED',
+        currentStatus: 'ACTIVE',
+        actionTime: 1702800001000,
+        actionBy: 'user@example.com',
+        reason: 'All authorizations approved',
+      },
+      {
+        statusAuditId: 'audit-created',
+        currentStatus: 'CREATED',
+        actionTime: 1702800000000,
+        actionBy: 'client-app',
+        reason: 'Consent created',
+      },
+    ])
+
+    const lifecycleTable = await screen.findByRole('table', { name: 'Consent lifecycle' })
+    const rows = within(lifecycleTable).getAllByRole('row')
+
+    expect(within(rows[1]).getByText('Pending')).toBeInTheDocument()
+    expect(within(rows[1]).getByText('Consent created')).toBeInTheDocument()
+    expect(within(rows[1]).queryByText('client-app')).not.toBeInTheDocument()
+    expect(within(rows[2]).getByText('Active')).toBeInTheDocument()
+    expect(within(rows[2]).getByText('All authorizations approved')).toBeInTheDocument()
+  })
+
+  it('renders a lifecycle empty state when status history is unavailable', async () => {
+    renderConsentDetailsPage('CREATED')
+
+    const lifecycleTable = await screen.findByRole('table', { name: 'Consent lifecycle' })
+
+    expect(
+      within(lifecycleTable).getByText('No lifecycle events are available.'),
+    ).toBeInTheDocument()
+  })
 })

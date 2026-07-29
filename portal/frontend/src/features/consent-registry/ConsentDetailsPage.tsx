@@ -36,6 +36,7 @@ import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRejectionDialog from './components/ConsentRejectionDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
 import ConsentAuthorizationsSection from './components/details/ConsentAuthorizationsSection'
+import ConsentLifecycleSection from './components/details/ConsentLifecycleSection'
 import ConsentMetadataCard from './components/details/ConsentMetadataCard'
 import ConsentPurposesSection from './components/details/ConsentPurposesSection'
 import ConsentResourcesModal from './components/details/ConsentResourcesModal'
@@ -274,6 +275,7 @@ function ConsentDetailsPage(): React.JSX.Element {
           setResourcesModalOpen(true)
         }}
       />
+      <ConsentLifecycleSection statusHistory={detail.statusHistory ?? []} />
 
       <ConsentResourcesModal
         open={resourcesModalOpen}

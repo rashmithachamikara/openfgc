@@ -1020,7 +1020,7 @@ func (s *consentService) ExpireConsent(ctx context.Context, consent *model.Conse
 	sysExpiredAuthStatus := string(config.Get().Consent.GetSystemExpiredAuthStatus())
 	currentTime := utils.GetCurrentTimeMillis()
 
-	reason := "Consent expired based on expirationTime"
+	reason := "Consent expired based on expiration time"
 	actionBy := "SYSTEM"
 	// For Re-check after locking as expiry can be triggered by multiple request paths and the cron job.
 	shouldExpire := true
