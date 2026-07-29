@@ -62,6 +62,16 @@ export async function approveMyConsent(
   })
 }
 
+export async function rejectMyConsent(consentID: string): Promise<unknown> {
+  return apiRequest<unknown>(`/me/consents/${encodeURIComponent(consentID)}/reject`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
+  })
+}
+
 export async function revokeMyConsent(consentID: string): Promise<unknown> {
   return apiRequest<unknown>(`/me/consents/${encodeURIComponent(consentID)}/revoke`, {
     method: 'POST',

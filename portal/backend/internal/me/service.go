@@ -119,6 +119,10 @@ type consentUpdatePayload struct {
 	Authorizations             []consentAuthorizationPayload `json:"authorizations"`
 }
 
+type consentAuthorizationUpdatePayload struct {
+	Authorizations []consentAuthorizationPayload `json:"authorizations"`
+}
+
 // NewService builds a me service from app config.
 func NewService(cfg config.ProxyConfig) (*Service, error) {
 	svc, err := proxy.NewService(cfg)
@@ -290,6 +294,52 @@ func (s *Service) BuildApprovalUpdatePayload(baseBody []byte, selections []conse
 		Purposes:                   updatedPurposes,
 		Attributes:                 consent.Attributes,
 		Authorizations:             updatedAuthorizations,
+	}
+	serializedPayload, err := json.Marshal(payload)
+	if err != nil {
+		return nil, "", proxy.ErrUpstreamUnavailable
+	}
+	return serializedPayload, consent.GroupID, nil
+}
+
+// BuildRejectionUpdatePayload builds the minimal consent update required to reject a consent.
+func (s *Service) BuildRejectionUpdatePayload(baseBody []byte, userID string) ([]byte, string, error) {
+	var consent consentRetrievalResponse
+	if err := json.Unmarshal(baseBody, &consent); err != nil {
+		return nil, "", proxy.ErrUpstreamUnavailable
+	}
+
+	if !strings.EqualFold(strings.TrimSpace(consent.Status), "CREATED") {
+		return nil, "", errInvalidConsentState
+	}
+
+	userID = strings.TrimSpace(userID)
+	if userID == "" {
+		return nil, "", proxy.ErrUpstreamUnavailable
+	}
+
+	updatedAuthorizations := make([]consentAuthorizationPayload, len(consent.Authorizations))
+	currentUserFound := false
+	for index, authorization := range consent.Authorizations {
+		status := authorization.Status
+		if authorization.UserID != nil &&
+			strings.EqualFold(strings.TrimSpace(*authorization.UserID), userID) {
+			status = "REJECTED"
+			currentUserFound = true
+		}
+		updatedAuthorizations[index] = consentAuthorizationPayload{
+			UserID:    authorization.UserID,
+			Type:      authorization.Type,
+			Status:    status,
+			Resources: normalizeAuthorizationResources(authorization.Resources),
+		}
+	}
+	if !currentUserFound {
+		return nil, "", proxy.ErrUpstreamUnavailable
+	}
+
+	payload := consentAuthorizationUpdatePayload{
+		Authorizations: updatedAuthorizations,
 	}
 	serializedPayload, err := json.Marshal(payload)
 	if err != nil {

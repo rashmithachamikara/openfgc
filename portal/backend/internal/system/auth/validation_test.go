@@ -346,6 +346,7 @@ func TestEveryProtectedPolicyAcceptsReconstructedTokenWithRequiredScope(t *testi
 		{"GET", "/me/consents", ScopeConsentsReadSelf, false},
 		{"GET", "/me/consents/c1", ScopeConsentsReadSelf, false},
 		{"POST", "/me/consents/c1/approve", ScopeConsentsWriteSelf, false},
+		{"POST", "/me/consents/c1/reject", ScopeConsentsWriteSelf, false},
 		{"POST", "/me/consents/c1/revoke", ScopeConsentsWriteSelf, false},
 		{"GET", "/api/consents", ScopeConsentsReadAny, true},
 		{"POST", "/api/consents", ScopeConsentsWriteAny, true},

@@ -22,6 +22,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OxygenTheme, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
 import i18n from '../i18n/i18n'
 import ConsentApprovalDialog from '../features/consent-registry/components/ConsentApprovalDialog'
+import ConsentRejectionDialog from '../features/consent-registry/components/ConsentRejectionDialog'
 import ConsentRevocationDialog from '../features/consent-registry/components/ConsentRevocationDialog'
 
 function renderWithProviders(component: React.JSX.Element): void {
@@ -150,5 +151,41 @@ describe('consent registry dialogs', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
     expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('calls rejection handlers from confirmation dialog', () => {
+    const onConfirm = vi.fn()
+    const onClose = vi.fn()
+
+    renderWithProviders(
+      <ConsentRejectionDialog
+        open
+        consentId="consent-789"
+        loading={false}
+        onClose={onClose}
+        onConfirm={onConfirm}
+      />,
+    )
+
+    fireEvent.click(screen.getByRole('button', { name: /reject consent/i }))
+    expect(onConfirm).toHaveBeenCalledTimes(1)
+
+    fireEvent.click(screen.getByRole('button', { name: /cancel/i }))
+    expect(onClose).toHaveBeenCalledTimes(1)
+  })
+
+  it('disables rejection actions while processing', () => {
+    renderWithProviders(
+      <ConsentRejectionDialog
+        open
+        consentId="consent-789"
+        loading
+        onClose={vi.fn()}
+        onConfirm={vi.fn()}
+      />,
+    )
+
+    expect(screen.getByRole('button', { name: /processing/i })).toBeDisabled()
+    expect(screen.getByRole('button', { name: /cancel/i })).toBeDisabled()
   })
 })

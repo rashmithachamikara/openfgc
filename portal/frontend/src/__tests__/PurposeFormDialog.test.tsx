@@ -29,6 +29,20 @@ vi.mock('../features/catalog/hooks/useCatalogQueries', () => ({
     },
     isLoading: false,
   }),
+  useElementVersionsQuery: () => ({
+    data: {
+      elementId: 'element-email',
+      name: 'email',
+      namespace: 'profile',
+      type: 'basic',
+      versions: [{ version: 'v1', createdTime: 1 }],
+    },
+    isSuccess: true,
+    isPending: false,
+    isFetching: false,
+    isError: false,
+    refetch: vi.fn(),
+  }),
 }))
 
 function renderDialog(overrides: Partial<ComponentProps<typeof PurposeFormDialog>> = {}): void {
@@ -87,16 +101,12 @@ describe('purpose form dialog', () => {
 
     fireEvent.mouseDown(screen.getByRole('combobox', { name: /purpose scope/i }))
     fireEvent.click(screen.getByRole('option', { name: 'Specific group' }))
-    expect(screen.getByRole('textbox', { name: /group id/i })).toBeInTheDocument()
+    expect(screen.getByRole('textbox', { name: /group id/i })).toBeRequired()
 
     fireEvent.change(screen.getByRole('textbox', { name: /^name$/i }), {
       target: { value: 'contact-purpose' },
     })
-    fireEvent.click(screen.getByRole('button', { name: /^create$/i }))
-
-    expect(screen.getByRole('alert')).toHaveTextContent(
-      'Group ID is required for a group-specific purpose.',
-    )
+    expect(screen.getByRole('button', { name: /^create$/i })).toBeDisabled()
   })
 
   it('keeps properties visible and rejects duplicate keys in create-version mode', () => {

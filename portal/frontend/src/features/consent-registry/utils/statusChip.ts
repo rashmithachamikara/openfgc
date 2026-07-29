@@ -31,6 +31,10 @@ export function isConsentApprovableStatus(status: ConsentStatusLike): boolean {
   return normalizeConsentStatus(status) === 'CREATED'
 }
 
+export function isConsentRejectableStatus(status: ConsentStatusLike): boolean {
+  return normalizeConsentStatus(status) === 'CREATED'
+}
+
 export function isConsentRevokableStatus(status: ConsentStatusLike): boolean {
   return normalizeConsentStatus(status) === 'ACTIVE'
 }

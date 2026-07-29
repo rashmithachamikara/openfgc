@@ -17,7 +17,11 @@
  */
 
 import { afterEach, describe, expect, it, vi } from 'vitest'
-import { approveMyConsent, revokeMyConsent } from '../features/consent-registry/api/consentsApi'
+import {
+  approveMyConsent,
+  rejectMyConsent,
+  revokeMyConsent,
+} from '../features/consent-registry/api/consentsApi'
 import { apiRequest } from '../utils/apiClient'
 
 const fetchMock = vi.fn()
@@ -73,6 +77,26 @@ describe('approveMyConsent', () => {
 
     expect(fetchMock).toHaveBeenCalledTimes(1)
     const [, requestInit] = fetchMock.mock.calls[0] ?? []
+    expect(requestInit).toMatchObject({
+      method: 'POST',
+      credentials: 'include',
+      body: JSON.stringify({}),
+    })
+  })
+
+  it('rejects consent with POST', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({}),
+    })
+
+    await rejectMyConsent('consent/123?draft')
+
+    expect(fetchMock).toHaveBeenCalledTimes(1)
+    const [requestUrl, requestInit] = fetchMock.mock.calls[0] ?? []
+    expect(String(requestUrl)).toContain('/me/consents/consent%2F123%3Fdraft/reject')
     expect(requestInit).toMatchObject({
       method: 'POST',
       credentials: 'include',
