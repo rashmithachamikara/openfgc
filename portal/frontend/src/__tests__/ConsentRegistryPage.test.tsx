@@ -120,7 +120,9 @@ describe('ConsentRegistryPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'All Consents' })).toBeInTheDocument()
     expect(screen.getByLabelText('Consent filters')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Clear all filters' })).toBeInTheDocument()
+    expect(screen.getByPlaceholderText('Search by purpose name')).toBeInTheDocument()
+    expect(screen.getByRole('combobox', { name: 'Status' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Advanced filters' })).toBeInTheDocument()
     expect(await screen.findByText('Group ID: tesco-bank')).toBeInTheDocument()
     expect(screen.getByRole('table', { name: 'Consent registry table' })).toBeInTheDocument()
     expect(await screen.findByText('Marketing')).toBeInTheDocument()
@@ -316,7 +318,7 @@ describe('ConsentRegistryPage', () => {
 
     renderConsentRegistryPage(
       createQueryClient(),
-      '/consents?status=Pending&startDate=2026-01-01&endDate=2026-01-02&consentType=Accounts',
+      '/consents?status=Pending&purposeName=marketing&groupIds=group-1%2Cgroup-2&elementName=email&elementVersion=v2&startDate=2026-01-01&endDate=2026-01-02',
     )
 
     await waitFor(() => {
@@ -326,7 +328,10 @@ describe('ConsentRegistryPage', () => {
     const [requestUrl] = fetchMock.mock.calls[0] ?? []
     const url = new URL(String(requestUrl))
     expect(url.searchParams.get('consentStatuses')).toBe('CREATED')
-    expect(url.searchParams.get('consentTypes')).toBe('Accounts')
+    expect(url.searchParams.get('purposeName')).toBe('marketing')
+    expect(url.searchParams.get('groupIds')).toBe('group-1,group-2')
+    expect(url.searchParams.get('elementName')).toBe('email')
+    expect(url.searchParams.get('elementVersion')).toBe('v2')
     expect(Number(url.searchParams.get('fromTime'))).toBeGreaterThan(1_000_000_000_000)
     expect(Number(url.searchParams.get('toTime'))).toBeGreaterThan(
       Number(url.searchParams.get('fromTime')),

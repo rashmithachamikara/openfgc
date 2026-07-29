@@ -36,9 +36,12 @@ import {
 
 const DEFAULT_FILTERS: ConsentRegistryFiltersModel = {
   status: 'All',
+  purposeName: '',
+  groupIds: '',
+  elementName: '',
+  elementVersion: '',
   startDate: '',
   endDate: '',
-  consentType: '',
 }
 
 const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
@@ -62,9 +65,12 @@ function getFiltersFromSearchParams(searchParams: URLSearchParams): ConsentRegis
 
   return {
     status: statusParam && isValidFilterStatus(statusParam) ? statusParam : DEFAULT_FILTERS.status,
+    purposeName: searchParams.get('purposeName') ?? DEFAULT_FILTERS.purposeName,
+    groupIds: searchParams.get('groupIds') ?? DEFAULT_FILTERS.groupIds,
+    elementName: searchParams.get('elementName') ?? DEFAULT_FILTERS.elementName,
+    elementVersion: searchParams.get('elementVersion') ?? DEFAULT_FILTERS.elementVersion,
     startDate: searchParams.get('startDate') ?? DEFAULT_FILTERS.startDate,
     endDate: searchParams.get('endDate') ?? DEFAULT_FILTERS.endDate,
-    consentType: searchParams.get('consentType') ?? DEFAULT_FILTERS.consentType,
   }
 }
 
@@ -101,16 +107,28 @@ function toSearchParams(
     params.set('status', filters.status)
   }
 
+  if (filters.purposeName.trim()) {
+    params.set('purposeName', filters.purposeName.trim())
+  }
+
+  if (filters.groupIds.trim()) {
+    params.set('groupIds', filters.groupIds.trim())
+  }
+
+  if (filters.elementName.trim()) {
+    params.set('elementName', filters.elementName.trim())
+  }
+
+  if (filters.elementVersion.trim() && filters.elementName.trim()) {
+    params.set('elementVersion', filters.elementVersion.trim())
+  }
+
   if (filters.startDate) {
     params.set('startDate', filters.startDate)
   }
 
   if (filters.endDate) {
     params.set('endDate', filters.endDate)
-  }
-
-  if (filters.consentType.trim()) {
-    params.set('consentType', filters.consentType.trim())
   }
 
   if (page !== DEFAULT_PAGE) {

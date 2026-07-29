@@ -396,6 +396,7 @@ function PurposeFormDialog({
                         elementId={selectedElement?.elementId}
                         latestVersion={selectedElement?.version}
                         value={row.version ?? ''}
+                        label={t('catalog.fields.version')}
                         onChange={(version) => {
                           setElements((currentElements) =>
                             currentElements.map((item) =>

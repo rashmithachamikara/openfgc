@@ -13,6 +13,7 @@ interface ElementVersionSelectProps {
   elementId: string | undefined
   latestVersion: string | undefined
   value: string
+  label: string
   onChange: (version: string) => void
 }
 
@@ -20,6 +21,7 @@ function ElementVersionSelect({
   elementId,
   latestVersion,
   value,
+  label,
   onChange,
 }: ElementVersionSelectProps): React.JSX.Element {
   const { t } = useTranslation('common')
@@ -49,6 +51,7 @@ function ElementVersionSelect({
             disabled
             fullWidth
             size="small"
+            label={label}
             value="placeholder"
             slotProps={{
               select: {
@@ -80,6 +83,7 @@ function ElementVersionSelect({
           error
           fullWidth
           size="small"
+          label={label}
           value="unavailable"
           slotProps={{
             select: {
@@ -122,6 +126,7 @@ function ElementVersionSelect({
             disabled
             fullWidth
             size="small"
+            label={label}
             value="empty"
             slotProps={{
               select: {
@@ -143,6 +148,7 @@ function ElementVersionSelect({
       select
       fullWidth
       size="small"
+      label={label}
       value={value}
       slotProps={{
         select: {
