@@ -31,6 +31,7 @@ import { CircleCheckBig, Eye, ShieldX } from '@wso2/oxygen-ui-icons-react'
 import { Fragment, type MouseEvent, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
+import CopyableText from '../../../components/CopyableText'
 import type { ConsentRecord } from '../../../types/consent'
 import { formatEpochTimestamp, formatIsoDateTime } from '../../../utils/dateTime'
 import { CONSENT_REGISTRY_ROWS_PER_PAGE_OPTIONS } from '../constants'
@@ -49,18 +50,18 @@ interface ConsentRegistryTableProps {
   isMutating: boolean
 }
 
-type SortField = 'type' | 'status' | 'updatedAt' | 'expirationTime'
+type SortField = 'id' | 'status' | 'updatedAt' | 'expirationTime'
 type SortDirection = 'asc' | 'desc'
 
 const PURPOSE_PREVIEW_COUNT = 2
 
 const CONSENT_REGISTRY_COLUMN_WIDTHS = {
+  consentId: '13%',
   purposes: '34%',
-  type: '11%',
-  status: '13%',
+  status: '12%',
   updated: '16%',
   expiration: '16%',
-  actions: '10%',
+  actions: '8%',
 } as const
 
 function sortConsentRows(
@@ -98,7 +99,7 @@ function sortConsentRows(
   return sortDirection === 'asc' ? sortedRows : sortedRows.reverse()
 }
 
-function ConsentRegistryTable({
+export default function ConsentRegistryTable({
   rows,
   totalCount,
   isLoading,
@@ -221,13 +222,13 @@ function ConsentRegistryTable({
         >
           <ListingTable.Head>
             <ListingTable.Row>
+              <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.consentId }}>
+                <ListingTable.SortLabel field="id">
+                  {t('consentRegistry.table.headers.consentId')}
+                </ListingTable.SortLabel>
+              </ListingTable.Cell>
               <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.purposes }}>
                 {t('consentRegistry.table.headers.purposes')}
-              </ListingTable.Cell>
-              <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.type }}>
-                <ListingTable.SortLabel field="type">
-                  {t('consentRegistry.table.headers.type')}
-                </ListingTable.SortLabel>
               </ListingTable.Cell>
               <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.status }}>
                 <ListingTable.SortLabel field="status">
@@ -257,13 +258,13 @@ function ConsentRegistryTable({
             {isLoading
               ? Array.from({ length: rowsPerPage }, (_, rowIndex) => (
                   <ListingTable.Row key={`skeleton-row-${rowIndex}`} variant="table">
+                    <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.consentId }}>
+                      <Skeleton variant="text" width="75%" />
+                    </ListingTable.Cell>
                     <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.purposes }}>
                       <Box sx={{ display: 'flex', gap: 0.75, flexWrap: 'wrap' }}>
                         <Skeleton variant="rounded" width={140} height={24} />
                       </Box>
-                    </ListingTable.Cell>
-                    <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.type }}>
-                      <Skeleton variant="text" width="70%" />
                     </ListingTable.Cell>
                     <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.status }}>
                       <Skeleton variant="rounded" width={72} height={24} />
@@ -307,6 +308,20 @@ function ConsentRegistryTable({
                         onClick={handleRowClick}
                         sx={{ cursor: 'pointer' }}
                       >
+                        <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.consentId }}>
+                          <CopyableText
+                            value={row.id}
+                            truncateAt={8}
+                            monospace
+                            textAriaLabel={t('consentRegistry.table.consentIdAriaLabel', {
+                              id: row.id,
+                            })}
+                            copyTooltip={t('consentRegistry.actions.copyConsentId')}
+                            copyAriaLabel={t('consentRegistry.actions.copyConsentIdAriaLabel', {
+                              id: row.id,
+                            })}
+                          />
+                        </ListingTable.Cell>
                         <ListingTable.Cell
                           sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.purposes, fontWeight: 500 }}
                         >
@@ -343,9 +358,6 @@ function ConsentRegistryTable({
                               />
                             ) : null}
                           </Box>
-                        </ListingTable.Cell>
-                        <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.type }}>
-                          {row.type}
                         </ListingTable.Cell>
                         <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.status }}>
                           <Chip
@@ -527,5 +539,3 @@ function ConsentRegistryTable({
     </ListingTable.Provider>
   )
 }
-
-export default ConsentRegistryTable

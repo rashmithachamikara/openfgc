@@ -20,6 +20,13 @@ const commonEn = {
   app: {
     title: 'Consent Portal',
   },
+  copyableText: {
+    copy: 'Copy',
+    copied: 'Copied',
+    copyLabel: 'Copy {{label}}',
+    copyValue: 'Copy {{label}} {{value}}',
+    valueAriaLabel: '{{label}}: {{value}}',
+  },
   sidebar: {
     ariaLabel: 'Primary navigation',
     dashboard: 'Dashboard',
@@ -131,6 +138,8 @@ const commonEn = {
       view: 'View',
       revoke: 'Revoke',
       approve: 'Approve',
+      copyConsentId: 'Copy consent ID',
+      copyConsentIdAriaLabel: 'Copy consent ID {{id}}',
     },
     modals: {
       consentId: 'Consent ID',
@@ -194,6 +203,7 @@ const commonEn = {
     },
     table: {
       tableAriaLabel: 'Consent registry table',
+      consentIdAriaLabel: 'Consent ID: {{id}}',
       groupLabel: 'Group ID: {{groupId}}',
       notApplicable: 'Not applicable',
       purposes: {

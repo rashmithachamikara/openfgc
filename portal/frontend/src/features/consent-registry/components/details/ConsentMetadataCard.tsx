@@ -39,6 +39,7 @@ import {
   Users,
 } from '@wso2/oxygen-ui-icons-react'
 import { useTranslation } from 'react-i18next'
+import CopyableText from '../../../../components/CopyableText'
 import type { ConsentDetailAPI } from '../../../../types/consent'
 import { formatEpochTimestamp } from '../../../../utils/dateTime'
 import { getConsentStatusChipColor, getConsentStatusLabelKey } from '../../utils/statusChip'
@@ -150,8 +151,23 @@ function ConsentMetadataCard({ consentId, detail }: ConsentMetadataCardProps): R
           <Stack direction="row" spacing={1} alignItems="center">
             <Fingerprint size={15} />
             <Typography variant="body2" fontWeight={400}>
-              {t('consentRegistry.details.consentId', 'Consent ID')}: {consentId}
+              {t('consentRegistry.details.consentId', 'Consent ID')}:
             </Typography>
+            <CopyableText
+              value={consentId}
+              monospace
+              textAriaLabel={t('copyableText.valueAriaLabel', {
+                label: t('consentRegistry.details.consentId'),
+                value: consentId,
+              })}
+              copyTooltip={t('copyableText.copyLabel', {
+                label: t('consentRegistry.details.consentId'),
+              })}
+              copyAriaLabel={t('copyableText.copyValue', {
+                label: t('consentRegistry.details.consentId'),
+                value: consentId,
+              })}
+            />
           </Stack>
         }
         action={
