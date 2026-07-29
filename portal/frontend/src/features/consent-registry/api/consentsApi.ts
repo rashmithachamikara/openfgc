@@ -31,7 +31,10 @@ export async function fetchMyConsents(
     method: 'GET',
     query: {
       consentStatuses: params.consentStatuses,
-      consentTypes: params.consentTypes,
+      purposeName: params.purposeName,
+      groupIds: params.groupIds,
+      elementName: params.elementName,
+      elementVersion: params.elementVersion,
       fromTime: params.fromTime,
       toTime: params.toTime,
       limit: params.limit,

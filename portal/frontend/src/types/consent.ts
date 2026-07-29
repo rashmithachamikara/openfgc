@@ -40,14 +40,20 @@ export interface ConsentRecord {
 
 export interface ConsentRegistryFilters {
   status: 'All' | ConsentStatus
+  purposeName: string
+  groupIds: string
+  elementName: string
+  elementVersion: string
   startDate: string
   endDate: string
-  consentType: string
 }
 
 export interface ConsentListQueryParams {
   consentStatuses?: string
-  consentTypes?: string
+  purposeName?: string
+  groupIds?: string
+  elementName?: string
+  elementVersion?: string
   fromTime?: number
   toTime?: number
   limit: number

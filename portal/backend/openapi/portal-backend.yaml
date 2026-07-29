@@ -129,6 +129,23 @@ paths:
           description: Comma-separated consent types.
           schema: { type: string }
         - in: query
+          name: purposeName
+          description: Purpose name contained by the consent.
+          schema: { type: string }
+        - in: query
+          name: groupIds
+          description: Comma-separated group IDs.
+          schema: { type: string }
+        - in: query
+          name: elementName
+          description: Element name contained by the consent.
+          schema: { type: string }
+        - in: query
+          name: elementVersion
+          description: >-
+            Element version contained by the consent. Requires elementName.
+          schema: { type: string }
+        - in: query
           name: fromTime
           description: Inclusive lower bound for updated time, in Unix milliseconds.
           schema: { type: integer, format: int64 }
