@@ -27,7 +27,7 @@ import {
   Tooltip,
   Typography,
 } from '@wso2/oxygen-ui'
-import { CircleCheckBig, Eye, ShieldX } from '@wso2/oxygen-ui-icons-react'
+import { Ban, CircleCheckBig, Eye } from '@wso2/oxygen-ui-icons-react'
 import { Fragment, type MouseEvent, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
@@ -437,7 +437,7 @@ export default function ConsentRegistryTable({
                                     data-consent-id={row.id}
                                     onClick={handleRevokeClick}
                                   >
-                                    <ShieldX size={16} />
+                                    <Ban size={16} />
                                   </IconButton>
                                 </span>
                               </Tooltip>

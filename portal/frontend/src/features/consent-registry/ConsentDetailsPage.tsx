@@ -27,11 +27,13 @@ import {
   Stack,
   Typography,
 } from '@wso2/oxygen-ui'
+import { Ban, CircleCheckBig } from '@wso2/oxygen-ui-icons-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
+import ConsentRejectionDialog from './components/ConsentRejectionDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
 import ConsentAuthorizationsSection from './components/details/ConsentAuthorizationsSection'
 import ConsentMetadataCard from './components/details/ConsentMetadataCard'
@@ -40,9 +42,14 @@ import ConsentResourcesModal from './components/details/ConsentResourcesModal'
 import {
   useApproveConsentMutation,
   useConsentDetailQuery,
+  useRejectConsentMutation,
   useRevokeConsentMutation,
 } from './hooks/useConsentQueries'
-import { isConsentApprovableStatus, isConsentRevokableStatus } from './utils/statusChip'
+import {
+  isConsentApprovableStatus,
+  isConsentRejectableStatus,
+  isConsentRevokableStatus,
+} from './utils/statusChip'
 
 function formatResourcesForModal(resources: unknown): string {
   if (!resources) {
@@ -146,8 +153,10 @@ function ConsentDetailsPage(): React.JSX.Element {
   const navigate = useNavigate()
   const consentDetailQuery = useConsentDetailQuery(id)
   const approveMutation = useApproveConsentMutation()
+  const rejectMutation = useRejectConsentMutation()
   const revokeMutation = useRevokeConsentMutation()
   const [approvalDialogOpen, setApprovalDialogOpen] = useState<boolean>(false)
+  const [rejectionDialogOpen, setRejectionDialogOpen] = useState<boolean>(false)
   const [revocationDialogOpen, setRevocationDialogOpen] = useState<boolean>(false)
   const [resourcesModalOpen, setResourcesModalOpen] = useState<boolean>(false)
   const [selectedResourcesJson, setSelectedResourcesJson] = useState<string>('')
@@ -170,6 +179,7 @@ function ConsentDetailsPage(): React.JSX.Element {
 
   const detail = consentDetailQuery.data
   const canApprove = detail ? isConsentApprovableStatus(detail.status) : false
+  const canReject = detail ? isConsentRejectableStatus(detail.status) : false
   const canRevoke = detail ? isConsentRevokableStatus(detail.status) : false
 
   if (consentDetailQuery.isLoading) {
@@ -215,6 +225,7 @@ function ConsentDetailsPage(): React.JSX.Element {
               variant="contained"
               color="warning"
               size="small"
+              startIcon={<CircleCheckBig size={16} />}
               disabled={approveMutation.isPending}
               onClick={() => {
                 setApprovalDialogOpen(true)
@@ -223,17 +234,34 @@ function ConsentDetailsPage(): React.JSX.Element {
               {t('consentRegistry.actions.approve')}
             </Button>
           ) : null}
-          <Button
-            variant="contained"
-            color="error"
-            size="small"
-            disabled={revokeMutation.isPending || !canRevoke}
-            onClick={() => {
-              setRevocationDialogOpen(true)
-            }}
-          >
-            {t('consentRegistry.actions.revoke')}
-          </Button>
+          {canReject ? (
+            <Button
+              variant="contained"
+              color="error"
+              size="small"
+              startIcon={<Ban size={16} />}
+              disabled={rejectMutation.isPending}
+              onClick={() => {
+                setRejectionDialogOpen(true)
+              }}
+            >
+              {t('consentRegistry.actions.reject')}
+            </Button>
+          ) : null}
+          {canRevoke ? (
+            <Button
+              variant="contained"
+              color="error"
+              size="small"
+              startIcon={<Ban size={16} />}
+              disabled={revokeMutation.isPending}
+              onClick={() => {
+                setRevocationDialogOpen(true)
+              }}
+            >
+              {t('consentRegistry.actions.revoke')}
+            </Button>
+          ) : null}
         </Stack>
       </Stack>
 
@@ -273,6 +301,23 @@ function ConsentDetailsPage(): React.JSX.Element {
               },
             },
           )
+        }}
+      />
+
+      <ConsentRejectionDialog
+        key={`rejection-${id}-${String(rejectionDialogOpen)}`}
+        open={rejectionDialogOpen}
+        consentId={id}
+        loading={rejectMutation.isPending}
+        onClose={() => {
+          setRejectionDialogOpen(false)
+        }}
+        onConfirm={() => {
+          rejectMutation.mutate(id, {
+            onSuccess: () => {
+              setRejectionDialogOpen(false)
+            },
+          })
         }}
       />
 

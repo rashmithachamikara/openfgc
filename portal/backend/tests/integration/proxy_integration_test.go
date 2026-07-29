@@ -306,6 +306,122 @@ func TestRevokeUsesPostAndInjectsActionBy(t *testing.T) {
 	}
 }
 
+func TestRejectBuildsAuthorizationOnlyUpdateAndTrustedGroupHeader(t *testing.T) {
+	var updateBody map[string]any
+	var updateGroup string
+	var consentDetails string
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		switch {
+		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/"+consentID:
+			consentDetails = r.URL.Query().Get("details")
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-BOUND","type":"accounts","status":"CREATED","attributes":{"region":"APAC"},"authorizations":[{"id":"auth-1","userId":"existing@example.com","type":"delegated","status":"APPROVED","updatedTime":1702800000000,"resources":{"accountIds":["acc-1"]}},{"id":"auth-2","userId":"user@example.com","type":"authorisation","status":"CREATED","updatedTime":1702800000000,"resources":{"accountIds":["acc-2"]}}],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true,"approved":false}]}]}`))
+		case r.Method == http.MethodPut && r.URL.Path == "/api/v1/consents/"+consentID:
+			updateGroup = r.Header.Get("group-id")
+			_ = json.NewDecoder(r.Body).Decode(&updateBody)
+			w.WriteHeader(http.StatusOK)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer upstream.Close()
+	bff := newPortalServer(t, upstream.URL, nil)
+	defer bff.Close()
+
+	resp, err := http.Post(bff.URL+"/me/consents/"+consentID+"/reject", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusOK || updateGroup != "GROUP-BOUND" || consentDetails != "true" {
+		t.Fatalf("unexpected rejection result: status=%d group=%q details=%q", resp.StatusCode, updateGroup, consentDetails)
+	}
+	if len(updateBody) != 1 || updateBody["purposes"] != nil || updateBody["attributes"] != nil {
+		t.Fatalf("expected authorization-only update, got %v", updateBody)
+	}
+	authorizations := updateBody["authorizations"].([]any)
+	if len(authorizations) != 2 {
+		t.Fatalf("expected all authorizations to be preserved, got %v", authorizations)
+	}
+	existing := authorizations[0].(map[string]any)
+	if existing["userId"] != "existing@example.com" || existing["type"] != "delegated" ||
+		existing["status"] != "APPROVED" {
+		t.Fatalf("unexpected existing authorization: %v", existing)
+	}
+	currentUser := authorizations[1].(map[string]any)
+	if currentUser["userId"] != "user@example.com" || currentUser["type"] != "authorisation" ||
+		currentUser["status"] != "REJECTED" {
+		t.Fatalf("unexpected current-user authorization: %v", currentUser)
+	}
+	resources := currentUser["resources"].(map[string]any)
+	if resources["accountIds"].([]any)[0] != "acc-2" {
+		t.Fatalf("expected current-user resources to be preserved, got %v", resources)
+	}
+}
+
+func TestRejectRequiresCreatedConsent(t *testing.T) {
+	updateCalled := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/"+consentID {
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","status":"ACTIVE","authorizations":[{"userId":"user@example.com","type":"authorisation","status":"APPROVED","resources":{}}]}`))
+			return
+		}
+		if r.Method == http.MethodPut {
+			updateCalled = true
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer upstream.Close()
+	bff := newPortalServer(t, upstream.URL, nil)
+	defer bff.Close()
+
+	resp, err := http.Post(bff.URL+"/me/consents/"+consentID+"/reject", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusConflict || updateCalled {
+		t.Fatalf("expected local 409 without update, got status=%d updateCalled=%v", resp.StatusCode, updateCalled)
+	}
+	var body map[string]any
+	_ = json.NewDecoder(resp.Body).Decode(&body)
+	if body["code"] != "INVALID_CONSENT_STATE" {
+		t.Fatalf("unexpected error response: %v", body)
+	}
+}
+
+func TestRejectConcealsOwnershipFailure(t *testing.T) {
+	updateCalled := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/"+consentID {
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","status":"CREATED","authorizations":[{"userId":"another-user@example.com","type":"authorisation","status":"CREATED","resources":{}}]}`))
+			return
+		}
+		if r.Method == http.MethodPut {
+			updateCalled = true
+		}
+		w.WriteHeader(http.StatusNotFound)
+	}))
+	defer upstream.Close()
+	bff := newPortalServer(t, upstream.URL, nil)
+	defer bff.Close()
+
+	resp, err := http.Post(bff.URL+"/me/consents/"+consentID+"/reject", "application/json", strings.NewReader(`{}`))
+	if err != nil {
+		t.Fatalf("request failed: %v", err)
+	}
+	defer func() {
+		_ = resp.Body.Close()
+	}()
+	if resp.StatusCode != http.StatusNotFound || updateCalled {
+		t.Fatalf("expected concealed 404 without update, got status=%d updateCalled=%v", resp.StatusCode, updateCalled)
+	}
+}
+
 func TestAPIDenyByDefault(t *testing.T) {
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) }))
 	defer upstream.Close()
@@ -405,6 +521,7 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 		{http.MethodGet, "/me/consents", ""},
 		{http.MethodGet, "/me/consents/" + consentID, ""},
 		{http.MethodPost, "/me/consents/" + consentID + "/approve", "[]"},
+		{http.MethodPost, "/me/consents/" + consentID + "/reject", "{}"},
 		{http.MethodPost, "/me/consents/" + consentID + "/revoke", "{}"},
 	}
 	for _, tc := range tests {
@@ -460,6 +577,7 @@ func TestMeEndpointsRejectInvalidConsentID(t *testing.T) {
 	}{
 		{name: "get by id", method: http.MethodGet, path: "/me/consents/not-a-uuid"},
 		{name: "approve", method: http.MethodPost, path: "/me/consents/not-a-uuid/approve", body: "[]"},
+		{name: "reject", method: http.MethodPost, path: "/me/consents/not-a-uuid/reject", body: "{}"},
 		{name: "revoke", method: http.MethodPost, path: "/me/consents/not-a-uuid/revoke", body: "{}"},
 	}
 

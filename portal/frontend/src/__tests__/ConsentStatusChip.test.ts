@@ -20,6 +20,9 @@ import { describe, expect, it } from 'vitest'
 import {
   getConsentStatusChipColor,
   getConsentStatusLabelKey,
+  isConsentApprovableStatus,
+  isConsentRejectableStatus,
+  isConsentRevokableStatus,
 } from '../features/consent-registry/utils/statusChip'
 
 describe('getConsentStatusChipColor', () => {
@@ -48,5 +51,14 @@ describe('getConsentStatusChipColor', () => {
     expect(getConsentStatusLabelKey('CREATED', 'authorization')).toBe('pending')
     expect(getConsentStatusLabelKey('SYS_EXPIRED', 'authorization')).toBe('systemExpired')
     expect(getConsentStatusLabelKey('SYS_REVOKED', 'authorization')).toBe('systemRevoked')
+  })
+
+  it('limits lifecycle actions to their supported statuses', () => {
+    expect(isConsentApprovableStatus('CREATED')).toBe(true)
+    expect(isConsentRejectableStatus('CREATED')).toBe(true)
+    expect(isConsentRevokableStatus('ACTIVE')).toBe(true)
+    expect(isConsentApprovableStatus('ACTIVE')).toBe(false)
+    expect(isConsentRejectableStatus('REJECTED')).toBe(false)
+    expect(isConsentRevokableStatus('CREATED')).toBe(false)
   })
 })

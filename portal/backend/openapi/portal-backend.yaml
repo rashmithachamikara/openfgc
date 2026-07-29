@@ -231,6 +231,43 @@ paths:
         '413': { $ref: '#/components/responses/ProxyError' }
         '502': { $ref: '#/components/responses/ProxyError' }
         '503': { $ref: '#/components/responses/ProxyError' }
+  /me/consents/{consentId}/reject:
+    post:
+      tags: [User]
+      summary: Reject a pending current-user consent
+      security:
+        - PortalOAuthDocumentation: [portal:consents:write:self]
+          AccessTokenPart2: []
+      description: >-
+        Fetches the current consent with `details=true`, verifies ownership and
+        that its status is `CREATED`, then builds a minimal
+        `PUT /api/v1/consents/{consentId}` update. Existing authorizations are
+        preserved and the trusted user's authorization status is changed to
+        `REJECTED`. Purpose and element approvals are not included in the
+        update. The consent's immutable `groupId` is sent as the trusted
+        upstream `group-id` header.
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+      requestBody:
+        required: false
+        description: No request properties are currently supported.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: Consent server update response, returned unchanged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentDetail' }
+        '400': { $ref: '#/components/responses/ProxyError' }
+        '404': { $ref: '#/components/responses/ProxyError' }
+        '409': { $ref: '#/components/responses/ProxyError' }
+        '413': { $ref: '#/components/responses/ProxyError' }
+        '502': { $ref: '#/components/responses/ProxyError' }
+        '503': { $ref: '#/components/responses/ProxyError' }
   /me/consents/{consentId}/revoke:
     post:
       tags: [User]

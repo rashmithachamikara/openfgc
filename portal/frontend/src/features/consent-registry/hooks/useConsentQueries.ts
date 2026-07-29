@@ -30,6 +30,7 @@ import {
   approveMyConsent,
   fetchMyConsentByID,
   fetchMyConsents,
+  rejectMyConsent,
   revokeMyConsent,
 } from '../api/consentsApi'
 import {
@@ -186,6 +187,18 @@ export function useRevokeConsentMutation(): UseMutationResult<unknown, Error, st
 
   return useMutation({
     mutationFn: async (consentID: string): Promise<unknown> => revokeMyConsent(consentID),
+    onSuccess: async (_data, consentID): Promise<void> => {
+      await queryClient.invalidateQueries({ queryKey: ['consents'] })
+      await queryClient.invalidateQueries({ queryKey: ['consent', consentID] })
+    },
+  })
+}
+
+export function useRejectConsentMutation(): UseMutationResult<unknown, Error, string> {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (consentID: string): Promise<unknown> => rejectMyConsent(consentID),
     onSuccess: async (_data, consentID): Promise<void> => {
       await queryClient.invalidateQueries({ queryKey: ['consents'] })
       await queryClient.invalidateQueries({ queryKey: ['consent', consentID] })

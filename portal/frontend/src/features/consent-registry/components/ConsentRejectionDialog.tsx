@@ -29,7 +29,7 @@ import {
 import { Ban } from '@wso2/oxygen-ui-icons-react'
 import { useTranslation } from 'react-i18next'
 
-interface ConsentRevocationDialogProps {
+interface ConsentRejectionDialogProps {
   open: boolean
   consentId: string
   loading: boolean
@@ -37,13 +37,13 @@ interface ConsentRevocationDialogProps {
   onConfirm: () => void
 }
 
-function ConsentRevocationDialog({
+function ConsentRejectionDialog({
   open,
   consentId,
   loading,
   onClose,
   onConfirm,
-}: ConsentRevocationDialogProps): React.JSX.Element {
+}: ConsentRejectionDialogProps): React.JSX.Element {
   const { t } = useTranslation('common')
 
   return (
@@ -70,12 +70,12 @@ function ConsentRevocationDialog({
       >
         <Stack spacing={0.75}>
           <Typography variant="h6" fontWeight={700}>
-            {t('consentRegistry.modals.revocation.title', 'Confirm Revocation')}
+            {t('consentRegistry.modals.rejection.title', 'Confirm Rejection')}
           </Typography>
           <Typography variant="body2" color="text.secondary">
             {t(
-              'consentRegistry.modals.revocation.message',
-              'Are you sure you want to revoke consent?',
+              'consentRegistry.modals.rejection.message',
+              'Are you sure you want to reject this consent?',
             )}
           </Typography>
           <Typography variant="caption" color="text.secondary" sx={{ fontWeight: 300 }}>
@@ -115,8 +115,8 @@ function ConsentRevocationDialog({
             </Box>
             <Typography variant="body2" color="text.secondary">
               {t(
-                'consentRegistry.modals.revocation.note',
-                'This action revokes both mandatory and optional consents granted for all associated purposes.',
+                'consentRegistry.modals.rejection.note',
+                'Rejecting this consent means the requested permissions will not be granted.',
               )}
             </Typography>
           </Box>
@@ -144,14 +144,14 @@ function ConsentRevocationDialog({
         >
           {loading
             ? t('consentRegistry.modals.actions.processing', 'Processing...')
-            : t('consentRegistry.modals.revocation.confirm', 'Revoke Consents')}
+            : t('consentRegistry.modals.rejection.confirm', 'Reject Consent')}
         </Button>
         <Button fullWidth variant="outlined" disabled={loading} onClick={onClose}>
-          {t('consentRegistry.modals.revocation.cancel', 'Cancel')}
+          {t('consentRegistry.modals.rejection.cancel', 'Cancel')}
         </Button>
       </DialogActions>
     </Dialog>
   )
 }
 
-export default ConsentRevocationDialog
+export default ConsentRejectionDialog
