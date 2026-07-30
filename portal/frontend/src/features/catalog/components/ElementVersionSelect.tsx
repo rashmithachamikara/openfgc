@@ -14,6 +14,7 @@ interface ElementVersionSelectProps {
   latestVersion: string | undefined
   value: string
   label: string
+  allowAny: boolean
   onChange: (version: string) => void
 }
 
@@ -22,6 +23,7 @@ function ElementVersionSelect({
   latestVersion,
   value,
   label,
+  allowAny,
   onChange,
 }: ElementVersionSelectProps): React.JSX.Element {
   const { t } = useTranslation('common')
@@ -37,10 +39,15 @@ function ElementVersionSelect({
   }, [latestVersion, versionsQuery.data?.versions])
 
   useEffect(() => {
-    if (versionsQuery.isSuccess && versions.length > 0 && !versions.includes(value)) {
+    if (
+      versionsQuery.isSuccess &&
+      versions.length > 0 &&
+      !versions.includes(value) &&
+      !(allowAny && value === '')
+    ) {
       onChange(latestVersion && versions.includes(latestVersion) ? latestVersion : versions[0])
     }
-  }, [latestVersion, onChange, value, versions, versionsQuery.isSuccess])
+  }, [allowAny, latestVersion, onChange, value, versions, versionsQuery.isSuccess])
 
   if (!elementId) {
     return (
@@ -151,7 +158,11 @@ function ElementVersionSelect({
       label={label}
       value={value}
       slotProps={{
+        inputLabel: {
+          shrink: allowAny ? true : undefined,
+        },
         select: {
+          displayEmpty: allowAny,
           inputProps: {
             'aria-label': t('catalog.fields.version'),
           },
@@ -159,6 +170,7 @@ function ElementVersionSelect({
       }}
       onChange={(event) => onChange(event.target.value)}
     >
+      {allowAny ? <MenuItem value="">{t('catalog.values.any')}</MenuItem> : null}
       {versions.map((version) => (
         <MenuItem key={version} value={version}>
           {version}

@@ -79,10 +79,6 @@ function toListParams(
     consentStatuses: filters.status === 'All' ? undefined : statusFilterMap[filters.status],
     purposeName: filters.purposeName.trim() || undefined,
     groupIds: filters.groupIds.trim() || undefined,
-    elementName: filters.elementName.trim() || undefined,
-    elementVersion: filters.elementName.trim()
-      ? filters.elementVersion.trim() || undefined
-      : undefined,
     fromTime: toStartOfDayEpochMilliseconds(filters.startDate),
     toTime: toEndOfDayEpochMilliseconds(filters.endDate),
     limit: rowsPerPage,

@@ -18,7 +18,6 @@
 
 import {
   AdapterDateFns,
-  Autocomplete,
   Box,
   Button,
   DatePickers,
@@ -37,10 +36,7 @@ import {
 import { ListFilter } from '@wso2/oxygen-ui-icons-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ElementSummary } from '../../../types/catalog'
 import type { ConsentRegistryFilters as ConsentRegistryFiltersModel } from '../../../types/consent'
-import ElementVersionSelect from '../../catalog/components/ElementVersionSelect'
-import { useElementOptionsQuery } from '../../catalog/hooks/useCatalogQueries'
 
 interface ConsentRegistryFiltersProps {
   filters: ConsentRegistryFiltersModel
@@ -71,10 +67,6 @@ function formatDate(value: Date | null): string {
   return `${year}-${month}-${day}`
 }
 
-function elementLabel(element: ElementSummary): string {
-  return `${element.displayName ?? element.name} (${element.namespace})`
-}
-
 function ConsentRegistryFilters({
   filters,
   onFilterChange,
@@ -84,17 +76,9 @@ function ConsentRegistryFilters({
   const [draft, setDraft] = useState(filters)
   const [filtersAnchor, setFiltersAnchor] = useState<HTMLElement | null>(null)
   const filtersOpen = Boolean(filtersAnchor)
-  const elementOptionsQuery = useElementOptionsQuery(filtersOpen)
-  const availableElements = elementOptionsQuery.data?.data ?? []
-  const selectedElement =
-    availableElements.find((element) => element.name === draft.elementName) ?? null
-  const advancedFilterCount = [
-    filters.groupIds,
-    filters.elementName,
-    filters.elementVersion,
-    filters.startDate,
-    filters.endDate,
-  ].filter(Boolean).length
+  const advancedFilterCount = [filters.groupIds, filters.startDate, filters.endDate].filter(
+    Boolean,
+  ).length
 
   useEffect(() => {
     setDraft(filters)
@@ -241,44 +225,6 @@ function ConsentRegistryFilters({
             value={draft.groupIds}
             onChange={(event) => setDraft({ ...draft, groupIds: event.target.value })}
           />
-
-          <Stack
-            direction={{ xs: 'column', sm: 'row' }}
-            spacing={2}
-            sx={{ '& > *': { flex: 1, minWidth: 0 } }}
-          >
-            <Autocomplete
-              size="small"
-              options={availableElements}
-              value={selectedElement}
-              loading={elementOptionsQuery.isLoading}
-              getOptionLabel={elementLabel}
-              isOptionEqualToValue={(option, value) => option.elementId === value.elementId}
-              noOptionsText={t('catalog.messages.noElementsFound')}
-              onChange={(_, selected) => {
-                setDraft({
-                  ...draft,
-                  elementName: selected?.name ?? '',
-                  elementVersion: selected?.version ?? '',
-                })
-              }}
-              renderInput={(params) => (
-                // Oxygen UI Autocomplete requires forwarding its generated input props.
-                // eslint-disable-next-line react/jsx-props-no-spreading
-                <TextField {...params} label={t('consentRegistry.filters.elementName')} />
-              )}
-              sx={{ width: '100%' }}
-            />
-            <ElementVersionSelect
-              elementId={selectedElement?.elementId}
-              latestVersion={selectedElement?.version}
-              value={draft.elementVersion}
-              label={t('consentRegistry.filters.elementVersion')}
-              onChange={(elementVersion) => {
-                setDraft((currentDraft) => ({ ...currentDraft, elementVersion }))
-              }}
-            />
-          </Stack>
 
           <DatePickers.LocalizationProvider dateAdapter={AdapterDateFns}>
             <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>

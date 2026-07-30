@@ -99,9 +99,6 @@ export function fetchPurposes(
     method: 'GET',
     query: {
       purposeName: filters.purposeName.trim() || undefined,
-      purposeVersion: filters.purposeName.trim()
-        ? filters.purposeVersion.trim() || undefined
-        : undefined,
       elementName: filters.elementName.trim() || undefined,
       elementNamespace: filters.elementNamespace.trim() || undefined,
       elementVersion:

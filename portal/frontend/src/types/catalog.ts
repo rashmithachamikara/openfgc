@@ -151,7 +151,6 @@ export interface PurposeListResponse {
 
 export interface PurposeFilters {
   purposeName: string
-  purposeVersion: string
   elementName: string
   elementNamespace: string
   elementVersion: string

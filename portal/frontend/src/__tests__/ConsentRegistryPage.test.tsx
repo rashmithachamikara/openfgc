@@ -323,7 +323,7 @@ describe('ConsentRegistryPage', () => {
 
     renderConsentRegistryPage(
       createQueryClient(),
-      '/consents?status=Pending&purposeName=marketing&groupIds=group-1%2Cgroup-2&elementName=email&elementVersion=v2&startDate=2026-01-01&endDate=2026-01-02',
+      '/consents?status=Pending&purposeName=marketing&groupIds=group-1%2Cgroup-2&startDate=2026-01-01&endDate=2026-01-02',
     )
 
     await waitFor(() => {
@@ -335,8 +335,8 @@ describe('ConsentRegistryPage', () => {
     expect(url.searchParams.get('consentStatuses')).toBe('CREATED')
     expect(url.searchParams.get('purposeName')).toBe('marketing')
     expect(url.searchParams.get('groupIds')).toBe('group-1,group-2')
-    expect(url.searchParams.get('elementName')).toBe('email')
-    expect(url.searchParams.get('elementVersion')).toBe('v2')
+    expect(url.searchParams.get('elementName')).toBeNull()
+    expect(url.searchParams.get('elementVersion')).toBeNull()
     expect(Number(url.searchParams.get('fromTime'))).toBeGreaterThan(1_000_000_000_000)
     expect(Number(url.searchParams.get('toTime'))).toBeGreaterThan(
       Number(url.searchParams.get('fromTime')),
