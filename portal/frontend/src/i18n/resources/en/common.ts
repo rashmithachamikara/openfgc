@@ -213,6 +213,7 @@ const commonEn = {
     messages: {
       loading: 'Loading consents...',
       loadFailed: 'Unable to load consents right now.',
+      emptyTitle: 'No consents found',
       empty: 'No consents found for the selected filters.',
     },
     table: {
@@ -315,6 +316,7 @@ const commonEn = {
       activeFilters: 'Active filters',
       back: 'Back to elements',
       createTitle: 'Create element',
+      detailsSection: 'Element details',
       empty: 'No elements match the selected filters.',
       emptyTitle: 'No elements found',
       filterTitle: 'Filter elements',

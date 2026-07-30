@@ -231,54 +231,46 @@ function ConsentRegistryPage(): React.JSX.Element {
           }}
         />
 
-        {consentListQuery.isError ? (
-          <Typography color="error.main">{t('consentRegistry.messages.loadFailed')}</Typography>
-        ) : null}
-
-        {!consentListQuery.isError && (rows.length > 0 || isTableLoading) ? (
-          <ConsentRegistryTable
-            rows={rows}
-            totalCount={totalCount}
-            isLoading={isTableLoading}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            sortField={sort.field}
-            sortDirection={sort.direction}
-            onPageChange={(nextPage) => {
-              setSearchParams(
-                toSearchParams(filters, nextPage, rowsPerPage, sort.field, sort.direction),
-                { replace: true },
-              )
-            }}
-            onRowsPerPageChange={(nextRowsPerPage) => {
-              setSearchParams(
-                toSearchParams(filters, DEFAULT_PAGE, nextRowsPerPage, sort.field, sort.direction),
-                {
-                  replace: true,
-                },
-              )
-            }}
-            onSortChange={(sortField, sortDirection) => {
-              setSearchParams(
-                toSearchParams(filters, DEFAULT_PAGE, rowsPerPage, sortField, sortDirection),
-                { replace: true },
-              )
-            }}
-            onApprove={(consentID) => {
-              setSelectedApprovalConsentID(consentID)
-              setApprovalDialogOpen(true)
-            }}
-            onRevoke={(consentID) => {
-              setSelectedRevocationConsentID(consentID)
-              setRevocationDialogOpen(true)
-            }}
-            isMutating={approveMutation.isPending || revokeMutation.isPending}
-          />
-        ) : null}
-
-        {!isTableLoading && !consentListQuery.isError && rows.length === 0 ? (
-          <Typography>{t('consentRegistry.messages.empty')}</Typography>
-        ) : null}
+        <ConsentRegistryTable
+          rows={rows}
+          totalCount={totalCount}
+          isLoading={isTableLoading}
+          isError={consentListQuery.isError}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          sortField={sort.field}
+          sortDirection={sort.direction}
+          onPageChange={(nextPage) => {
+            setSearchParams(
+              toSearchParams(filters, nextPage, rowsPerPage, sort.field, sort.direction),
+              { replace: true },
+            )
+          }}
+          onRowsPerPageChange={(nextRowsPerPage) => {
+            setSearchParams(
+              toSearchParams(filters, DEFAULT_PAGE, nextRowsPerPage, sort.field, sort.direction),
+              {
+                replace: true,
+              },
+            )
+          }}
+          onSortChange={(sortField, sortDirection) => {
+            setSearchParams(
+              toSearchParams(filters, DEFAULT_PAGE, rowsPerPage, sortField, sortDirection),
+              { replace: true },
+            )
+          }}
+          onRetry={() => consentListQuery.refetch()}
+          onApprove={(consentID) => {
+            setSelectedApprovalConsentID(consentID)
+            setApprovalDialogOpen(true)
+          }}
+          onRevoke={(consentID) => {
+            setSelectedRevocationConsentID(consentID)
+            setRevocationDialogOpen(true)
+          }}
+          isMutating={approveMutation.isPending || revokeMutation.isPending}
+        />
 
         {selectedApprovalConsentID ? (
           <ConsentApprovalDialog

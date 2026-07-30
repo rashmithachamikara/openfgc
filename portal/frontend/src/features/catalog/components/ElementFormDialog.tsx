@@ -4,6 +4,7 @@
  */
 
 import {
+  Alert,
   Box,
   Button,
   Dialog,
@@ -18,7 +19,7 @@ import {
   Typography,
 } from '@wso2/oxygen-ui'
 import { CircleHelp } from '@wso2/oxygen-ui-icons-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   ElementCreateRequest,
@@ -69,23 +70,41 @@ function ElementFormDialog({
     propertiesToEntries(initialValue?.properties),
   )
   const [validationError, setValidationError] = useState('')
+  const contentRef = useRef<HTMLDivElement>(null)
   const versionMode = Boolean(initialValue)
   const requiredFieldsComplete =
     (versionMode || Boolean(name.trim())) &&
     (versionMode || namespaceMode === 'default' || Boolean(namespace.trim())) &&
     (type === 'basic' || Boolean(schema.trim()))
 
+  const scrollToError = (): void => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0
+    }
+  }
+
+  useEffect(() => {
+    if (error) {
+      scrollToError()
+    }
+  }, [error])
+
   const handleSubmit = (): void => {
+    setValidationError('')
+
     if (!versionMode && !name.trim()) {
       setValidationError(t('catalog.validation.nameRequired'))
+      scrollToError()
       return
     }
     if (!versionMode && namespaceMode === 'custom' && !namespace.trim()) {
       setValidationError(t('catalog.validation.namespaceRequired'))
+      scrollToError()
       return
     }
     if ((type === 'json' || type === 'xml') && !schema.trim()) {
       setValidationError(t('catalog.validation.schemaRequired'))
+      scrollToError()
       return
     }
 
@@ -113,10 +132,13 @@ function ElementFormDialog({
     <Dialog
       open={open}
       onClose={loading ? undefined : onClose}
-      maxWidth="md"
+      maxWidth={false}
       fullWidth
       PaperProps={{
         sx: (theme) => ({
+          width: 'calc(100% - 32px)',
+          maxWidth: 720,
+          maxHeight: 'calc(100vh - 48px)',
           borderRadius: 1,
           ...theme.applyStyles('light', { bgcolor: theme.palette.grey[50] }),
           ...theme.applyStyles('dark', { bgcolor: 'rgba(255, 255, 255, 0.06)' }),
@@ -154,8 +176,16 @@ function ElementFormDialog({
           ) : null}
         </Stack>
       </DialogTitle>
-      <DialogContent sx={{ px: 3, mt: 3, pb: 3, '&&': { pt: 1.5 } }}>
-        <Stack spacing={2.5}>
+      <DialogContent ref={contentRef} sx={{ px: 3, mt: 3, pb: 3, overflowY: 'auto' }}>
+        <Stack spacing={2}>
+          {validationError || error ? (
+            <Alert severity="error">{validationError || error}</Alert>
+          ) : null}
+
+          <Typography variant="subtitle2" fontWeight={600}>
+            {t('catalog.elements.detailsSection')}
+          </Typography>
+
           {!versionMode ? (
             <Stack spacing={2}>
               <Stack
@@ -166,6 +196,7 @@ function ElementFormDialog({
                 <TextField
                   required
                   fullWidth
+                  size="small"
                   label={t('catalog.fields.name')}
                   value={name}
                   slotProps={{ htmlInput: { maxLength: 255 } }}
@@ -225,6 +256,7 @@ function ElementFormDialog({
                 {namespaceMode === 'custom' ? (
                   <TextField
                     required
+                    size="small"
                     label={t('catalog.fields.namespace')}
                     value={namespace}
                     slotProps={{ htmlInput: { maxLength: 255 } }}
@@ -237,12 +269,14 @@ function ElementFormDialog({
           ) : null}
           <TextField
             fullWidth
+            size="small"
             label={t('catalog.fields.displayName')}
             value={displayName}
             onChange={(event) => setDisplayName(event.target.value)}
           />
           <TextField
             fullWidth
+            size="small"
             multiline
             minRows={2}
             label={t('catalog.fields.description')}
@@ -254,6 +288,7 @@ function ElementFormDialog({
             <TextField
               required
               fullWidth
+              size="small"
               multiline
               minRows={5}
               label={t('catalog.fields.schema')}
@@ -262,11 +297,6 @@ function ElementFormDialog({
             />
           ) : null}
           <PropertyEditor entries={properties} embedded={false} onChange={setProperties} />
-          {validationError || error ? (
-            <Typography color="error.main" variant="body2">
-              {validationError || error}
-            </Typography>
-          ) : null}
         </Stack>
       </DialogContent>
       <DialogActions

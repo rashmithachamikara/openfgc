@@ -21,6 +21,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Outlet } from 'react-router-dom'
 import AppSidebar from '../sidebar/AppSidebar'
+import RouteScrollManager from './RouteScrollManager'
 import UserProfileMenu from './UserProfileMenu'
 
 function MainLayout(): React.JSX.Element {
@@ -66,6 +67,7 @@ function MainLayout(): React.JSX.Element {
       </AppShell.Sidebar>
 
       <AppShell.Main>
+        <RouteScrollManager />
         <Box
           sx={{
             width: '100%',

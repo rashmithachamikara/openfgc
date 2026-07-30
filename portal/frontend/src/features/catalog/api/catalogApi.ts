@@ -57,20 +57,25 @@ export function fetchElementVersions(elementId: string): Promise<ElementVersionL
 }
 
 export async function createElement(payload: ElementCreateRequest): Promise<ElementVersion> {
-  const response = await apiRequest<ElementBulkCreateResponse>('/api/consent-elements', {
+  const response = await apiRequest<
+    ElementBulkCreateResponse | ElementBulkCreateResponse['results']
+  >('/api/consent-elements', {
     method: 'POST',
     headers: jsonHeaders,
     body: JSON.stringify([payload]),
   })
-  const result = response.results[0]
+  const result = (Array.isArray(response) ? response : response.results)[0]
+  const element = result?.element ?? result?.data
+  const error = result?.error
 
-  if (!result || result.status === 'FAILED' || !result.data) {
+  if (!result || result.status === 'FAILED' || !element) {
     throw new Error(
-      result?.error?.description ?? result?.error?.message ?? 'Element creation failed',
+      (typeof error === 'string' ? error : (error?.description ?? error?.message)) ??
+        'Element creation failed',
     )
   }
 
-  return result.data
+  return element
 }
 
 export function createElementVersion(
