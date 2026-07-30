@@ -16,11 +16,11 @@
  * under the License.
  */
 
-import { cleanup, render, screen, waitFor } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { AcrylicOrangeTheme, CssBaseline, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
 import { I18nextProvider } from 'react-i18next'
-import { MemoryRouter, Route, Routes, useNavigate } from 'react-router-dom'
+import { MemoryRouter, Route, Routes, useLocation, useNavigate } from 'react-router-dom'
 import { afterEach, describe, expect, it, vi } from 'vitest'
 import ConsentRegistryPage from '../features/consent-registry/ConsentRegistryPage'
 import i18n from '../i18n/i18n'
@@ -35,6 +35,12 @@ function PendingConsentsLink(): React.JSX.Element {
       Pending Consents
     </button>
   )
+}
+
+function CurrentLocation(): React.JSX.Element {
+  const location = useLocation()
+
+  return <span data-testid="current-location">{`${location.pathname}${location.search}`}</span>
 }
 
 function createQueryClient(): QueryClient {
@@ -60,6 +66,7 @@ function renderConsentRegistryPage(queryClient: QueryClient, initialEntry = '/co
                 element={
                   <>
                     <PendingConsentsLink />
+                    <CurrentLocation />
                     <ConsentRegistryPage />
                   </>
                 }
@@ -132,6 +139,7 @@ describe('ConsentRegistryPage', () => {
       '/consents/CON%2F8291%3Fdraft',
     )
     expect(screen.getByText('Consent ID')).toBeInTheDocument()
+    expect(screen.queryByRole('button', { name: 'Consent ID' })).not.toBeInTheDocument()
     expect(screen.getByLabelText('Consent ID: CON/8291?draft')).toHaveTextContent('CON/8291…')
     expect(
       screen.getByRole('button', { name: 'Copy consent ID CON/8291?draft' }),
@@ -157,6 +165,46 @@ describe('ConsentRegistryPage', () => {
     expect(await screen.findByRole('heading', { name: 'All Consents' })).toBeInTheDocument()
     expect(await screen.findByText('Unable to load consents right now.')).toBeInTheDocument()
     expect(screen.queryByRole('table', { name: 'Consent registry table' })).not.toBeInTheDocument()
+  })
+
+  it('renders consent rows in API order without sorting the current page locally', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [
+          {
+            id: 'z-consent',
+            groupId: 'group-1',
+            type: 'accounts',
+            status: 'ACTIVE',
+            createdTime: 1702800000000,
+            updatedTime: 1702800000000,
+            purposes: [],
+          },
+          {
+            id: 'a-consent',
+            groupId: 'group-1',
+            type: 'accounts',
+            status: 'ACTIVE',
+            createdTime: 1702900000000,
+            updatedTime: 1702900000000,
+            purposes: [],
+          },
+        ],
+        metadata: { total: 2, offset: 0, count: 2, limit: 10 },
+      }),
+    })
+
+    renderConsentRegistryPage(createQueryClient())
+
+    const consentIDs = await screen.findAllByLabelText(/^Consent ID: /)
+
+    expect(consentIDs.map((element) => element.getAttribute('aria-label'))).toEqual([
+      'Consent ID: z-consent',
+      'Consent ID: a-consent',
+    ])
   })
 
   it('shows the empty state for an empty v0.3 response', async () => {
@@ -273,6 +321,95 @@ describe('ConsentRegistryPage', () => {
 
     expect(String(requestUrl)).toContain('limit=25')
     expect(String(requestUrl)).toContain('offset=25')
+    expect(String(requestUrl)).toContain('sort=updatedTime%3Adesc')
+  })
+
+  it('sends a valid URL sort to the API', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [],
+        metadata: { total: 0, offset: 0, count: 0, limit: 10 },
+      }),
+    })
+
+    renderConsentRegistryPage(createQueryClient(), '/consents?sort=validityTime%3Aasc')
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled()
+    })
+
+    const [requestUrl] = fetchMock.mock.calls[0] ?? []
+    const url = new URL(String(requestUrl))
+
+    expect(url.searchParams.get('sort')).toBe('validityTime:asc')
+  })
+
+  it('falls back to updatedTime descending for an invalid URL sort', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [],
+        metadata: { total: 0, offset: 0, count: 0, limit: 10 },
+      }),
+    })
+
+    renderConsentRegistryPage(createQueryClient(), '/consents?sort=unsupported%3Aasc')
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenCalled()
+    })
+
+    const [requestUrl] = fetchMock.mock.calls[0] ?? []
+    const url = new URL(String(requestUrl))
+
+    expect(url.searchParams.get('sort')).toBe('updatedTime:desc')
+  })
+
+  it('requests a newly selected server sort from the first page', async () => {
+    vi.stubGlobal('fetch', fetchMock)
+    fetchMock.mockResolvedValue({
+      ok: true,
+      status: 200,
+      json: async () => ({
+        data: [
+          {
+            id: 'consent-1',
+            groupId: 'group-1',
+            type: 'accounts',
+            status: 'ACTIVE',
+            createdTime: 1702800000000,
+            updatedTime: 1702800000000,
+            expirationTime: 1702900000000,
+            purposes: [],
+          },
+        ],
+        metadata: { total: 1, offset: 10, count: 1, limit: 10 },
+      }),
+    })
+
+    renderConsentRegistryPage(createQueryClient(), '/consents?page=2')
+
+    expect(await screen.findByRole('button', { name: 'Status' })).toBeInTheDocument()
+    fireEvent.click(screen.getByRole('button', { name: 'Status' }))
+
+    await waitFor(() => {
+      const requests = fetchMock.mock.calls.map(([requestUrl]) => new URL(String(requestUrl)))
+
+      expect(
+        requests.some(
+          (url) =>
+            url.searchParams.get('sort') === 'status:asc' && url.searchParams.get('offset') === '0',
+        ),
+      ).toBe(true)
+      expect(screen.getByTestId('current-location')).toHaveTextContent(
+        '/consents?sort=status%3Aasc',
+      )
+    })
   })
 
   it('prefetches exactly one next page when more consents are available', async () => {

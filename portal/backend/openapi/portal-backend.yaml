@@ -146,6 +146,15 @@ paths:
             Element version contained by the consent. Requires elementName.
           schema: { type: string }
         - in: query
+          name: sort
+          description: >-
+            Up to three comma-separated sort items in `{field}:{direction}` or
+            `{field}` form. Supported fields are `createdTime`, `updatedTime`,
+            `validityTime`, `status`, `groupId`, and `consentType`; directions
+            are `asc` and `desc`, with `desc` used when omitted. Defaults to
+            `createdTime:desc` when the parameter is omitted.
+          schema: { type: string }
+        - in: query
           name: fromTime
           description: Inclusive lower bound for updated time, in Unix milliseconds.
           schema: { type: integer, format: int64 }
