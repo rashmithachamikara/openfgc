@@ -35,6 +35,7 @@ export async function fetchMyConsents(
       groupIds: params.groupIds,
       elementName: params.elementName,
       elementVersion: params.elementVersion,
+      sort: params.sort,
       fromTime: params.fromTime,
       toTime: params.toTime,
       limit: params.limit,

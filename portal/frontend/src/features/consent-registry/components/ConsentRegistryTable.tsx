@@ -32,7 +32,11 @@ import { Fragment, type MouseEvent, useCallback, useMemo, useState } from 'react
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
 import CopyableText from '../../../components/CopyableText'
-import type { ConsentRecord } from '../../../types/consent'
+import type {
+  ConsentRecord,
+  ConsentRegistrySortDirection,
+  ConsentRegistrySortField,
+} from '../../../types/consent'
 import { formatEpochTimestamp, formatIsoDateTime } from '../../../utils/dateTime'
 import { CONSENT_REGISTRY_ROWS_PER_PAGE_OPTIONS } from '../constants'
 import { getConsentStatusChipColor, getConsentStatusLabelKey } from '../utils/statusChip'
@@ -43,15 +47,15 @@ interface ConsentRegistryTableProps {
   isLoading: boolean
   page: number
   rowsPerPage: number
+  sortField: ConsentRegistrySortField
+  sortDirection: ConsentRegistrySortDirection
   onPageChange: (page: number) => void
   onRowsPerPageChange: (rowsPerPage: number) => void
+  onSortChange: (field: ConsentRegistrySortField, direction: ConsentRegistrySortDirection) => void
   onApprove: (consentID: string) => void
   onRevoke: (consentID: string) => void
   isMutating: boolean
 }
-
-type SortField = 'id' | 'status' | 'updatedAt' | 'expirationTime'
-type SortDirection = 'asc' | 'desc'
 
 const PURPOSE_PREVIEW_COUNT = 2
 
@@ -64,69 +68,30 @@ const CONSENT_REGISTRY_COLUMN_WIDTHS = {
   actions: '8%',
 } as const
 
-function sortConsentRows(
-  rows: ConsentRecord[],
-  sortField: SortField,
-  sortDirection: SortDirection,
-): ConsentRecord[] {
-  const sortedRows = [...rows].sort((leftRow, rightRow) => {
-    const leftValue = leftRow[sortField]
-    const rightValue = rightRow[sortField]
-
-    if (leftValue == null && rightValue == null) {
-      return 0
-    }
-
-    if (leftValue == null) {
-      return 1
-    }
-
-    if (rightValue == null) {
-      return -1
-    }
-
-    if (leftValue < rightValue) {
-      return -1
-    }
-
-    if (leftValue > rightValue) {
-      return 1
-    }
-
-    return 0
-  })
-
-  return sortDirection === 'asc' ? sortedRows : sortedRows.reverse()
-}
-
 export default function ConsentRegistryTable({
   rows,
   totalCount,
   isLoading,
   page,
   rowsPerPage,
+  sortField,
+  sortDirection,
   onPageChange,
   onRowsPerPageChange,
+  onSortChange,
   onApprove,
   onRevoke,
   isMutating,
 }: ConsentRegistryTableProps): React.JSX.Element {
   const { t } = useTranslation('common')
   const navigate = useNavigate()
-  const [sortField, setSortField] = useState<SortField>('updatedAt')
-  const [sortDirection, setSortDirection] = useState<SortDirection>('desc')
   const [purposesPopoverAnchor, setPurposesPopoverAnchor] = useState<HTMLElement | null>(null)
   const [selectedPurposes, setSelectedPurposes] = useState<string[]>([])
-
-  const sortedRows = useMemo(
-    () => sortConsentRows(rows, sortField, sortDirection),
-    [rows, sortDirection, sortField],
-  )
 
   const groupedRows = useMemo(() => {
     const groupedMap = new Map<string, ConsentRecord[]>()
 
-    sortedRows.forEach((row) => {
+    rows.forEach((row) => {
       const existingRows = groupedMap.get(row.groupId)
 
       if (existingRows) {
@@ -141,7 +106,7 @@ export default function ConsentRegistryTable({
       groupId,
       groupRows,
     }))
-  }, [sortedRows])
+  }, [rows])
 
   const selectedRowIds: readonly string[] = []
   const isPurposesPopoverOpen = Boolean(purposesPopoverAnchor)
@@ -209,8 +174,7 @@ export default function ConsentRegistryTable({
       onSelectAll={() => {}}
       onSelectionChange={() => {}}
       onSortChange={(nextField, nextDirection) => {
-        setSortField(nextField as SortField)
-        setSortDirection(nextDirection)
+        onSortChange(nextField as ConsentRegistrySortField, nextDirection)
       }}
     >
       <ListingTable.Container sx={{ minWidth: 1080 }}>
@@ -223,9 +187,7 @@ export default function ConsentRegistryTable({
           <ListingTable.Head>
             <ListingTable.Row>
               <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.consentId }}>
-                <ListingTable.SortLabel field="id">
-                  {t('consentRegistry.table.headers.consentId')}
-                </ListingTable.SortLabel>
+                {t('consentRegistry.table.headers.consentId')}
               </ListingTable.Cell>
               <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.purposes }}>
                 {t('consentRegistry.table.headers.purposes')}
@@ -236,12 +198,12 @@ export default function ConsentRegistryTable({
                 </ListingTable.SortLabel>
               </ListingTable.Cell>
               <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.updated }}>
-                <ListingTable.SortLabel field="updatedAt">
+                <ListingTable.SortLabel field="updatedTime">
                   {t('consentRegistry.table.headers.updated')}
                 </ListingTable.SortLabel>
               </ListingTable.Cell>
               <ListingTable.Cell sx={{ width: CONSENT_REGISTRY_COLUMN_WIDTHS.expiration }}>
-                <ListingTable.SortLabel field="expirationTime">
+                <ListingTable.SortLabel field="validityTime">
                   {t('consentRegistry.table.headers.expiration')}
                 </ListingTable.SortLabel>
               </ListingTable.Cell>
