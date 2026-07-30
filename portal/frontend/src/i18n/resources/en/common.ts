@@ -298,6 +298,7 @@ const commonEn = {
     },
     values: {
       all: 'All',
+      any: 'Any',
       customNamespace: 'Custom Namespace',
       defaultNamespace: 'Default Namespace',
       mandatory: 'Mandatory',

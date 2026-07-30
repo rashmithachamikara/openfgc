@@ -42,8 +42,6 @@ export interface ConsentRegistryFilters {
   status: 'All' | ConsentStatus
   purposeName: string
   groupIds: string
-  elementName: string
-  elementVersion: string
   startDate: string
   endDate: string
 }

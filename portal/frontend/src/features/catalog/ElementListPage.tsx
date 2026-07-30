@@ -35,6 +35,7 @@ import { formatEpochTimestamp } from '../../utils/dateTime'
 import ElementFormDialog from './components/ElementFormDialog'
 import ElementTypeChip from './components/ElementTypeChip'
 import { useCreateElementMutation, useElementsQuery } from './hooks/useCatalogQueries'
+import { ELEMENT_TYPE_PRESENTATION } from './utils/elementTypePresentation'
 
 const ROW_OPTIONS = [10, 25, 50]
 const EMPTY_FILTERS: ElementFilters = { name: '', namespace: '', type: 'All', version: '' }
@@ -207,9 +208,11 @@ function ElementFiltersPanel({
               }
             >
               <MenuItem value="All">{t('catalog.values.all')}</MenuItem>
-              <MenuItem value="basic">basic</MenuItem>
-              <MenuItem value="json">json</MenuItem>
-              <MenuItem value="xml">xml</MenuItem>
+              {(['basic', 'json', 'xml'] as const).map((elementType) => (
+                <MenuItem key={elementType} value={elementType}>
+                  {ELEMENT_TYPE_PRESENTATION[elementType].label}
+                </MenuItem>
+              ))}
             </TextField>
             <Tooltip
               arrow
@@ -357,7 +360,11 @@ function ElementListPage(): React.JSX.Element {
                 onDelete={() => removeFilter(key)}
               />
             ))}
-            <Button size="small" onClick={() => setSearchParams({}, { replace: true })}>
+            <Button
+              size="small"
+              sx={{ height: 24, minWidth: 0, py: 0 }}
+              onClick={() => setSearchParams({}, { replace: true })}
+            >
               {t('catalog.actions.clearAll')}
             </Button>
           </Stack>

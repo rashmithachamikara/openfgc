@@ -4,6 +4,7 @@
  */
 
 import {
+  Autocomplete,
   Box,
   Button,
   Chip,
@@ -31,10 +32,15 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
-import type { PurposeFilters } from '../../types/catalog'
+import type { ElementSummary, PurposeFilters } from '../../types/catalog'
 import { formatEpochTimestamp } from '../../utils/dateTime'
+import ElementVersionSelect from './components/ElementVersionSelect'
 import PurposeFormDialog from './components/PurposeFormDialog'
-import { useCreatePurposeMutation, usePurposesQuery } from './hooks/useCatalogQueries'
+import {
+  useCreatePurposeMutation,
+  useElementOptionsQuery,
+  usePurposesQuery,
+} from './hooks/useCatalogQueries'
 
 const ROW_OPTIONS = [10, 25, 50]
 const ORG_ID = String(import.meta.env.VITE_ORG_ID ?? '').trim()
@@ -45,10 +51,13 @@ interface PurposeListFilters extends PurposeFilters {
   scope: PurposeScope
 }
 
+function elementLabel(element: ElementSummary): string {
+  return `${element.displayName ?? element.name} (${element.namespace})`
+}
+
 function emptyFilters(): PurposeListFilters {
   return {
     purposeName: '',
-    purposeVersion: '',
     elementName: '',
     elementNamespace: '',
     elementVersion: '',
@@ -62,7 +71,6 @@ function getFilters(searchParams: URLSearchParams): PurposeListFilters {
 
   return {
     purposeName: searchParams.get('purposeName') ?? '',
-    purposeVersion: searchParams.get('purposeVersion') ?? '',
     elementName: searchParams.get('elementName') ?? '',
     elementNamespace: searchParams.get('elementNamespace') ?? '',
     elementVersion: searchParams.get('elementVersion') ?? '',
@@ -86,8 +94,16 @@ function PurposeFiltersPanel({
   const [draft, setDraft] = useState(initialFilters)
   const [filtersAnchor, setFiltersAnchor] = useState<HTMLElement | null>(null)
   const filtersOpen = Boolean(filtersAnchor)
+  const elementOptionsQuery = useElementOptionsQuery(filtersOpen)
+  const elementOptions = elementOptionsQuery.data?.data ?? []
+  const selectedElement =
+    elementOptions.find(
+      (element) =>
+        element.name === draft.elementName && element.namespace === draft.elementNamespace,
+    ) ??
+    elementOptions.find((element) => element.name === draft.elementName) ??
+    null
   const advancedFilterCount = [
-    draft.purposeVersion,
     draft.elementName,
     draft.elementNamespace,
     draft.elementVersion,
@@ -113,12 +129,7 @@ function PurposeFiltersPanel({
         value={draft.purposeName}
         placeholder={t('catalog.purposes.searchPlaceholder')}
         onChange={(event) => {
-          const purposeName = event.target.value
-          setDraft({
-            ...draft,
-            purposeName,
-            purposeVersion: purposeName.trim() ? draft.purposeVersion : '',
-          })
+          setDraft({ ...draft, purposeName: event.target.value })
         }}
         onKeyDown={(event) => {
           if (event.key === 'Enter') {
@@ -198,71 +209,70 @@ function PurposeFiltersPanel({
               {t('catalog.purposes.filterTitle')}
             </Typography>
           </Stack>
-          <ToggleButtonGroup
-            value={draft.scope}
-            exclusive
-            color="primary"
-            fullWidth
-            size="small"
-            onChange={(_, value: PurposeScope | null) => {
-              if (!value) return
-              setDraft({
-                ...draft,
-                scope: value,
-                groupIds: value === 'organization' ? ORG_ID : '',
-              })
-            }}
-            aria-label={t('catalog.purposes.scopeFilter')}
-          >
-            <ToggleButton value="organization">{t('catalog.purposes.orgWide')}</ToggleButton>
-            <ToggleButton value="all">{t('catalog.purposes.allPurposes')}</ToggleButton>
-          </ToggleButtonGroup>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            {draft.scope === 'all' ? (
-              <Tooltip arrow title={t('catalog.help.commaSeparatedGroups')}>
-                <Box sx={{ width: '100%' }}>
-                  <TextField
-                    size="small"
-                    fullWidth
-                    label={t('catalog.fields.groupIds')}
-                    value={draft.groupIds}
-                    onChange={(event) => setDraft({ ...draft, groupIds: event.target.value })}
-                  />
-                </Box>
-              </Tooltip>
-            ) : null}
-            <Tooltip
-              arrow
-              title={t('catalog.help.purposeVersionRequiresName')}
-              disableHoverListener={Boolean(draft.purposeName.trim())}
-            >
-              <Box sx={{ width: '100%' }}>
-                <TextField
-                  size="small"
-                  fullWidth
-                  disabled={!draft.purposeName.trim()}
-                  label={t('catalog.fields.purposeVersion')}
-                  value={draft.purposeVersion}
-                  onChange={(event) => setDraft({ ...draft, purposeVersion: event.target.value })}
-                />
-              </Box>
-            </Tooltip>
-          </Stack>
-          <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
-            <TextField
+          <Stack direction="row" spacing={2} alignItems="center">
+            <ToggleButtonGroup
+              value={draft.scope}
+              exclusive
+              color="primary"
               size="small"
-              fullWidth
-              label={t('catalog.fields.elementName')}
-              value={draft.elementName}
-              onChange={(event) => {
-                const elementName = event.target.value
+              sx={{ flexShrink: 0 }}
+              onChange={(_, value: PurposeScope | null) => {
+                if (!value) return
                 setDraft({
                   ...draft,
-                  elementName,
-                  elementVersion:
-                    elementName.trim() || draft.elementNamespace.trim() ? draft.elementVersion : '',
+                  scope: value,
+                  groupIds: value === 'organization' ? ORG_ID : '',
                 })
               }}
+              aria-label={t('catalog.purposes.scopeFilter')}
+            >
+              <ToggleButton value="organization">{t('catalog.purposes.orgWide')}</ToggleButton>
+              <ToggleButton value="all">{t('catalog.purposes.allPurposes')}</ToggleButton>
+            </ToggleButtonGroup>
+            {draft.scope === 'all' ? (
+              <Tooltip arrow title={t('catalog.help.commaSeparatedGroups')}>
+                <TextField
+                  size="small"
+                  label={t('catalog.fields.groupIds')}
+                  value={draft.groupIds}
+                  onChange={(event) => setDraft({ ...draft, groupIds: event.target.value })}
+                  sx={{ flex: 1, minWidth: 0 }}
+                />
+              </Tooltip>
+            ) : null}
+          </Stack>
+          <Box
+            sx={{
+              display: 'grid',
+              gridTemplateColumns: {
+                xs: 'minmax(0, 1fr)',
+                sm: 'minmax(0, 1.3fr) minmax(0, 1fr) 140px',
+              },
+              gap: 2,
+            }}
+          >
+            <Autocomplete
+              size="small"
+              sx={{ width: '100%' }}
+              options={elementOptions}
+              value={selectedElement}
+              loading={elementOptionsQuery.isLoading}
+              getOptionLabel={elementLabel}
+              isOptionEqualToValue={(option, value) => option.elementId === value.elementId}
+              noOptionsText={t('catalog.messages.noElementsFound')}
+              onChange={(_, selected) => {
+                setDraft({
+                  ...draft,
+                  elementName: selected?.name ?? '',
+                  elementNamespace: selected?.namespace ?? '',
+                  elementVersion: '',
+                })
+              }}
+              renderInput={(params) => (
+                // Oxygen UI Autocomplete requires forwarding its generated input props.
+                // eslint-disable-next-line react/jsx-props-no-spreading
+                <TextField {...params} label={t('catalog.fields.elementName')} />
+              )}
             />
             <TextField
               size="small"
@@ -279,25 +289,36 @@ function PurposeFiltersPanel({
                 })
               }}
             />
-            <Tooltip
-              arrow
-              title={t('catalog.help.elementVersionRequiresIdentity')}
-              disableHoverListener={Boolean(
-                draft.elementName.trim() || draft.elementNamespace.trim(),
-              )}
-            >
-              <Box sx={{ width: '100%' }}>
-                <TextField
-                  size="small"
-                  fullWidth
-                  disabled={!draft.elementName.trim() && !draft.elementNamespace.trim()}
-                  label={t('catalog.fields.elementVersion')}
+            {selectedElement ? (
+              <Box sx={{ width: '100%', '& .MuiSelect-select': { py: '8.5px' } }}>
+                <ElementVersionSelect
+                  elementId={selectedElement.elementId}
+                  latestVersion={selectedElement.version}
                   value={draft.elementVersion}
-                  onChange={(event) => setDraft({ ...draft, elementVersion: event.target.value })}
+                  label={t('catalog.fields.elementVersion')}
+                  allowAny
+                  onChange={(elementVersion) => setDraft({ ...draft, elementVersion })}
                 />
               </Box>
-            </Tooltip>
-          </Stack>
+            ) : (
+              <Tooltip
+                arrow
+                title={t('catalog.help.elementVersionRequiresIdentity')}
+                disableHoverListener={Boolean(draft.elementNamespace.trim())}
+              >
+                <Box sx={{ width: '100%' }}>
+                  <TextField
+                    size="small"
+                    fullWidth
+                    disabled={!draft.elementNamespace.trim()}
+                    label={t('catalog.fields.elementVersion')}
+                    value={draft.elementVersion}
+                    onChange={(event) => setDraft({ ...draft, elementVersion: event.target.value })}
+                  />
+                </Box>
+              </Tooltip>
+            )}
+          </Box>
           <Stack
             direction="row"
             spacing={1}
@@ -372,7 +393,6 @@ function PurposeListPage(): React.JSX.Element {
   ) as Array<[keyof PurposeFilters, string]>
   const filterLabels: Record<keyof PurposeFilters, string> = {
     purposeName: t('catalog.fields.purposeName'),
-    purposeVersion: t('catalog.fields.purposeVersion'),
     elementName: t('catalog.fields.elementName'),
     elementNamespace: t('catalog.fields.elementNamespace'),
     elementVersion: t('catalog.fields.elementVersion'),
@@ -381,7 +401,6 @@ function PurposeListPage(): React.JSX.Element {
   const removeFilter = (key: keyof PurposeFilters): void => {
     const nextFilters: PurposeListFilters = { ...filters, [key]: '' }
 
-    if (key === 'purposeName') nextFilters.purposeVersion = ''
     if (key === 'elementName' && !filters.elementNamespace) nextFilters.elementVersion = ''
     if (key === 'elementNamespace' && !filters.elementName) nextFilters.elementVersion = ''
 
@@ -446,7 +465,11 @@ function PurposeListPage(): React.JSX.Element {
             />
           ))}
           {activeFilters.length > 0 || filters.scope === 'all' ? (
-            <Button size="small" onClick={() => setSearchParams({}, { replace: true })}>
+            <Button
+              size="small"
+              sx={{ height: 24, minWidth: 0, py: 0 }}
+              onClick={() => setSearchParams({}, { replace: true })}
+            >
               {t('catalog.actions.clearAll')}
             </Button>
           ) : null}
