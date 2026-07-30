@@ -23,7 +23,6 @@ import (
 	"errors"
 	"net/http"
 	"net/url"
-	"strconv"
 	"strings"
 
 	"github.com/wso2/openfgc/portal/backend/internal/proxy"
@@ -40,31 +39,36 @@ type consentRetrievalResponse struct {
 	Purposes                   []consentPurposeItem        `json:"purposes"`
 	CreatedTime                int64                       `json:"createdTime"`
 	UpdatedTime                int64                       `json:"updatedTime"`
-	ClientID                   string                      `json:"clientId"`
+	GroupID                    string                      `json:"groupId"`
 	Type                       string                      `json:"type"`
 	Status                     string                      `json:"status"`
 	Frequency                  *int                        `json:"frequency,omitempty"`
-	ValidityTime               *int64                      `json:"validityTime,omitempty"`
+	ExpirationTime             *int64                      `json:"expirationTime,omitempty"`
 	RecurringIndicator         *bool                       `json:"recurringIndicator,omitempty"`
 	DataAccessValidityDuration *int64                      `json:"dataAccessValidityDuration,omitempty"`
-	Attributes                 map[string]any              `json:"attributes,omitempty"`
-	Authorizations             []consentAuthorizationEntry `json:"authorizations,omitempty"`
+	Attributes                 map[string]string           `json:"attributes"`
+	Authorizations             []consentAuthorizationEntry `json:"authorizations"`
 }
 
 type consentPurposeItem struct {
+	PurposeID   string               `json:"purposeId"`
 	Name        string               `json:"name"`
-	Description string               `json:"description,omitempty"`
+	Version     string               `json:"version"`
+	DisplayName *string              `json:"displayName,omitempty"`
+	Description *string              `json:"description,omitempty"`
 	Elements    []consentElementItem `json:"elements"`
 }
 
 type consentElementItem struct {
-	Name           string         `json:"name"`
-	IsUserApproved bool           `json:"isUserApproved"`
-	Value          any            `json:"value,omitempty"`
-	IsMandatory    *bool          `json:"isMandatory,omitempty"`
-	Type           string         `json:"type,omitempty"`
-	Description    string         `json:"description,omitempty"`
-	Properties     map[string]any `json:"properties,omitempty"`
+	ElementID   string  `json:"elementId"`
+	Name        string  `json:"name"`
+	Namespace   string  `json:"namespace"`
+	Version     string  `json:"version"`
+	DisplayName *string `json:"displayName,omitempty"`
+	Description *string `json:"description,omitempty"`
+	Approved    bool    `json:"approved"`
+	Mandatory   bool    `json:"mandatory"`
+	Value       any     `json:"value,omitempty"`
 }
 
 type consentAuthorizationEntry struct {
@@ -77,8 +81,10 @@ type consentAuthorizationEntry struct {
 }
 
 type consentApprovalSelection struct {
-	PurposeName string `json:"purposeName"`
-	ElementName string `json:"elementName"`
+	PurposeID      string `json:"purposeId"`
+	PurposeVersion string `json:"purposeVersion"`
+	ElementID      string `json:"elementId"`
+	ElementVersion string `json:"elementVersion"`
 }
 
 type consentAuthorizationPayload struct {
@@ -88,42 +94,29 @@ type consentAuthorizationPayload struct {
 	Resources any     `json:"resources"`
 }
 
+type consentUpdateElement struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace"`
+	Version   string `json:"version"`
+	Approved  bool   `json:"approved"`
+	Value     any    `json:"value,omitempty"`
+}
+
+type consentUpdatePurpose struct {
+	Name     string                 `json:"name"`
+	Version  string                 `json:"version"`
+	Elements []consentUpdateElement `json:"elements"`
+}
+
 type consentUpdatePayload struct {
 	Type                       string                        `json:"type"`
-	ValidityTime               *int64                        `json:"validityTime,omitempty"`
+	ExpirationTime             *int64                        `json:"expirationTime,omitempty"`
 	RecurringIndicator         *bool                         `json:"recurringIndicator,omitempty"`
 	DataAccessValidityDuration *int64                        `json:"dataAccessValidityDuration,omitempty"`
 	Frequency                  *int                          `json:"frequency,omitempty"`
-	Purposes                   []consentPurposeItem          `json:"purposes"`
-	Attributes                 map[string]any                `json:"attributes,omitempty"`
-	Authorizations             []consentAuthorizationPayload `json:"authorizations,omitempty"`
-}
-
-type purposeListResponse struct {
-	Data []purposeMetadata `json:"data"`
-}
-
-type purposeMetadata struct {
-	ClientID    string                `json:"clientId"`
-	Name        string                `json:"name"`
-	Description *string               `json:"description"`
-	Elements    []purposeElementEntry `json:"elements"`
-}
-
-type purposeElementEntry struct {
-	Name        string `json:"name"`
-	IsMandatory bool   `json:"isMandatory"`
-}
-
-type elementListResponse struct {
-	Data []elementMetadata `json:"data"`
-}
-
-type elementMetadata struct {
-	Name        string         `json:"name"`
-	Type        string         `json:"type"`
-	Description *string        `json:"description"`
-	Properties  map[string]any `json:"properties"`
+	Purposes                   []consentUpdatePurpose        `json:"purposes"`
+	Attributes                 map[string]string             `json:"attributes"`
+	Authorizations             []consentAuthorizationPayload `json:"authorizations"`
 }
 
 // NewService builds a me service from app config.
@@ -140,9 +133,9 @@ func (s *Service) Forward(w http.ResponseWriter, r *http.Request, upstreamMethod
 	return s.proxy.Forward(w, r, upstreamMethod, upstreamPath, queryMutator, body)
 }
 
-// ForwardWithClientID forwards to upstream with a trusted client ID.
-func (s *Service) ForwardWithClientID(w http.ResponseWriter, r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte, trustedClientID string) error {
-	return s.proxy.ForwardWithClientID(w, r, upstreamMethod, upstreamPath, queryMutator, body, trustedClientID)
+// ForwardWithGroupID forwards to upstream with a trusted group ID.
+func (s *Service) ForwardWithGroupID(w http.ResponseWriter, r *http.Request, upstreamMethod, upstreamPath string, queryMutator func(url.Values), body []byte, trustedGroupID string) error {
+	return s.proxy.ForwardWithGroupID(w, r, upstreamMethod, upstreamPath, queryMutator, body, trustedGroupID)
 }
 
 // ForwardRaw forwards to upstream and returns a caller-managed response.
@@ -155,209 +148,8 @@ func (s *Service) WriteUpstreamResponse(w http.ResponseWriter, resp *proxy.Upstr
 	_ = s.proxy.WriteUpstreamResponse(w, resp)
 }
 
-func toConsentApprovalKey(purposeName, elementName string) string {
-	return purposeName + "::" + elementName
-}
-
-// BuildAggregatedConsentResponse enriches a consent response with purpose and element metadata.
-func (s *Service) BuildAggregatedConsentResponse(r *http.Request, baseBody []byte) ([]byte, error) {
-	var consent consentRetrievalResponse
-	if err := json.Unmarshal(baseBody, &consent); err != nil {
-		return nil, proxy.ErrUpstreamUnavailable
-	}
-
-	purposeMetadataByName := make(map[string]purposeMetadata, len(consent.Purposes))
-	for _, purpose := range consent.Purposes {
-		if _, exists := purposeMetadataByName[purpose.Name]; exists {
-			continue
-		}
-		metadata, err := s.fetchPurposeMetadata(r, consent.ClientID, purpose)
-		if err != nil {
-			return nil, err
-		}
-		purposeMetadataByName[purpose.Name] = metadata
-	}
-
-	elementMetadataByName := make(map[string]elementMetadata)
-	for _, purpose := range consent.Purposes {
-		for _, element := range purpose.Elements {
-			if _, exists := elementMetadataByName[element.Name]; exists {
-				continue
-			}
-			metadata, err := s.fetchElementMetadata(r, element.Name)
-			if err != nil {
-				return nil, err
-			}
-			elementMetadataByName[element.Name] = metadata
-		}
-	}
-
-	for purposeIndex := range consent.Purposes {
-		purpose := &consent.Purposes[purposeIndex]
-		purposeMetadata, exists := purposeMetadataByName[purpose.Name]
-		if !exists {
-			return nil, proxy.ErrUpstreamUnavailable
-		}
-		if purposeMetadata.Description != nil {
-			purpose.Description = *purposeMetadata.Description
-		}
-
-		mandatoryByElement := make(map[string]bool, len(purposeMetadata.Elements))
-		for _, entry := range purposeMetadata.Elements {
-			mandatoryByElement[entry.Name] = entry.IsMandatory
-		}
-
-		for elementIndex := range purpose.Elements {
-			element := &purpose.Elements[elementIndex]
-			mandatory, exists := mandatoryByElement[element.Name]
-			if !exists {
-				return nil, proxy.ErrUpstreamUnavailable
-			}
-			element.IsMandatory = &mandatory
-
-			elementMetadata, exists := elementMetadataByName[element.Name]
-			if !exists {
-				return nil, proxy.ErrUpstreamUnavailable
-			}
-			element.Type = elementMetadata.Type
-			if elementMetadata.Description != nil {
-				element.Description = *elementMetadata.Description
-			}
-			element.Properties = elementMetadata.Properties
-		}
-	}
-
-	aggregated, err := json.Marshal(consent)
-	if err != nil {
-		return nil, proxy.ErrUpstreamUnavailable
-	}
-
-	return aggregated, nil
-}
-
-func (s *Service) fetchPurposeMetadata(r *http.Request, clientID string, consentPurpose consentPurposeItem) (purposeMetadata, error) {
-	exactByClient, err := s.fetchPurposeMetadataPage(r, consentPurpose.Name, clientID)
-	if err != nil {
-		return purposeMetadata{}, err
-	}
-	elementNames := make(map[string]struct{}, len(consentPurpose.Elements))
-	for _, element := range consentPurpose.Elements {
-		elementNames[element.Name] = struct{}{}
-	}
-
-	if purpose, ok := selectPurposeCandidate(exactByClient, consentPurpose.Name, clientID, elementNames); ok {
-		return purpose, nil
-	}
-
-	exactByName, err := s.fetchPurposeMetadataPage(r, consentPurpose.Name, "")
-	if err != nil {
-		return purposeMetadata{}, err
-	}
-	if purpose, ok := selectPurposeCandidate(exactByName, consentPurpose.Name, clientID, elementNames); ok {
-		return purpose, nil
-	}
-
-	return purposeMetadata{}, proxy.ErrUpstreamUnavailable
-}
-
-func (s *Service) fetchPurposeMetadataPage(r *http.Request, purposeName, clientID string) ([]purposeMetadata, error) {
-	resp, err := s.proxy.ForwardRaw(r, http.MethodGet, "/api/v1/consent-purposes", func(q url.Values) {
-		q.Set("name", purposeName)
-		if clientID != "" {
-			q.Set("clientIds", clientID)
-		}
-		q.Set("limit", "50")
-		q.Set("offset", "0")
-	}, nil)
-	if err != nil {
-		return nil, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return nil, proxy.ErrUpstreamUnavailable
-	}
-
-	var payload purposeListResponse
-	if err := json.Unmarshal(resp.Body, &payload); err != nil {
-		return nil, proxy.ErrUpstreamUnavailable
-	}
-
-	return payload.Data, nil
-}
-
-func selectPurposeCandidate(candidates []purposeMetadata, purposeName, clientID string, requiredElements map[string]struct{}) (purposeMetadata, bool) {
-	matchingName := make([]purposeMetadata, 0, len(candidates))
-	for _, purpose := range candidates {
-		if purpose.Name != purposeName {
-			continue
-		}
-		matchingName = append(matchingName, purpose)
-	}
-
-	if len(matchingName) == 0 {
-		return purposeMetadata{}, false
-	}
-
-	best := make([]purposeMetadata, 0, len(matchingName))
-	for _, purpose := range matchingName {
-		if purposeContainsAllElements(purpose, requiredElements) {
-			best = append(best, purpose)
-		}
-	}
-	if len(best) == 0 {
-		best = matchingName
-	}
-
-	if clientID != "" {
-		for _, purpose := range best {
-			if purpose.ClientID == clientID {
-				return purpose, true
-			}
-		}
-	}
-
-	return best[0], true
-}
-
-func purposeContainsAllElements(purpose purposeMetadata, requiredElements map[string]struct{}) bool {
-	if len(requiredElements) == 0 {
-		return true
-	}
-	purposeElements := make(map[string]struct{}, len(purpose.Elements))
-	for _, element := range purpose.Elements {
-		purposeElements[element.Name] = struct{}{}
-	}
-	for name := range requiredElements {
-		if _, ok := purposeElements[name]; !ok {
-			return false
-		}
-	}
-	return true
-}
-
-func (s *Service) fetchElementMetadata(r *http.Request, elementName string) (elementMetadata, error) {
-	resp, err := s.proxy.ForwardRaw(r, http.MethodGet, "/api/v1/consent-elements", func(q url.Values) {
-		q.Set("name", elementName)
-		q.Set("limit", strconv.Itoa(50))
-		q.Set("offset", "0")
-	}, nil)
-	if err != nil {
-		return elementMetadata{}, err
-	}
-	if resp.StatusCode != http.StatusOK {
-		return elementMetadata{}, proxy.ErrUpstreamUnavailable
-	}
-
-	var payload elementListResponse
-	if err := json.Unmarshal(resp.Body, &payload); err != nil {
-		return elementMetadata{}, proxy.ErrUpstreamUnavailable
-	}
-	for _, element := range payload.Data {
-		if element.Name == elementName {
-			return element, nil
-		}
-	}
-
-	return elementMetadata{}, proxy.ErrUpstreamUnavailable
+func toConsentApprovalKey(purposeID, purposeVersion, elementID, elementVersion string) string {
+	return strings.Join([]string{purposeID, purposeVersion, elementID, elementVersion}, "\x00")
 }
 
 func buildRevokePayload(in []byte, userID string) ([]byte, error) {
@@ -388,7 +180,10 @@ func parseApprovalSelections(in []byte) ([]consentApprovalSelection, error) {
 		return nil, err
 	}
 	for _, selection := range selections {
-		if strings.TrimSpace(selection.PurposeName) == "" || strings.TrimSpace(selection.ElementName) == "" {
+		if strings.TrimSpace(selection.PurposeID) == "" ||
+			strings.TrimSpace(selection.PurposeVersion) == "" ||
+			strings.TrimSpace(selection.ElementID) == "" ||
+			strings.TrimSpace(selection.ElementVersion) == "" {
 			return nil, errors.New("invalid approval selection")
 		}
 	}
@@ -396,42 +191,51 @@ func parseApprovalSelections(in []byte) ([]consentApprovalSelection, error) {
 }
 
 // BuildApprovalUpdatePayload builds the consent update payload for an approval action.
-func (s *Service) BuildApprovalUpdatePayload(r *http.Request, baseBody []byte, selections []consentApprovalSelection, userID string) ([]byte, string, error) {
+func (s *Service) BuildApprovalUpdatePayload(baseBody []byte, selections []consentApprovalSelection, userID string) ([]byte, string, error) {
 	var consent consentRetrievalResponse
 	if err := json.Unmarshal(baseBody, &consent); err != nil {
 		return nil, "", proxy.ErrUpstreamUnavailable
 	}
 
-	if err := s.enrichMandatoryFlags(r, &consent); err != nil {
-		return nil, "", err
-	}
-
 	selectedOptionalElements := make(map[string]struct{}, len(selections))
 	for _, selection := range selections {
-		selectedOptionalElements[toConsentApprovalKey(selection.PurposeName, selection.ElementName)] = struct{}{}
+		selectedOptionalElements[toConsentApprovalKey(
+			selection.PurposeID,
+			selection.PurposeVersion,
+			selection.ElementID,
+			selection.ElementVersion,
+		)] = struct{}{}
 	}
 
 	matchedSelections := make(map[string]struct{}, len(selectedOptionalElements))
-	updatedPurposes := make([]consentPurposeItem, len(consent.Purposes))
+	updatedPurposes := make([]consentUpdatePurpose, len(consent.Purposes))
 	for purposeIndex, purpose := range consent.Purposes {
-		updatedPurpose := purpose
-		updatedPurpose.Elements = make([]consentElementItem, len(purpose.Elements))
+		updatedPurpose := consentUpdatePurpose{
+			Name:     purpose.Name,
+			Version:  purpose.Version,
+			Elements: make([]consentUpdateElement, len(purpose.Elements)),
+		}
 		for elementIndex, element := range purpose.Elements {
-			updatedElement := element
-			if element.IsMandatory != nil && *element.IsMandatory {
-				updatedElement.IsUserApproved = true
+			approved := element.Approved
+			if element.Mandatory {
+				approved = true
 			} else {
-				key := toConsentApprovalKey(purpose.Name, element.Name)
+				key := toConsentApprovalKey(purpose.PurposeID, purpose.Version, element.ElementID, element.Version)
 				if _, isSelected := selectedOptionalElements[key]; isSelected {
-					updatedElement.IsUserApproved = true
+					approved = true
 					matchedSelections[key] = struct{}{}
 				}
 			}
-			updatedPurpose.Elements[elementIndex] = updatedElement
+			updatedPurpose.Elements[elementIndex] = consentUpdateElement{
+				Name:      element.Name,
+				Namespace: element.Namespace,
+				Version:   element.Version,
+				Approved:  approved,
+				Value:     element.Value,
+			}
 		}
 		updatedPurposes[purposeIndex] = updatedPurpose
 	}
-
 	if len(matchedSelections) != len(selectedOptionalElements) {
 		return nil, "", errors.New("invalid approval selection")
 	}
@@ -456,7 +260,6 @@ func (s *Service) BuildApprovalUpdatePayload(r *http.Request, baseBody []byte, s
 		Status:    "APPROVED",
 		Resources: map[string]any{},
 	}
-
 	if index, ok := findAuthorizationIndexToUpdate(consent.Authorizations, userID); ok {
 		updatedAuthorizations[index] = updatedAuthorization
 	} else {
@@ -465,7 +268,7 @@ func (s *Service) BuildApprovalUpdatePayload(r *http.Request, baseBody []byte, s
 
 	payload := consentUpdatePayload{
 		Type:                       consent.Type,
-		ValidityTime:               consent.ValidityTime,
+		ExpirationTime:             consent.ExpirationTime,
 		RecurringIndicator:         consent.RecurringIndicator,
 		DataAccessValidityDuration: consent.DataAccessValidityDuration,
 		Frequency:                  consent.Frequency,
@@ -473,51 +276,11 @@ func (s *Service) BuildApprovalUpdatePayload(r *http.Request, baseBody []byte, s
 		Attributes:                 consent.Attributes,
 		Authorizations:             updatedAuthorizations,
 	}
-
 	serializedPayload, err := json.Marshal(payload)
 	if err != nil {
 		return nil, "", proxy.ErrUpstreamUnavailable
 	}
-
-	return serializedPayload, consent.ClientID, nil
-}
-
-func (s *Service) enrichMandatoryFlags(r *http.Request, consent *consentRetrievalResponse) error {
-	purposeMetadataByName := make(map[string]purposeMetadata, len(consent.Purposes))
-	for _, purpose := range consent.Purposes {
-		if _, exists := purposeMetadataByName[purpose.Name]; exists {
-			continue
-		}
-		metadata, err := s.fetchPurposeMetadata(r, consent.ClientID, purpose)
-		if err != nil {
-			return err
-		}
-		purposeMetadataByName[purpose.Name] = metadata
-	}
-
-	for purposeIndex := range consent.Purposes {
-		purpose := &consent.Purposes[purposeIndex]
-		purposeMetadata, exists := purposeMetadataByName[purpose.Name]
-		if !exists {
-			return proxy.ErrUpstreamUnavailable
-		}
-
-		mandatoryByElement := make(map[string]bool, len(purposeMetadata.Elements))
-		for _, entry := range purposeMetadata.Elements {
-			mandatoryByElement[entry.Name] = entry.IsMandatory
-		}
-
-		for elementIndex := range purpose.Elements {
-			element := &purpose.Elements[elementIndex]
-			mandatory, exists := mandatoryByElement[element.Name]
-			if !exists {
-				return proxy.ErrUpstreamUnavailable
-			}
-			element.IsMandatory = &mandatory
-		}
-	}
-
-	return nil
+	return serializedPayload, consent.GroupID, nil
 }
 
 func normalizeAuthorizationResources(resources any) any {
@@ -534,6 +297,5 @@ func findAuthorizationIndexToUpdate(authorizations []consentAuthorizationEntry, 
 			return index, true
 		}
 	}
-
 	return -1, false
 }

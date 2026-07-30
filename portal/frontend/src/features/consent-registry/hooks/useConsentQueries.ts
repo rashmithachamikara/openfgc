@@ -18,12 +18,14 @@
 
 import {
   keepPreviousData,
+  queryOptions,
   type UseMutationResult,
   type UseQueryResult,
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { useEffect } from 'react'
 import {
   approveMyConsent,
   fetchMyConsentByID,
@@ -91,25 +93,25 @@ function toConsentRow(consent: ConsentDetailAPI): ConsentRecord {
 
   return {
     id: consent.id,
-    clientName: consent.clientId,
+    groupId: consent.groupId,
     type: consent.type,
     status: normalizedStatus,
-    purposes: consent.purposes.map((purpose) => purpose.name),
+    purposes: consent.purposes.map((purpose) => purpose.displayName ?? purpose.name),
     updatedAt: new Date(toEpochMilliseconds(consent.updatedTime) ?? 0).toISOString(),
-    expirationTime: consent.validityTime ?? 0,
+    expirationTime: consent.expirationTime ?? 0,
     canRevoke: isConsentRevokableStatus(normalizedStatus),
     canApprove: isConsentApprovableStatus(normalizedStatus),
   }
 }
 
-export function useConsentListQuery(
+function consentListQueryOptions(
   filters: ConsentRegistryFilters,
   page: number,
   rowsPerPage: number,
-): UseQueryResult<ConsentListResult> {
+) {
   const params = toListParams(filters, page, rowsPerPage)
 
-  return useQuery<ConsentListResult>({
+  return queryOptions({
     queryKey: ['consents', params],
     queryFn: async (): Promise<ConsentListResult> => {
       const response = await fetchMyConsents(params)
@@ -120,6 +122,28 @@ export function useConsentListQuery(
     },
     placeholderData: keepPreviousData,
   })
+}
+
+export function useConsentListQuery(
+  filters: ConsentRegistryFilters,
+  page: number,
+  rowsPerPage: number,
+): UseQueryResult<ConsentListResult> {
+  const queryClient = useQueryClient()
+  const query = useQuery(consentListQueryOptions(filters, page, rowsPerPage))
+
+  useEffect(() => {
+    const nextPage = page + 1
+    const hasNextPage = nextPage * rowsPerPage < (query.data?.total ?? 0)
+
+    if (!query.isPlaceholderData && hasNextPage) {
+      queryClient
+        .prefetchQuery(consentListQueryOptions(filters, nextPage, rowsPerPage))
+        .catch(() => undefined)
+    }
+  }, [filters, page, query.data?.total, query.isPlaceholderData, queryClient, rowsPerPage])
+
+  return query
 }
 
 export function useConsentDetailQuery(

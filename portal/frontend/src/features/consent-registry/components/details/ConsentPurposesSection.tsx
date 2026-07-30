@@ -53,12 +53,12 @@ const PURPOSE_ELEMENTS_COLUMN_WIDTHS = {
 
 const ELEMENT_NAME_MAX_DISPLAY_LENGTH = 28
 
-function truncateElementName(elementName: string, maxLength: number): string {
-  if (elementName.length <= maxLength) {
-    return elementName
+function truncateElementLabel(elementLabel: string, maxLength: number): string {
+  if (elementLabel.length <= maxLength) {
+    return elementLabel
   }
 
-  return `${elementName.slice(0, Math.max(maxLength - 3, 1))}...`
+  return `${elementLabel.slice(0, Math.max(maxLength - 3, 1))}...`
 }
 
 function ConsentPurposesSection({ purposes }: ConsentPurposesSectionProps): React.JSX.Element {
@@ -77,12 +77,12 @@ function ConsentPurposesSection({ purposes }: ConsentPurposesSectionProps): Reac
       <Divider />
       <CardContent sx={{ p: 2 }}>
         {purposes.map((purpose) => {
-          const approved = purpose.elements.filter((element) => element.isUserApproved).length
+          const approved = purpose.elements.filter((element) => element.approved).length
           const total = purpose.elements.length
 
           return (
             <Accordion
-              key={purpose.name}
+              key={`${purpose.purposeId}::${purpose.version}`}
               disableGutters
               elevation={0}
               sx={{
@@ -112,7 +112,7 @@ function ConsentPurposesSection({ purposes }: ConsentPurposesSectionProps): Reac
                     }}
                   />
                   <Typography variant="body2" fontWeight={600}>
-                    {purpose.name}
+                    {purpose.displayName ?? purpose.name}
                   </Typography>
                 </Stack>
               </AccordionSummary>
@@ -154,12 +154,13 @@ function ConsentPurposesSection({ purposes }: ConsentPurposesSectionProps): Reac
                     </TableHead>
                     <TableBody>
                       {purpose.elements.map((element) => (
-                        <TableRow key={element.name}>
+                        <TableRow key={`${element.elementId}::${element.version}`}>
                           <TableCell sx={{ width: PURPOSE_ELEMENTS_COLUMN_WIDTHS.element }}>
                             <Tooltip
-                              title={element.name}
+                              title={element.displayName ?? element.name}
                               disableHoverListener={
-                                element.name.length <= ELEMENT_NAME_MAX_DISPLAY_LENGTH
+                                (element.displayName ?? element.name).length <=
+                                ELEMENT_NAME_MAX_DISPLAY_LENGTH
                               }
                             >
                               <Box
@@ -173,12 +174,15 @@ function ConsentPurposesSection({ purposes }: ConsentPurposesSectionProps): Reac
                                   verticalAlign: 'bottom',
                                 }}
                               >
-                                {truncateElementName(element.name, ELEMENT_NAME_MAX_DISPLAY_LENGTH)}
+                                {truncateElementLabel(
+                                  element.displayName ?? element.name,
+                                  ELEMENT_NAME_MAX_DISPLAY_LENGTH,
+                                )}
                               </Box>
                             </Tooltip>
                           </TableCell>
                           <TableCell>
-                            {element.isUserApproved ? (
+                            {element.approved ? (
                               <Box
                                 role="img"
                                 aria-label={t('consentRegistry.details.approved', 'Approved')}
@@ -202,12 +206,12 @@ function ConsentPurposesSection({ purposes }: ConsentPurposesSectionProps): Reac
                           <TableCell>
                             <Chip
                               label={
-                                element.isMandatory
+                                element.mandatory
                                   ? t('consentRegistry.details.values.required', 'Required')
                                   : t('consentRegistry.details.values.optional', 'Optional')
                               }
                               size="small"
-                              color={element.isMandatory ? 'error' : 'default'}
+                              color={element.mandatory ? 'error' : 'default'}
                               variant="outlined"
                             />
                           </TableCell>

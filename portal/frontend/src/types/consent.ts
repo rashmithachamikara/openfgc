@@ -28,7 +28,7 @@ export function isConsentAPIStatus(status: string): status is ConsentAPIStatus {
 
 export interface ConsentRecord {
   id: string
-  clientName: string
+  groupId: string
   type: string
   status: ConsentAPIStatus
   purposes: string[]
@@ -55,21 +55,30 @@ export interface ConsentListQueryParams {
 }
 
 export interface ConsentElementApprovalItem {
+  elementId: string
   name: string
-  isUserApproved: boolean
-  isMandatory?: boolean
-  type?: string
+  namespace: string
+  version: string
+  displayName?: string
+  approved: boolean
+  mandatory: boolean
+  value?: unknown
   description?: string
-  properties?: Record<string, string>
 }
 
 export interface ConsentApprovalSelection {
-  purposeName: string
-  elementName: string
+  purposeId: string
+  purposeVersion: string
+  elementId: string
+  elementVersion: string
 }
 
 export interface ConsentPurposeItem {
+  purposeId: string
   name: string
+  version: string
+  displayName?: string
+  description?: string
   elements: ConsentElementApprovalItem[]
 }
 
@@ -84,16 +93,17 @@ export interface ConsentAuthorizationResource {
 
 export interface ConsentDetailAPI {
   id: string
-  clientId: string
+  groupId: string
   type: string
   status: ConsentAPIStatus | string
   createdTime: number
   updatedTime: number
-  validityTime?: number
+  expirationTime?: number
   recurringIndicator?: boolean
   frequency?: number
   dataAccessValidityDuration?: number
   purposes: ConsentPurposeItem[]
+  attributes?: Record<string, string>
   authorizations?: ConsentAuthorizationResource[]
 }
 

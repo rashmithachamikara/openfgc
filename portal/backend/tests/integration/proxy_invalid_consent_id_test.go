@@ -35,7 +35,7 @@ func TestMeEndpointsRejectInvalidConsentID(t *testing.T) {
 	}))
 	defer upstream.Close()
 
-	bff := newPhase2Server(t, upstream.URL)
+	bff := newPortalServer(t, upstream.URL, nil)
 	defer bff.Close()
 
 	testCases := []struct {
@@ -46,7 +46,7 @@ func TestMeEndpointsRejectInvalidConsentID(t *testing.T) {
 	}{
 		{name: "get by id", method: http.MethodGet, path: "/me/consents/not-a-uuid"},
 		{name: "approve", method: http.MethodPost, path: "/me/consents/not-a-uuid/approve", body: "[]"},
-		{name: "revoke", method: http.MethodPut, path: "/me/consents/not-a-uuid/revoke", body: "{}"},
+		{name: "revoke", method: http.MethodPost, path: "/me/consents/not-a-uuid/revoke", body: "{}"},
 	}
 
 	for _, tc := range testCases {

@@ -61,16 +61,16 @@ When credentials are enabled, origins must be explicitly allowlisted (wildcard o
 
 Portal-facing user endpoints:
 
-- `GET /me/consents` -> upstream `GET /api/v1/consents` with forced `userIds=<placeholder>`
-- `GET /me/consents/{consentId}` -> upstream `GET /api/v1/consents/{consentId}`
-- `POST /me/consents/{consentId}/approve` -> BFF fetches current consent, merges selected optional approvals, uses the consent's `clientId` as the trusted upstream `TPP-client-id`, updates an existing authorization to approved for the trusted user (or creates one if none exist), and upstreams `PUT /api/v1/consents/{consentId}`
-- `PUT /me/consents/{consentId}/revoke` -> upstream `PUT /api/v1/consents/{consentId}/revoke`
+- `GET /me/consents` -> upstream `GET /api/v1/consents` with forced `userIds=<placeholder>` and `details=true`
+- `GET /me/consents/{consentId}` -> one upstream `GET /api/v1/consents/{consentId}?details=true`; the detailed consent snapshot is returned unchanged
+- `POST /me/consents/{consentId}/approve` -> BFF fetches the current consent with `details=true`, validates selected optional elements against its embedded stable IDs and versions, automatically approves mandatory elements, preserves existing approvals, and sends a full upstream consent update with the consent's immutable `groupId` as the trusted `group-id` header
+- `POST /me/consents/{consentId}/revoke` -> upstream `POST /api/v1/consents/{consentId}/revoke`
 
 Proxy hardening:
 
 - Path rewrite `/api/*` -> `/api/v1/*` with query preservation
 - Deny-by-default allowlist for consent-server routes (unknown path -> `404`, known path wrong method -> `405`)
-- Hop-by-hop header stripping and trusted-header override prevention (`org-id`, `TPP-client-id`)
+- Hop-by-hop header stripping and trusted-header override prevention (`org-id`, `group-id`, and the rejected legacy client header)
 - Correlation ID propagation/generation via `X-Correlation-ID`
 - Request body limit enforcement (`BFF_PROXY__MAX_REQUEST_BYTES`) with `413`
 - Deterministic upstream error mapping: timeout -> `504`, other connectivity failures -> `502`
@@ -97,6 +97,8 @@ Common error codes:
 
 - `BFF_PROXY__PLACEHOLDER_MODE_ENABLED=true` is blocked when `BFF_ENV=production`
 - `BFF_PROXY__PLACEHOLDER_USER_ID` must be empty if placeholder mode is disabled
+- `BFF_PROXY__PLACEHOLDER_ORG_ID` must be empty if placeholder mode is disabled
+- `BFF_PROXY__PLACEHOLDER_GROUP_ID` must be empty if placeholder mode is disabled
 
 ## AI Instructions
 

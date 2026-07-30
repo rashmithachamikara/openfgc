@@ -63,13 +63,13 @@ func TestNewServiceRejectsInvalidUpstreamURL(t *testing.T) {
 
 func TestCheckAPIAccess(t *testing.T) {
 	svc, err := NewService(config.ProxyConfig{
-		OpenFGCAPIURL:       "http://localhost:9090",
-		OpenFGCAPITimeout:   2 * time.Second,
-		MaxRequestBytes:     1024,
-		MaxResponseBytes:    1024,
-		AllowedPassthrough:  []string{"GET", "POST", "PUT", "DELETE"},
-		PlaceholderOrgID:    "ORG-001",
-		PlaceholderClientID: "TPP-CLIENT-001",
+		OpenFGCAPIURL:      "http://localhost:9090",
+		OpenFGCAPITimeout:  2 * time.Second,
+		MaxRequestBytes:    1024,
+		MaxResponseBytes:   1024,
+		AllowedPassthrough: []string{"GET", "POST", "PUT", "DELETE"},
+		PlaceholderOrgID:   "ORG-001",
+		PlaceholderGroupID: "GROUP-001",
 	})
 	if err != nil {
 		t.Fatalf("failed to construct service: %v", err)
@@ -84,8 +84,22 @@ func TestCheckAPIAccess(t *testing.T) {
 	}{
 		{name: "known path and method", method: "GET", path: "/api/consents", expectKnown: true, expectAllowed: true},
 		{name: "known path wrong method", method: "DELETE", path: "/api/consents", expectKnown: true, expectAllowed: false},
-		{name: "known wildcard path", method: "PUT", path: "/api/consents/abc-123/revoke", expectKnown: true, expectAllowed: true},
-		{name: "known wildcard wrong method", method: "POST", path: "/api/consents/abc-123/revoke", expectKnown: true, expectAllowed: false},
+		{name: "consent history", method: "GET", path: "/api/consents/abc-123/history", expectKnown: true, expectAllowed: true},
+		{name: "revoke post", method: "POST", path: "/api/consents/abc-123/revoke", expectKnown: true, expectAllowed: true},
+		{name: "legacy revoke put", method: "PUT", path: "/api/consents/abc-123/revoke", expectKnown: true, expectAllowed: false},
+		{name: "element versions list", method: "GET", path: "/api/consent-elements/element-1/versions", expectKnown: true, expectAllowed: true},
+		{name: "element version create", method: "POST", path: "/api/consent-elements/element-1/versions", expectKnown: true, expectAllowed: true},
+		{name: "element version get", method: "GET", path: "/api/consent-elements/element-1/versions/v2", expectKnown: true, expectAllowed: true},
+		{name: "element version delete", method: "DELETE", path: "/api/consent-elements/element-1/versions/v2", expectKnown: true, expectAllowed: true},
+		{name: "removed element validation", method: "POST", path: "/api/consent-elements/validate", expectKnown: true, expectAllowed: false},
+		{name: "removed element update", method: "PUT", path: "/api/consent-elements/element-1", expectKnown: true, expectAllowed: false},
+		{name: "removed element delete", method: "DELETE", path: "/api/consent-elements/element-1", expectKnown: true, expectAllowed: false},
+		{name: "purpose versions list", method: "GET", path: "/api/consent-purposes/purpose-1/versions", expectKnown: true, expectAllowed: true},
+		{name: "purpose version create", method: "POST", path: "/api/consent-purposes/purpose-1/versions", expectKnown: true, expectAllowed: true},
+		{name: "purpose version get", method: "GET", path: "/api/consent-purposes/purpose-1/versions/v2", expectKnown: true, expectAllowed: true},
+		{name: "purpose version delete", method: "DELETE", path: "/api/consent-purposes/purpose-1/versions/v2", expectKnown: true, expectAllowed: true},
+		{name: "removed purpose update", method: "PUT", path: "/api/consent-purposes/purpose-1", expectKnown: true, expectAllowed: false},
+		{name: "removed purpose delete", method: "DELETE", path: "/api/consent-purposes/purpose-1", expectKnown: true, expectAllowed: false},
 		{name: "unknown path", method: "GET", path: "/api/does-not-exist", expectKnown: false, expectAllowed: false},
 		{name: "non api prefix", method: "GET", path: "/health", expectKnown: false, expectAllowed: false},
 	}
@@ -343,6 +357,43 @@ func TestForwardStripsClientCredentialHeaders(t *testing.T) {
 
 	rr := httptest.NewRecorder()
 	if err := svc.Forward(rr, req, http.MethodGet, "/api/v1/consents", nil, nil); err != nil {
+		t.Fatalf("unexpected forward error: %v", err)
+	}
+}
+
+func TestForwardStripsUntrustedIdentityHeaders(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if got := r.Header.Get("org-id"); got != "ORG-001" {
+			t.Fatalf("expected trusted org-id, got %q", got)
+		}
+		if got := r.Header.Get("group-id"); got != "GROUP-001" {
+			t.Fatalf("expected trusted group-id, got %q", got)
+		}
+		if got := r.Header.Get("TPP-client-id"); got != "" {
+			t.Fatalf("expected legacy client header to be stripped, got %q", got)
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	svc, err := NewService(config.ProxyConfig{
+		OpenFGCAPIURL:      upstream.URL,
+		OpenFGCAPITimeout:  2 * time.Second,
+		MaxRequestBytes:    1024,
+		MaxResponseBytes:   1024,
+		AllowedPassthrough: []string{"GET"},
+		PlaceholderOrgID:   "ORG-001",
+		PlaceholderGroupID: "GROUP-001",
+	})
+	if err != nil {
+		t.Fatalf("failed to construct service: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
+	req.Header.Set("org-id", "MALICIOUS-ORG")
+	req.Header.Set("group-id", "MALICIOUS-GROUP")
+	req.Header.Set("TPP-client-id", "MALICIOUS-CLIENT")
+	if err := svc.Forward(httptest.NewRecorder(), req, http.MethodGet, "/api/v1/consents", nil, nil); err != nil {
 		t.Fatalf("unexpected forward error: %v", err)
 	}
 }

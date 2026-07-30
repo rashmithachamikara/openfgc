@@ -128,7 +128,7 @@ func TestPlaceholderValuesRejectedWhenModeDisabled(t *testing.T) {
 	}{
 		{name: "user id", envName: "BFF_PROXY__PLACEHOLDER_USER_ID", errText: "proxy.placeholder_user_id must be empty"},
 		{name: "org id", envName: "BFF_PROXY__PLACEHOLDER_ORG_ID", errText: "proxy.placeholder_org_id must be empty"},
-		{name: "client id", envName: "BFF_PROXY__PLACEHOLDER_CLIENT_ID", errText: "proxy.placeholder_client_id must be empty"},
+		{name: "group id", envName: "BFF_PROXY__PLACEHOLDER_GROUP_ID", errText: "proxy.placeholder_group_id must be empty"},
 	}
 
 	for _, tt := range tests {

@@ -49,8 +49,8 @@ pnpm install
 
 Create a local `.env` file from `.env.example` before running or building the portal.
 
-| Variable | Description | Example |
-| --- | --- | --- |
+| Variable            | Description                                                                                 | Example                 |
+| ------------------- | ------------------------------------------------------------------------------------------- | ----------------------- |
 | `VITE_API_BASE_URL` | Required base URL for the OpenFGC Portal backend API. Vite embeds this value at build time. | `http://localhost:8080` |
 
 ## Scripts
