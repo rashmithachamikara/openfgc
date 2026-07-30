@@ -18,16 +18,25 @@
 
 import {
   Box,
+  Button,
   Chip,
   IconButton,
   ListingTable,
   Popover,
   Skeleton,
+  Stack,
   TablePagination,
   Tooltip,
   Typography,
 } from '@wso2/oxygen-ui'
-import { Ban, CircleCheckBig, Eye } from '@wso2/oxygen-ui-icons-react'
+import {
+  Ban,
+  CircleCheckBig,
+  CircleSlash,
+  Eye,
+  RefreshCw,
+  Search,
+} from '@wso2/oxygen-ui-icons-react'
 import { Fragment, type MouseEvent, useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Link as RouterLink, useNavigate } from 'react-router-dom'
@@ -45,6 +54,7 @@ interface ConsentRegistryTableProps {
   rows: ConsentRecord[]
   totalCount: number
   isLoading: boolean
+  isError: boolean
   page: number
   rowsPerPage: number
   sortField: ConsentRegistrySortField
@@ -52,6 +62,7 @@ interface ConsentRegistryTableProps {
   onPageChange: (page: number) => void
   onRowsPerPageChange: (rowsPerPage: number) => void
   onSortChange: (field: ConsentRegistrySortField, direction: ConsentRegistrySortDirection) => void
+  onRetry: () => void
   onApprove: (consentID: string) => void
   onRevoke: (consentID: string) => void
   isMutating: boolean
@@ -62,9 +73,9 @@ const PURPOSE_PREVIEW_COUNT = 2
 const CONSENT_REGISTRY_COLUMN_WIDTHS = {
   consentId: '13%',
   purposes: '34%',
-  status: '12%',
-  updated: '16%',
-  expiration: '16%',
+  status: '10%',
+  updated: '17%',
+  expiration: '17%',
   actions: '8%',
 } as const
 
@@ -72,6 +83,7 @@ export default function ConsentRegistryTable({
   rows,
   totalCount,
   isLoading,
+  isError,
   page,
   rowsPerPage,
   sortField,
@@ -79,6 +91,7 @@ export default function ConsentRegistryTable({
   onPageChange,
   onRowsPerPageChange,
   onSortChange,
+  onRetry,
   onApprove,
   onRevoke,
   isMutating,
@@ -248,7 +261,54 @@ export default function ConsentRegistryTable({
                     </ListingTable.Cell>
                   </ListingTable.Row>
                 ))
-              : groupedRows.map((group) => (
+              : null}
+            {!isLoading && isError ? (
+              <ListingTable.Row variant="table">
+                <ListingTable.Cell colSpan={6} align="center" sx={{ py: 8 }}>
+                  <Stack
+                    spacing={1}
+                    alignItems="center"
+                    justifyContent="center"
+                    sx={{ minHeight: 264 }}
+                  >
+                    <CircleSlash size={28} aria-hidden="true" />
+                    <Typography fontWeight={600}>
+                      {t('consentRegistry.messages.loadFailed')}
+                    </Typography>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      startIcon={<RefreshCw size={16} />}
+                      onClick={onRetry}
+                    >
+                      {t('catalog.actions.retry')}
+                    </Button>
+                  </Stack>
+                </ListingTable.Cell>
+              </ListingTable.Row>
+            ) : null}
+            {!isLoading && !isError && groupedRows.length === 0 ? (
+              <ListingTable.Row variant="table">
+                <ListingTable.Cell colSpan={6} align="center" sx={{ py: 8 }}>
+                  <Stack
+                    spacing={1}
+                    alignItems="center"
+                    justifyContent="center"
+                    sx={{ minHeight: 264 }}
+                  >
+                    <Search size={28} aria-hidden="true" />
+                    <Typography fontWeight={600}>
+                      {t('consentRegistry.messages.emptyTitle')}
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary">
+                      {t('consentRegistry.messages.empty')}
+                    </Typography>
+                  </Stack>
+                </ListingTable.Cell>
+              </ListingTable.Row>
+            ) : null}
+            {!isLoading && !isError && groupedRows.length > 0
+              ? groupedRows.map((group) => (
                   <Fragment key={group.groupId}>
                     <ListingTable.Row
                       variant="table"
@@ -409,7 +469,8 @@ export default function ConsentRegistryTable({
                       </ListingTable.Row>
                     ))}
                   </Fragment>
-                ))}
+                ))
+              : null}
           </ListingTable.Body>
         </ListingTable>
 

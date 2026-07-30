@@ -27,7 +27,7 @@ import {
   ToggleButtonGroup,
   Typography,
 } from '@wso2/oxygen-ui'
-import { ListFilter, Plus, Search } from '@wso2/oxygen-ui-icons-react'
+import { CircleSlash, ListFilter, Plus, RefreshCw, Search } from '@wso2/oxygen-ui-icons-react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -475,21 +475,6 @@ function PurposeListPage(): React.JSX.Element {
           ) : null}
         </Stack>
 
-        {query.isError ? (
-          <Paper variant="outlined" sx={{ p: 2, borderColor: 'error.main' }}>
-            <Stack
-              direction={{ xs: 'column', sm: 'row' }}
-              justifyContent="space-between"
-              spacing={1}
-            >
-              <Typography color="error.main">{t('catalog.purposes.loadFailed')}</Typography>
-              <Button size="small" onClick={() => query.refetch()}>
-                {t('catalog.actions.retry')}
-              </Button>
-            </Stack>
-          </Paper>
-        ) : null}
-
         <TableContainer component={Paper} elevation={1}>
           <Box
             sx={{
@@ -610,6 +595,24 @@ function PurposeListPage(): React.JSX.Element {
                       </TableCell>
                     </TableRow>
                   ))}
+              {query.isError ? (
+                <TableRow>
+                  <TableCell colSpan={5} align="center" sx={{ py: 8 }}>
+                    <Stack spacing={1} alignItems="center">
+                      <CircleSlash size={28} aria-hidden="true" />
+                      <Typography fontWeight={500}>{t('catalog.purposes.loadFailed')}</Typography>
+                      <Button
+                        size="small"
+                        variant="outlined"
+                        startIcon={<RefreshCw size={16} />}
+                        onClick={() => query.refetch()}
+                      >
+                        {t('catalog.actions.retry')}
+                      </Button>
+                    </Stack>
+                  </TableCell>
+                </TableRow>
+              ) : null}
               {!query.isPending && !query.isError && rows.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={5} align="center" sx={{ py: 8 }}>

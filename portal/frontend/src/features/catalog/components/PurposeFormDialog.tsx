@@ -22,7 +22,7 @@ import {
   Typography,
 } from '@wso2/oxygen-ui'
 import { CircleHelp, Plus, Trash2 } from '@wso2/oxygen-ui-icons-react'
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   ElementSummary,
@@ -97,6 +97,7 @@ function PurposeFormDialog({
     })),
   )
   const [validationError, setValidationError] = useState('')
+  const contentRef = useRef<HTMLDivElement>(null)
   const versionMode = Boolean(initialValue)
   const availableElements = optionsQuery.data?.data ?? []
   const requiredFieldsComplete =
@@ -112,29 +113,46 @@ function PurposeFormDialog({
         groupId: initialValue?.groupId,
       })
 
+  const scrollToError = (): void => {
+    if (contentRef.current) {
+      contentRef.current.scrollTop = 0
+    }
+  }
+
+  useEffect(() => {
+    if (error) {
+      scrollToError()
+    }
+  }, [error])
+
   const handleSubmit = (): void => {
     setValidationError('')
 
     if (!versionMode && !name.trim()) {
       setValidationError(t('catalog.validation.nameRequired'))
+      scrollToError()
       return
     }
     if (!versionMode && ownership === 'group' && !groupId.trim()) {
       setValidationError(t('catalog.validation.groupIdRequired'))
+      scrollToError()
       return
     }
     if (elements.length === 0 || elements.some((element) => !element.name)) {
       setValidationError(t('catalog.validation.elementRequired'))
+      scrollToError()
       return
     }
     if (new Set(elements.map((element) => element.elementKey)).size !== elements.length) {
       setValidationError(t('catalog.validation.duplicateElements'))
+      scrollToError()
       return
     }
 
     const propertyKeys = properties.map((property) => property.key.trim()).filter(Boolean)
     if (new Set(propertyKeys).size !== propertyKeys.length) {
       setValidationError(t('catalog.validation.duplicatePropertyKeys'))
+      scrollToError()
       return
     }
 
@@ -219,7 +237,7 @@ function PurposeFormDialog({
           ) : null}
         </Stack>
       </DialogTitle>
-      <DialogContent sx={{ px: 3, mt: 3, pb: 3, overflowY: 'auto' }}>
+      <DialogContent ref={contentRef} sx={{ px: 3, mt: 3, pb: 3, overflowY: 'auto' }}>
         <Stack spacing={2}>
           {validationError || error ? (
             <Alert severity="error">{validationError || error}</Alert>

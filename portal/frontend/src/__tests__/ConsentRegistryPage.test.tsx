@@ -164,7 +164,8 @@ describe('ConsentRegistryPage', () => {
 
     expect(await screen.findByRole('heading', { name: 'All Consents' })).toBeInTheDocument()
     expect(await screen.findByText('Unable to load consents right now.')).toBeInTheDocument()
-    expect(screen.queryByRole('table', { name: 'Consent registry table' })).not.toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Consent registry table' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Retry' })).toBeInTheDocument()
   })
 
   it('renders consent rows in API order without sorting the current page locally', async () => {
@@ -223,6 +224,7 @@ describe('ConsentRegistryPage', () => {
     expect(
       await screen.findByText('No consents found for the selected filters.'),
     ).toBeInTheDocument()
+    expect(screen.getByRole('table', { name: 'Consent registry table' })).toBeInTheDocument()
   })
 
   it('shows the error state when a consent response has an unsupported status', async () => {
