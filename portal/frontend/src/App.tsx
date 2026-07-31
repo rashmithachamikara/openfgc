@@ -16,22 +16,42 @@
  * under the License.
  */
 
+import { useEffect } from 'react'
 import { Navigate, Route, Routes } from 'react-router-dom'
 import MainLayout from './components/layout/main-layout/MainLayout'
 import ConsentDetailsPage from './features/consent-registry/ConsentDetailsPage'
 import ConsentRegistryPage from './features/consent-registry/ConsentRegistryPage'
 import DashboardPage from './features/dashboard/DashboardPage'
+import { isAuthenticated, login } from './utils/authClient'
+
+function AuthenticationGate({
+  children,
+}: {
+  children: React.JSX.Element
+}): React.JSX.Element | null {
+  const authenticated = isAuthenticated()
+
+  useEffect(() => {
+    if (!authenticated) {
+      login()
+    }
+  }, [authenticated])
+
+  return authenticated ? children : null
+}
 
 function App(): React.JSX.Element {
   return (
-    <Routes>
-      <Route element={<MainLayout />}>
-        <Route path="/dashboard" element={<DashboardPage />} />
-        <Route path="/consents" element={<ConsentRegistryPage />} />
-        <Route path="/consents/:id" element={<ConsentDetailsPage />} />
-        <Route path="*" element={<Navigate to="/consents" replace />} />
-      </Route>
-    </Routes>
+    <AuthenticationGate>
+      <Routes>
+        <Route element={<MainLayout />}>
+          <Route path="/dashboard" element={<DashboardPage />} />
+          <Route path="/consents" element={<ConsentRegistryPage />} />
+          <Route path="/consents/:id" element={<ConsentDetailsPage />} />
+          <Route path="*" element={<Navigate to="/consents" replace />} />
+        </Route>
+      </Routes>
+    </AuthenticationGate>
   )
 }
 

@@ -30,7 +30,13 @@ const commonEn = {
   layout: {
     home: 'Home',
     breadcrumbAriaLabel: 'Breadcrumb',
-    userAvatarAriaLabel: 'Signed-in user avatar',
+    userMenu: {
+      unknownUser: 'Unknown user',
+      noEmail: 'No email available',
+      signOut: 'Sign out',
+      signOutError: 'Unable to sign out. Please try again.',
+      tryAgain: 'Try again',
+    },
   },
   dashboard: {
     title: 'Dashboard',

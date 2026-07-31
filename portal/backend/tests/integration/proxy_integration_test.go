@@ -44,7 +44,6 @@ func newPortalServer(t *testing.T, upstreamURL string, configure func(*config.Co
 	cfg.Proxy.PlaceholderModeEnabled = true
 	cfg.Proxy.PlaceholderUserID = "user@example.com"
 	cfg.Proxy.PlaceholderOrgID = "ORG-001"
-	cfg.Proxy.PlaceholderGroupID = "GROUP-001"
 	if configure != nil {
 		configure(cfg)
 	}
@@ -88,7 +87,7 @@ func TestAPIPassthroughRewriteAndHeaderSafety(t *testing.T) {
 	if resp.StatusCode != http.StatusOK || gotPath != "/api/v1/consents" || gotQuery != "limit=10&offset=2" {
 		t.Fatalf("unexpected passthrough result: status=%d path=%s query=%s", resp.StatusCode, gotPath, gotQuery)
 	}
-	if gotOrg != "ORG-001" || gotGroup != "GROUP-001" || gotLegacyClient != "" {
+	if gotOrg != "ORG-001" || gotGroup != "" || gotLegacyClient != "" {
 		t.Fatalf("unexpected trusted headers: org=%q group=%q legacy=%q", gotOrg, gotGroup, gotLegacyClient)
 	}
 }
@@ -125,7 +124,7 @@ func TestConsentDetailsUseSingleDetailedConsentRequest(t *testing.T) {
 		switch r.URL.Path {
 		case "/api/v1/consents/" + consentID:
 			gotDetails = r.URL.Query().Get("details")
-			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"ACTIVE","createdTime":1702800000000,"updatedTime":1702800001000,"attributes":{},"authorizations":[],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","displayName":"Profile access","description":"Profile purpose","elements":[{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","displayName":"Email address","description":"User email address","mandatory":true,"approved":true}]}]}`))
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"ACTIVE","createdTime":1702800000000,"updatedTime":1702800001000,"attributes":{},"authorizations":[{"userId":"user@example.com","type":"authorisation","status":"APPROVED"}],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","displayName":"Profile access","description":"Profile purpose","elements":[{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","displayName":"Email address","description":"User email address","mandatory":true,"approved":true}]}]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -192,7 +191,7 @@ func TestApprovalBuildsVersionedUpdateAndTrustedGroupHeader(t *testing.T) {
 		switch {
 		case r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/"+consentID:
 			consentDetails = r.URL.Query().Get("details")
-			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-BOUND","type":"accounts","status":"CREATED","frequency":0,"expirationTime":0,"recurringIndicator":false,"dataAccessValidityDuration":86400,"attributes":{"region":"APAC"},"authorizations":[{"id":"auth-1","userId":"existing@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800000000,"resources":{}}],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true,"approved":false},{"elementId":"element-last","name":"last_name","namespace":"profile","version":"v2","mandatory":false,"approved":false},{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","mandatory":false,"approved":true}]}]}`))
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-BOUND","type":"accounts","status":"CREATED","frequency":0,"expirationTime":0,"recurringIndicator":false,"dataAccessValidityDuration":86400,"attributes":{"region":"APAC"},"authorizations":[{"id":"auth-1","userId":"existing@example.com","type":"authorisation","status":"APPROVED","updatedTime":1702800000000,"resources":{}},{"id":"auth-2","userId":"user@example.com","type":"authorisation","status":"CREATED","updatedTime":1702800000000,"resources":{}}],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true,"approved":false},{"elementId":"element-last","name":"last_name","namespace":"profile","version":"v2","mandatory":false,"approved":false},{"elementId":"element-email","name":"email","namespace":"profile","version":"v3","mandatory":false,"approved":true}]}]}`))
 		case r.Method == http.MethodPut && r.URL.Path == "/api/v1/consents/"+consentID:
 			updateGroup = r.Header.Get("group-id")
 			_ = json.NewDecoder(r.Body).Decode(&updateBody)
@@ -202,9 +201,7 @@ func TestApprovalBuildsVersionedUpdateAndTrustedGroupHeader(t *testing.T) {
 		}
 	}))
 	defer upstream.Close()
-	bff := newPortalServer(t, upstream.URL, func(cfg *config.Config) {
-		cfg.Proxy.PlaceholderGroupID = "GROUP-PLACEHOLDER"
-	})
+	bff := newPortalServer(t, upstream.URL, nil)
 	defer bff.Close()
 
 	selection := `[{"purposeId":"purpose-profile","purposeVersion":"v2","elementId":"element-last","elementVersion":"v2"}]`
@@ -269,7 +266,7 @@ func approvalReadOnlyUpstream(t *testing.T) *httptest.Server {
 			if r.URL.Query().Get("details") != "true" {
 				t.Errorf("expected details=true, got %v", r.URL.Query())
 			}
-			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"CREATED","attributes":{},"authorizations":[],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true,"approved":false}]}]}`))
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","type":"accounts","status":"CREATED","attributes":{},"authorizations":[{"userId":"user@example.com","type":"authorisation","status":"CREATED"}],"purposes":[{"purposeId":"purpose-profile","name":"profile_access","version":"v2","elements":[{"elementId":"element-first","name":"first_name","namespace":"profile","version":"v1","mandatory":true,"approved":false}]}]}`))
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
@@ -280,6 +277,10 @@ func TestRevokeUsesPostAndInjectsActionBy(t *testing.T) {
 	var method, path string
 	var body map[string]any
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Method == http.MethodGet && r.URL.Path == "/api/v1/consents/"+consentID {
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","authorizations":[{"userId":"user@example.com"}]}`))
+			return
+		}
 		method, path = r.Method, r.URL.Path
 		_ = json.NewDecoder(r.Body).Decode(&body)
 		w.WriteHeader(http.StatusOK)
@@ -372,6 +373,9 @@ func TestProxyErrorAndBodyLimits(t *testing.T) {
 		defer upstream.Close()
 		cfg, _ := config.Load()
 		cfg.Proxy.OpenFGCAPIURL = upstream.URL
+		cfg.Proxy.PlaceholderModeEnabled = true
+		cfg.Proxy.PlaceholderUserID = "user@example.com"
+		cfg.Proxy.PlaceholderOrgID = "ORG-001"
 		h, _ := newIntegrationHandler(*cfg)
 		req := httptest.NewRequest(http.MethodPost, "/api/consents", nil)
 		req.Body = failingReadCloser{}
@@ -394,7 +398,6 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 		cfg.Proxy.PlaceholderModeEnabled = false
 		cfg.Proxy.PlaceholderUserID = ""
 		cfg.Proxy.PlaceholderOrgID = ""
-		cfg.Proxy.PlaceholderGroupID = ""
 	})
 	defer bff.Close()
 
@@ -411,8 +414,94 @@ func TestMeEndpointsReturn503WhenPlaceholderModeDisabled(t *testing.T) {
 			t.Fatalf("request failed: %v", err)
 		}
 		_ = resp.Body.Close()
-		if resp.StatusCode != http.StatusServiceUnavailable || called {
-			t.Fatalf("%s %s: expected local 503, got status=%d called=%v", tc.method, tc.path, resp.StatusCode, called)
+		if resp.StatusCode != http.StatusUnauthorized || called {
+			t.Fatalf("%s %s: expected local 401, got status=%d called=%v", tc.method, tc.path, resp.StatusCode, called)
 		}
+	}
+}
+func TestConsentDetailsConcealsOwnershipFailure(t *testing.T) {
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/api/v1/consents/"+consentID {
+			_, _ = w.Write([]byte(`{"id":"` + consentID + `","groupId":"GROUP-001","authorizations":[{"userId":"another-user@example.com"}],"purposes":[]}`))
+			return
+		}
+		w.WriteHeader(http.StatusInternalServerError)
+	}))
+	defer upstream.Close()
+	bff := newPortalServer(t, upstream.URL, nil)
+	defer bff.Close()
+
+	resp, err := http.Get(bff.URL + "/me/consents/" + consentID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = resp.Body.Close() }()
+	if resp.StatusCode != http.StatusNotFound {
+		t.Fatalf("expected concealed 404, got %d", resp.StatusCode)
+	}
+}
+
+func TestMeEndpointsRejectInvalidConsentID(t *testing.T) {
+	upstreamCalled := false
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		upstreamCalled = true
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer upstream.Close()
+
+	bff := newPortalServer(t, upstream.URL, nil)
+	defer bff.Close()
+
+	testCases := []struct {
+		name   string
+		method string
+		path   string
+		body   string
+	}{
+		{name: "get by id", method: http.MethodGet, path: "/me/consents/not-a-uuid"},
+		{name: "approve", method: http.MethodPost, path: "/me/consents/not-a-uuid/approve", body: "[]"},
+		{name: "revoke", method: http.MethodPost, path: "/me/consents/not-a-uuid/revoke", body: "{}"},
+	}
+
+	for _, tc := range testCases {
+		t.Run(tc.name, func(t *testing.T) {
+			upstreamCalled = false
+
+			var body io.Reader
+			if tc.body != "" {
+				body = strings.NewReader(tc.body)
+			}
+
+			req, err := http.NewRequest(tc.method, bff.URL+tc.path, body)
+			if err != nil {
+				t.Fatalf("request creation failed: %v", err)
+			}
+			if tc.body != "" {
+				req.Header.Set("Content-Type", "application/json")
+			}
+
+			resp, err := http.DefaultClient.Do(req)
+			if err != nil {
+				t.Fatalf("request failed: %v", err)
+			}
+			defer func() {
+				_ = resp.Body.Close()
+			}()
+
+			if resp.StatusCode != http.StatusBadRequest {
+				t.Fatalf("expected 400, got %d", resp.StatusCode)
+			}
+			if upstreamCalled {
+				t.Fatal("expected request to be rejected before upstream call")
+			}
+
+			var payload map[string]any
+			if err := json.NewDecoder(resp.Body).Decode(&payload); err != nil {
+				t.Fatalf("expected json error payload: %v", err)
+			}
+			if payload["code"] != "INVALID_CONSENT_ID" {
+				t.Fatalf("expected INVALID_CONSENT_ID, got %v", payload["code"])
+			}
+		})
 	}
 }

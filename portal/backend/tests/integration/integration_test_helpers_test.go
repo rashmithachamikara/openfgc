@@ -1,10 +1,12 @@
 package integration
 
 import (
+	"context"
 	"net/http"
 
 	"github.com/wso2/openfgc/portal/backend/internal/me"
 	"github.com/wso2/openfgc/portal/backend/internal/proxy"
+	"github.com/wso2/openfgc/portal/backend/internal/system/auth"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 	"github.com/wso2/openfgc/portal/backend/internal/system/healthcheck"
 	systemlog "github.com/wso2/openfgc/portal/backend/internal/system/log"
@@ -19,10 +21,16 @@ func newIntegrationHandler(cfg config.Config) (http.Handler, error) {
 	mux.HandleFunc("GET /health/readiness", healthHandler.Readiness)
 	mux.HandleFunc("GET /health", healthHandler.Liveness)
 
-	if err := proxy.Initialize(mux, cfg.Proxy); err != nil {
+	log := systemlog.New(cfg.Log.Level)
+	authManager, err := auth.NewManager(context.Background(), cfg.Auth, cfg.Proxy, log)
+	if err != nil {
 		return nil, err
 	}
-	if err := me.Initialize(mux, cfg); err != nil {
+	authManager.RegisterRoutes(mux)
+	if err := proxy.Initialize(mux, cfg.Proxy, authManager); err != nil {
+		return nil, err
+	}
+	if err := me.Initialize(mux, cfg, authManager); err != nil {
 		return nil, err
 	}
 
@@ -33,5 +41,5 @@ func newIntegrationHandler(cfg config.Config) (http.Handler, error) {
 		AllowCredentials: cfg.CORS.AllowCredentials,
 	})
 
-	return middleware.CorrelationID(systemlog.New(cfg.Log.Level), withCORS), nil
+	return middleware.CorrelationID(log, withCORS), nil
 }

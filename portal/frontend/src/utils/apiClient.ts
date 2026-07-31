@@ -16,6 +16,8 @@
  * under the License.
  */
 
+import { getAccessTokenPart1, isAuthEnabled, login, refreshSession } from './authClient'
+
 export interface APIErrorPayload {
   code?: string
   message?: string
@@ -43,6 +45,11 @@ function buildHeaders(headers?: HeadersInit): Headers {
 
   if (!normalizedHeaders.has('Accept')) {
     normalizedHeaders.set('Accept', 'application/json')
+  }
+
+  const accessTokenPart = getAccessTokenPart1()
+  if (accessTokenPart && !normalizedHeaders.has('Authorization')) {
+    normalizedHeaders.set('Authorization', `Bearer ${accessTokenPart}`)
   }
 
   return normalizedHeaders
@@ -78,12 +85,32 @@ function buildURL(path: string, query?: RequestOptions['query']): string {
   return url.toString()
 }
 
+async function createAPIError(response: Response): Promise<APIError> {
+  let payload: APIErrorPayload | undefined
+
+  try {
+    payload = (await response.json()) as APIErrorPayload
+  } catch {
+    payload = undefined
+  }
+
+  return new APIError(
+    response.status,
+    payload?.code ?? 'API_REQUEST_FAILED',
+    payload?.message ?? `request failed with status ${response.status}`,
+  )
+}
+
 /**
  * Sends an API request and parses the response body as JSON.
  *
  * Use this helper for endpoints that always return a JSON payload.
  */
-export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+async function apiRequestInternal<T>(
+  path: string,
+  options: RequestOptions,
+  allowRefresh: boolean,
+): Promise<T> {
   const { query, headers, ...requestInit } = options
   const response = await fetch(buildURL(path, query), {
     credentials: 'include',
@@ -91,20 +118,21 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
     headers: buildHeaders(headers),
   })
 
-  if (!response.ok) {
-    let payload: APIErrorPayload | undefined
-
+  if (response.status === 401 && allowRefresh && isAuthEnabled()) {
     try {
-      payload = (await response.json()) as APIErrorPayload
+      await refreshSession()
     } catch {
-      payload = undefined
+      login()
+      throw await createAPIError(response)
     }
+    return apiRequestInternal<T>(path, options, false)
+  }
+  if (response.status === 401 && !allowRefresh && isAuthEnabled()) {
+    login()
+  }
 
-    throw new APIError(
-      response.status,
-      payload?.code ?? 'API_REQUEST_FAILED',
-      payload?.message ?? `request failed with status ${response.status}`,
-    )
+  if (!response.ok) {
+    throw await createAPIError(response)
   }
 
   if (response.status === 204) {
@@ -117,15 +145,20 @@ export async function apiRequest<T>(path: string, options: RequestOptions = {}):
   return (await response.json()) as T
 }
 
+export async function apiRequest<T>(path: string, options: RequestOptions = {}): Promise<T> {
+  return apiRequestInternal<T>(path, options, true)
+}
+
 /**
  * Sends an API request for endpoints that are expected to return no content.
  *
  * This helper is intended for APIs that commonly respond with HTTP 204.
  * If a successful response includes a payload unexpectedly, it is ignored.
  */
-export async function apiRequestNoContent(
+async function apiRequestNoContentInternal(
   path: string,
-  options: RequestOptions = {},
+  options: RequestOptions,
+  allowRefresh: boolean,
 ): Promise<void> {
   const { query, headers, ...requestInit } = options
   const response = await fetch(buildURL(path, query), {
@@ -134,19 +167,28 @@ export async function apiRequestNoContent(
     headers: buildHeaders(headers),
   })
 
-  if (!response.ok) {
-    let payload: APIErrorPayload | undefined
-
+  if (response.status === 401 && allowRefresh && isAuthEnabled()) {
     try {
-      payload = (await response.json()) as APIErrorPayload
+      await refreshSession()
     } catch {
-      payload = undefined
+      login()
+      throw await createAPIError(response)
     }
-
-    throw new APIError(
-      response.status,
-      payload?.code ?? 'API_REQUEST_FAILED',
-      payload?.message ?? `request failed with status ${response.status}`,
-    )
+    await apiRequestNoContentInternal(path, options, false)
+    return
   }
+  if (response.status === 401 && !allowRefresh && isAuthEnabled()) {
+    login()
+  }
+
+  if (!response.ok) {
+    throw await createAPIError(response)
+  }
+}
+
+export async function apiRequestNoContent(
+  path: string,
+  options: RequestOptions = {},
+): Promise<void> {
+  return apiRequestNoContentInternal(path, options, true)
 }

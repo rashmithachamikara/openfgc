@@ -3,10 +3,13 @@ module github.com/wso2/openfgc/portal/backend
 go 1.26.3
 
 require (
+	github.com/coreos/go-oidc/v3 v3.20.0
+	github.com/go-jose/go-jose/v4 v4.1.4
 	github.com/knadh/koanf/parsers/yaml v1.1.0
 	github.com/knadh/koanf/providers/env v1.0.0
 	github.com/knadh/koanf/providers/file v1.2.0
 	github.com/knadh/koanf/v2 v2.3.0
+	golang.org/x/oauth2 v0.36.0
 )
 
 require (

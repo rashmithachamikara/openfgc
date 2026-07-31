@@ -80,6 +80,19 @@ export default defineConfig([
     },
   },
   {
+    files: ['scripts/**/*.mjs'],
+    languageOptions: {
+      ecmaVersion: 2023,
+      sourceType: 'module',
+      globals: globals.node,
+    },
+    rules: {
+      'import/no-extraneous-dependencies': 'off',
+      'no-console': 'off',
+      'no-restricted-syntax': 'off',
+    },
+  },
+  {
     files: ['**/*.test.{ts,tsx}', '**/__tests__/**/*.{ts,tsx}'],
     rules: {
       'import/no-extraneous-dependencies': 'off',
