@@ -214,7 +214,7 @@ function ConsentDetailsPage(): React.JSX.Element {
         alignItems={{ md: 'flex-end' }}
         spacing={2}
       >
-        <Stack spacing={0.75} minWidth={0}>
+        <Stack spacing={1} minWidth={0}>
           <HeaderBreadcrumbs />
           <Typography variant="h4" fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
             {t('consentRegistry.details.title', 'Consent Details')}

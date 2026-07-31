@@ -192,7 +192,7 @@ function ElementDetailsPage(): React.JSX.Element {
           alignItems={{ md: 'flex-end' }}
           spacing={2}
         >
-          <Stack spacing={0.75} minWidth={0}>
+          <Stack spacing={1} minWidth={0}>
             <HeaderBreadcrumbs currentLabel={`${detail.namespace}:${detail.name}`} />
             <Typography variant="h4" fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
               {displayedVersion.displayName ?? detail.name}
