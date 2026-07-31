@@ -21,16 +21,17 @@ package proxy
 import (
 	"net/http"
 
+	"github.com/wso2/openfgc/portal/backend/internal/system/auth"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
 )
 
 // Initialize sets up the proxy module and registers routes.
-func Initialize(mux *http.ServeMux, cfg config.ProxyConfig) error {
+func Initialize(mux *http.ServeMux, cfg config.ProxyConfig, authManager *auth.Manager) error {
 	handler, err := NewHandler(cfg)
 	if err != nil {
 		return err
 	}
 
-	mux.HandleFunc("/api/{path...}", handler.API)
+	mux.Handle("/api/{path...}", authManager.RequireAPI(http.HandlerFunc(handler.API)))
 	return nil
 }

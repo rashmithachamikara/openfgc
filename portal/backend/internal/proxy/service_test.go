@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
+	systemcontext "github.com/wso2/openfgc/portal/backend/internal/system/context"
 )
 
 func TestNewServiceRejectsInvalidUpstreamURL(t *testing.T) {
@@ -69,7 +70,6 @@ func TestCheckAPIAccess(t *testing.T) {
 		MaxResponseBytes:   1024,
 		AllowedPassthrough: []string{"GET", "POST", "PUT", "DELETE"},
 		PlaceholderOrgID:   "ORG-001",
-		PlaceholderGroupID: "GROUP-001",
 	})
 	if err != nil {
 		t.Fatalf("failed to construct service: %v", err)
@@ -153,6 +153,7 @@ func TestForwardRawMapsBodyReadFailureToUpstreamUnavailable(t *testing.T) {
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
+	req = req.WithContext(systemcontext.WithPrincipal(req.Context(), systemcontext.Principal{UserID: "user-1", OrgID: "ORG-001", Scopes: map[string]struct{}{}}))
 	_, err = svc.ForwardRaw(req, http.MethodGet, "/api/v1/consents", nil, nil)
 	if !errors.Is(err, ErrUpstreamUnavailable) {
 		t.Fatalf("expected ErrUpstreamUnavailable, got: %v", err)
@@ -366,8 +367,8 @@ func TestForwardStripsUntrustedIdentityHeaders(t *testing.T) {
 		if got := r.Header.Get("org-id"); got != "ORG-001" {
 			t.Fatalf("expected trusted org-id, got %q", got)
 		}
-		if got := r.Header.Get("group-id"); got != "GROUP-001" {
-			t.Fatalf("expected trusted group-id, got %q", got)
+		if got := r.Header.Get("group-id"); got != "" {
+			t.Fatalf("expected untrusted group-id to be removed, got %q", got)
 		}
 		if got := r.Header.Get("TPP-client-id"); got != "" {
 			t.Fatalf("expected legacy client header to be stripped, got %q", got)
@@ -383,13 +384,13 @@ func TestForwardStripsUntrustedIdentityHeaders(t *testing.T) {
 		MaxResponseBytes:   1024,
 		AllowedPassthrough: []string{"GET"},
 		PlaceholderOrgID:   "ORG-001",
-		PlaceholderGroupID: "GROUP-001",
 	})
 	if err != nil {
 		t.Fatalf("failed to construct service: %v", err)
 	}
 
 	req := httptest.NewRequest(http.MethodGet, "http://bff.local/api/consents", nil)
+	req = req.WithContext(systemcontext.WithPrincipal(req.Context(), systemcontext.Principal{UserID: "user-1", OrgID: "ORG-001", Scopes: map[string]struct{}{}}))
 	req.Header.Set("org-id", "MALICIOUS-ORG")
 	req.Header.Set("group-id", "MALICIOUS-GROUP")
 	req.Header.Set("TPP-client-id", "MALICIOUS-CLIENT")

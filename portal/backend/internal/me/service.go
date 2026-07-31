@@ -143,6 +143,21 @@ func (s *Service) ForwardRaw(r *http.Request, upstreamMethod, upstreamPath strin
 	return s.proxy.ForwardRaw(r, upstreamMethod, upstreamPath, queryMutator, body)
 }
 
+// OwnedConsentGroupID verifies consent ownership and returns its trusted group ID.
+func OwnedConsentGroupID(body []byte, userID string) (string, bool, error) {
+	var consent consentRetrievalResponse
+	if err := json.Unmarshal(body, &consent); err != nil {
+		return "", false, proxy.ErrUpstreamUnavailable
+	}
+	userID = strings.TrimSpace(userID)
+	for _, authorization := range consent.Authorizations {
+		if authorization.UserID != nil && strings.TrimSpace(*authorization.UserID) == userID {
+			return strings.TrimSpace(consent.GroupID), true, nil
+		}
+	}
+	return "", false, nil
+}
+
 // WriteUpstreamResponse writes an upstream response back to the caller.
 func (s *Service) WriteUpstreamResponse(w http.ResponseWriter, resp *proxy.UpstreamResponse) {
 	_ = s.proxy.WriteUpstreamResponse(w, resp)

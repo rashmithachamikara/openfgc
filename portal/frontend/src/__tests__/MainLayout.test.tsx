@@ -72,11 +72,11 @@ function renderHeaderBreadcrumbs(initialRoute: string): void {
 }
 
 describe('MainLayout', () => {
-  it('renders translated header title and avatar aria label', () => {
+  it('renders translated header title and account menu trigger', () => {
     renderMainLayout()
 
     expect(screen.getByText('Consent Portal')).toBeInTheDocument()
-    expect(screen.getByRole('button', { name: 'Signed-in user avatar' })).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'Account' })).toBeInTheDocument()
   })
 
   it('toggles sidebar collapsed state when header toggle is clicked', () => {

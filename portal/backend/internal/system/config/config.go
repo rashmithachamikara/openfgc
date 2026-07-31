@@ -22,6 +22,7 @@ package config
 import (
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"net/url"
 	"os"
 	"strings"
@@ -39,7 +40,44 @@ type Config struct {
 	Server ServerConfig `koanf:"server"`
 	Log    LogConfig    `koanf:"log"`
 	CORS   CORSConfig   `koanf:"cors"`
+	Auth   AuthConfig   `koanf:"auth"`
 	Proxy  ProxyConfig  `koanf:"proxy"`
+}
+
+// AuthConfig contains OIDC confidential-client, JWT validation, and split-cookie settings.
+type AuthConfig struct {
+	Enabled                       bool          `koanf:"enabled"`
+	IssuerURL                     string        `koanf:"issuer_url"`
+	ClientID                      string        `koanf:"client_id"`
+	ClientSecret                  string        `koanf:"-"`
+	PortalURL                     string        `koanf:"portal_url"`
+	RedirectURI                   string        `koanf:"redirect_uri"`
+	PostLogoutRedirectURI         string        `koanf:"post_logout_redirect_uri"`
+	Scopes                        []string      `koanf:"scopes"`
+	ResourceAudience              string        `koanf:"resource_audience"`
+	AllowedSigningAlgorithms      []string      `koanf:"allowed_signing_algorithms"`
+	HTTPTimeout                   time.Duration `koanf:"http_timeout"`
+	RefreshTimeout                time.Duration `koanf:"refresh_timeout"`
+	ScopeClaim                    string        `koanf:"scope_claim"`
+	OrgIDClaim                    string        `koanf:"org_id_claim"`
+	RequireAccessTokenType        bool          `koanf:"require_access_token_type"`
+	AccessTokenTypeClaim          string        `koanf:"access_token_type_claim"`
+	AccessTokenTypeValue          string        `koanf:"access_token_type_value"`
+	AccessTokenPart1Cookie        string        `koanf:"access_token_part1_cookie"`
+	AccessTokenPart2Cookie        string        `koanf:"access_token_part2_cookie"`
+	RefreshTokenPart1Cookie       string        `koanf:"refresh_token_part1_cookie"`
+	RefreshTokenPart2Cookie       string        `koanf:"refresh_token_part2_cookie"`
+	IDTokenPart1Cookie            string        `koanf:"id_token_part1_cookie"`
+	IDTokenPart2Cookie            string        `koanf:"id_token_part2_cookie"`
+	OAuthStateCookie              string        `koanf:"oauth_state_cookie"`
+	PKCEVerifierCookie            string        `koanf:"pkce_verifier_cookie"`
+	CookieSecure                  bool          `koanf:"cookie_secure"`
+	CookieSameSite                string        `koanf:"cookie_same_site"`
+	ClockSkew                     time.Duration `koanf:"clock_skew"`
+	LoginTransactionMaxAgeSeconds int           `koanf:"login_transaction_max_age_seconds"`
+	RefreshCookieMaxAgeSeconds    int           `koanf:"refresh_cookie_max_age_seconds"`
+	MaxTokenPartBytes             int           `koanf:"max_token_part_bytes"`
+	MaxReconstructedTokenBytes    int           `koanf:"max_reconstructed_token_bytes"`
 }
 
 // CORSConfig contains browser cross-origin policy settings for local/frontend integration.
@@ -72,12 +110,10 @@ type ProxyConfig struct {
 	MaxRequestBytes   int64         `koanf:"max_request_bytes"`
 	MaxResponseBytes  int64         `koanf:"max_response_bytes"`
 
-	PlaceholderModeEnabled bool   `koanf:"placeholder_mode_enabled"`
-	PlaceholderUserID      string `koanf:"placeholder_user_id"`
-	PlaceholderOrgID       string `koanf:"placeholder_org_id"`
-	PlaceholderGroupID     string `koanf:"placeholder_group_id"`
-
-	AllowedPassthrough []string `koanf:"allowed_passthrough_methods"`
+	PlaceholderModeEnabled bool     `koanf:"placeholder_mode_enabled"`
+	PlaceholderUserID      string   `koanf:"placeholder_user_id"`
+	PlaceholderOrgID       string   `koanf:"placeholder_org_id"`
+	AllowedPassthrough     []string `koanf:"allowed_passthrough_methods"`
 }
 
 // Load initializes configuration from defaults, optional file, and environment variables.
@@ -128,6 +164,15 @@ func Load() (*Config, error) {
 	if rawHeaders := os.Getenv("BFF_CORS__ALLOWED_HEADERS"); rawHeaders != "" {
 		cfg.CORS.AllowedHeaders = ParseCSV(rawHeaders)
 	}
+	if rawScopes := os.Getenv("BFF_AUTH__SCOPES"); rawScopes != "" {
+		cfg.Auth.Scopes = strings.Fields(rawScopes)
+	}
+	if rawAlgorithms := os.Getenv("BFF_AUTH__ALLOWED_SIGNING_ALGORITHMS"); rawAlgorithms != "" {
+		cfg.Auth.AllowedSigningAlgorithms = ParseCSV(rawAlgorithms)
+	}
+	// Client secrets are intentionally sourced only from the process environment.
+	// They are never loaded from the optional YAML configuration file.
+	cfg.Auth.ClientSecret = os.Getenv("BFF_AUTH__CLIENT_SECRET")
 
 	return &cfg, validate(cfg)
 }
@@ -163,10 +208,85 @@ func setDefaults(k *koanf.Koanf) error {
 	if err := k.Set("cors.allowed_methods", []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"}); err != nil {
 		return err
 	}
-	if err := k.Set("cors.allowed_headers", []string{"Content-Type", "X-Correlation-ID"}); err != nil {
+	if err := k.Set("cors.allowed_headers", []string{"Content-Type", "Authorization", "X-Correlation-ID"}); err != nil {
 		return err
 	}
 	if err := k.Set("cors.allow_credentials", false); err != nil {
+		return err
+	}
+	if err := k.Set("auth.enabled", false); err != nil {
+		return err
+	}
+	if err := k.Set("auth.scopes", []string{"openid", "profile"}); err != nil {
+		return err
+	}
+	if err := k.Set("auth.allowed_signing_algorithms", []string{"RS256"}); err != nil {
+		return err
+	}
+	if err := k.Set("auth.http_timeout", "5s"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.refresh_timeout", "10s"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.clock_skew", "30s"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.scope_claim", "scope"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.org_id_claim", "org_id"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.require_access_token_type", false); err != nil {
+		return err
+	}
+	if err := k.Set("auth.access_token_type_claim", "token_type"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.access_token_type_value", "access_token"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.access_token_part1_cookie", "portal-at-p1"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.access_token_part2_cookie", "portal-at-p2"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.refresh_token_part1_cookie", "portal-rt-p1"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.refresh_token_part2_cookie", "portal-rt-p2"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.id_token_part1_cookie", "portal-id-p1"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.id_token_part2_cookie", "portal-id-p2"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.oauth_state_cookie", "portal-oauth-state"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.pkce_verifier_cookie", "portal-pkce-verifier"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.cookie_secure", false); err != nil {
+		return err
+	}
+	if err := k.Set("auth.cookie_same_site", "Lax"); err != nil {
+		return err
+	}
+	if err := k.Set("auth.refresh_cookie_max_age_seconds", 86400); err != nil {
+		return err
+	}
+	if err := k.Set("auth.login_transaction_max_age_seconds", 600); err != nil {
+		return err
+	}
+	if err := k.Set("auth.max_token_part_bytes", 3800); err != nil {
+		return err
+	}
+	if err := k.Set("auth.max_reconstructed_token_bytes", 7600); err != nil {
 		return err
 	}
 	if err := k.Set("proxy.openfgc_api_url", "http://localhost:9090"); err != nil {
@@ -188,9 +308,6 @@ func setDefaults(k *koanf.Koanf) error {
 		return err
 	}
 	if err := k.Set("proxy.placeholder_org_id", ""); err != nil {
-		return err
-	}
-	if err := k.Set("proxy.placeholder_group_id", ""); err != nil {
 		return err
 	}
 	if err := k.Set("proxy.allowed_passthrough_methods", []string{"GET", "POST", "PUT", "DELETE"}); err != nil {
@@ -261,17 +378,112 @@ func validate(cfg Config) error {
 	if cfg.Proxy.PlaceholderModeEnabled && strings.EqualFold(cfg.Env, "production") {
 		return fmt.Errorf("proxy.placeholder_mode_enabled cannot be true in production")
 	}
+	if err := validateAuth(cfg); err != nil {
+		return err
+	}
 	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderUserID != "" {
 		return fmt.Errorf("proxy.placeholder_user_id must be empty when placeholder mode is disabled")
 	}
 	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderOrgID != "" {
 		return fmt.Errorf("proxy.placeholder_org_id must be empty when placeholder mode is disabled")
 	}
-	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderGroupID != "" {
-		return fmt.Errorf("proxy.placeholder_group_id must be empty when placeholder mode is disabled")
-	}
 	if len(cfg.Proxy.AllowedPassthrough) == 0 {
 		return fmt.Errorf("proxy.allowed_passthrough_methods must not be empty")
+	}
+	return nil
+}
+
+func validateAuth(cfg Config) error {
+	if !cfg.Auth.Enabled {
+		if strings.EqualFold(cfg.Env, "production") {
+			return fmt.Errorf("auth.enabled must be true in production")
+		}
+		return nil
+	}
+	required := map[string]string{
+		"auth.issuer_url": cfg.Auth.IssuerURL,
+		"auth.client_id":  cfg.Auth.ClientID,
+		"auth.client_secret (BFF_AUTH__CLIENT_SECRET)": cfg.Auth.ClientSecret,
+		"auth.portal_url":               cfg.Auth.PortalURL,
+		"auth.redirect_uri":             cfg.Auth.RedirectURI,
+		"auth.post_logout_redirect_uri": cfg.Auth.PostLogoutRedirectURI,
+		"auth.resource_audience":        cfg.Auth.ResourceAudience,
+		"auth.scope_claim":              cfg.Auth.ScopeClaim,
+		"auth.org_id_claim":             cfg.Auth.OrgIDClaim,
+	}
+	for name, value := range required {
+		if strings.TrimSpace(value) == "" {
+			return fmt.Errorf("%s must not be empty when auth is enabled", name)
+		}
+	}
+	for name, value := range map[string]string{
+		"auth.issuer_url":               cfg.Auth.IssuerURL,
+		"auth.portal_url":               cfg.Auth.PortalURL,
+		"auth.redirect_uri":             cfg.Auth.RedirectURI,
+		"auth.post_logout_redirect_uri": cfg.Auth.PostLogoutRedirectURI,
+	} {
+		if err := validateAbsoluteHTTPURL(value, strings.EqualFold(cfg.Env, "production")); err != nil {
+			return fmt.Errorf("%s %w", name, err)
+		}
+	}
+	if len(cfg.Auth.Scopes) == 0 || len(cfg.Auth.AllowedSigningAlgorithms) == 0 {
+		return fmt.Errorf("auth scopes and allowed signing algorithms must not be empty")
+	}
+	if cfg.Auth.HTTPTimeout <= 0 || cfg.Auth.RefreshTimeout <= 0 {
+		return fmt.Errorf("auth HTTP timeouts must be > 0")
+	}
+	if cfg.Auth.ClockSkew < 0 {
+		return fmt.Errorf("auth.clock_skew must be >= 0")
+	}
+	if cfg.Auth.MaxTokenPartBytes <= 0 || cfg.Auth.MaxReconstructedTokenBytes < cfg.Auth.MaxTokenPartBytes*2 {
+		return fmt.Errorf("auth token size limits are invalid")
+	}
+	if cfg.Auth.RefreshCookieMaxAgeSeconds <= 0 {
+		return fmt.Errorf("auth.refresh_cookie_max_age_seconds must be > 0")
+	}
+	if cfg.Auth.LoginTransactionMaxAgeSeconds <= 0 || cfg.Auth.LoginTransactionMaxAgeSeconds > 600 {
+		return fmt.Errorf("auth.login_transaction_max_age_seconds must be between 1 and 600")
+	}
+	switch strings.ToLower(cfg.Auth.CookieSameSite) {
+	case "strict", "lax", "none":
+	default:
+		return fmt.Errorf("auth.cookie_same_site must be Strict, Lax, or None")
+	}
+	if strings.EqualFold(cfg.Auth.CookieSameSite, "none") && !cfg.Auth.CookieSecure {
+		return fmt.Errorf("auth.cookie_secure must be true when SameSite=None")
+	}
+	cookieNames := []string{
+		cfg.Auth.AccessTokenPart1Cookie, cfg.Auth.AccessTokenPart2Cookie,
+		cfg.Auth.RefreshTokenPart1Cookie, cfg.Auth.RefreshTokenPart2Cookie,
+		cfg.Auth.IDTokenPart1Cookie, cfg.Auth.IDTokenPart2Cookie,
+		cfg.Auth.OAuthStateCookie, cfg.Auth.PKCEVerifierCookie,
+	}
+	seenCookieNames := make(map[string]struct{}, len(cookieNames))
+	for _, name := range cookieNames {
+		if strings.TrimSpace(name) == "" || (&http.Cookie{Name: name, Value: "value"}).Valid() != nil {
+			return fmt.Errorf("auth cookie names must be valid and non-empty")
+		}
+		if _, duplicate := seenCookieNames[name]; duplicate {
+			return fmt.Errorf("auth cookie names must be unique")
+		}
+		seenCookieNames[name] = struct{}{}
+	}
+	if strings.EqualFold(cfg.Env, "production") && !cfg.Auth.CookieSecure {
+		return fmt.Errorf("auth.cookie_secure must be true in production")
+	}
+	if cfg.Proxy.PlaceholderModeEnabled {
+		return fmt.Errorf("proxy placeholder mode and auth cannot both be enabled")
+	}
+	return nil
+}
+
+func validateAbsoluteHTTPURL(raw string, requireHTTPS bool) error {
+	parsed, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || (parsed.Scheme != "http" && parsed.Scheme != "https") || parsed.Host == "" {
+		return fmt.Errorf("must be an absolute HTTP(S) URL")
+	}
+	if requireHTTPS && parsed.Scheme != "https" {
+		return fmt.Errorf("must use HTTPS in production")
 	}
 	return nil
 }

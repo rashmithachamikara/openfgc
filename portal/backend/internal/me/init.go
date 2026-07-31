@@ -21,27 +21,21 @@ package me
 import (
 	"net/http"
 
+	"github.com/wso2/openfgc/portal/backend/internal/system/auth"
 	"github.com/wso2/openfgc/portal/backend/internal/system/config"
-	"github.com/wso2/openfgc/portal/backend/internal/system/middleware"
 )
 
 // Initialize sets up the me module and registers routes.
-func Initialize(mux *http.ServeMux, cfg config.Config) error {
+func Initialize(mux *http.ServeMux, cfg config.Config, authManager *auth.Manager) error {
 	handler, err := NewHandler(cfg.Proxy)
 	if err != nil {
 		return err
 	}
 
-	userIDOptions := middleware.UserIDOptions{
-		PlaceholderModeEnabled: cfg.Proxy.PlaceholderModeEnabled,
-		PlaceholderUserID:      cfg.Proxy.PlaceholderUserID,
-		Environment:            cfg.Env,
-	}
-
-	mux.Handle("GET /me/consents", middleware.UserID(http.HandlerFunc(handler.Consents), userIDOptions))
-	mux.Handle("GET /me/consents/{consentId}", middleware.UserID(http.HandlerFunc(handler.ConsentByID), userIDOptions))
-	mux.Handle("POST /me/consents/{consentId}/approve", middleware.UserID(http.HandlerFunc(handler.ConsentApprove), userIDOptions))
-	mux.Handle("POST /me/consents/{consentId}/revoke", middleware.UserID(http.HandlerFunc(handler.ConsentRevoke), userIDOptions))
+	mux.Handle("GET /me/consents", authManager.Require(http.HandlerFunc(handler.Consents), auth.ScopeConsentsReadSelf))
+	mux.Handle("GET /me/consents/{consentId}", authManager.Require(http.HandlerFunc(handler.ConsentByID), auth.ScopeConsentsReadSelf))
+	mux.Handle("POST /me/consents/{consentId}/approve", authManager.Require(http.HandlerFunc(handler.ConsentApprove), auth.ScopeConsentsWriteSelf))
+	mux.Handle("POST /me/consents/{consentId}/revoke", authManager.Require(http.HandlerFunc(handler.ConsentRevoke), auth.ScopeConsentsWriteSelf))
 
 	return nil
 }

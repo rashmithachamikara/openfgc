@@ -42,11 +42,11 @@ Exit criteria:
 **Phase 3: Authentication and session implementation (depends on Phase 2)**
 Goal: replace placeholders with real identity from auth context.
 
-1. Implement login, callback, me, refresh, and logout flows.
-2. Implement split-cookie security model and CSRF protections.
+1. Implement login, callback, frontend ID-token profile decoding, refresh, and logout flows. Do not add `GET /auth/me`.
+2. Implement the split-cookie security model; this stage uses possession of both split parts instead of a separate CSRF token.
 3. Add auth/session middleware and context propagation.
 4. Replace config-based identity injection with validated principal-derived values.
-5. Add end-to-end auth + proxy integration tests.
+5. Add mock-IdP auth lifecycle tests and authenticated proxy integration tests.
 
 Exit criteria:
 1. Full authenticated request lifecycle works end to end.
