@@ -52,7 +52,7 @@ Create a local `.env` file from `.env.example` before running or building the po
 | Variable                               | Description                                                                                                               | Example                   |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------- | ------------------------- |
 | `VITE_API_BASE_URL`                    | Required base URL for the OpenFGC Portal backend API. Vite embeds this value at build time.                               | `http://localhost:8080`   |
-| `VITE_ORG_ID`                          | Organization ID used to identify and filter organization-wide consent purposes.                                           | `openfgc-perf-org`        |
+| `VITE_ORG_ID`                          | Organization ID used to identify and filter organization-wide consent purposes.                                           | `ORG-001`        |
 | `VITE_AUTH_ENABLED`                    | Enables frontend authentication gating; set to `true` for protected deployments.                                          | `true`                    |
 | `VITE_AUTH_ACCESS_TOKEN_PART1_COOKIE`  | Cookie name for the readable access-token part.                                                                           | `portal-at-p1`            |
 | `VITE_AUTH_REFRESH_TOKEN_PART1_COOKIE` | Cookie name for the readable refresh-token part.                                                                          | `portal-rt-p1`            |
