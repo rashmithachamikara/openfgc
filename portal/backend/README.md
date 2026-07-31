@@ -16,9 +16,29 @@
  * under the License.
  -->
 
-# OpenFGC Portal Backend (BFF)
+# OpenFGC Portal Backend
 
-Stateless backend-for-frontend (BFF) for OpenFGC Portal, responsible for handling portal-facing authentication flows and securely proxying API requests from `portal/frontend` to `/consent-server`.
+The OpenFGC Portal Backend handles portal-facing authentication flows and securely proxies allowlisted API requests from `portal/frontend` to OpenFGC.
+
+## Quickstart
+
+Prerequisites:
+
+- Go 1.26.3
+- [Task](https://taskfile.dev/installation/)
+- A running OpenFGC server
+
+From `portal/backend`:
+
+1. Copy `.env.example` to `.env` and set `BFF_PROXY__OPENFGC_API_URL` for your OpenFGC server.
+2. To access protected routes locally without an identity provider, enable placeholder mode and set non-empty placeholder user and organization IDs in `.env`.
+3. Start the Portal Backend:
+
+   ```shell
+   task run:env
+   ```
+
+The server listens on `http://localhost:8080` by default. Verify it with `GET /health`.
 
 ## Commands
 
@@ -63,7 +83,7 @@ Portal-facing user endpoints:
 
 - `GET /me/consents` -> upstream `GET /api/v1/consents` with forced `userIds=<validated subject>` and `details=true`
 - `GET /me/consents/{consentId}` -> one upstream `GET /api/v1/consents/{consentId}?details=true`; the detailed consent snapshot is returned unchanged
-- `POST /me/consents/{consentId}/approve` -> BFF fetches the current consent with `details=true`, validates selected optional elements against its embedded stable IDs and versions, automatically approves mandatory elements, preserves existing approvals, and sends a full upstream consent update with the consent's immutable `groupId` as the trusted `group-id` header
+- `POST /me/consents/{consentId}/approve` -> the Portal Backend fetches the current consent with `details=true`, validates selected optional elements against its embedded stable IDs and versions, automatically approves mandatory elements, preserves existing approvals, and sends a full upstream consent update with the consent's immutable `groupId` as the trusted `group-id` header
 - `POST /me/consents/{consentId}/revoke` -> upstream `POST /api/v1/consents/{consentId}/revoke`
 
 Proxy hardening:

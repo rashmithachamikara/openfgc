@@ -16,34 +16,55 @@
  * under the License.
  -->
 
-# openfgc-portal
+# OpenFGC Portal Frontend
 
-The OpenFGC Portal project is designed to create a comprehensive Consent Management Portal, leveraging the [OpenFGC Consent Management API](https://github.com/wso2/openfgc).
+The OpenFGC Portal Frontend is designed to create a comprehensive Consent Management Portal User Interface, leveraging the [OpenFGC Consent Management API](https://github.com/wso2/openfgc).
 
 React 19 + TypeScript + Vite app using WSO2 Oxygen UI.
 
 ## Requirements
 
 - Node.js 20.19+ (or 22.12+)
-- Corepack enabled
-- pnpm
+
+## Quickstart
+
+From `portal/frontend`:
+
+1. Copy `.env.example` to `.env` and configure `VITE_API_BASE_URL` for the Portal Backend.
+2. Ensure pnpm 10.6.5 is available. If pnpm was installed through another method, skip this command; otherwise enable it through Corepack:
+
+   ```shell
+   corepack enable
+   ```
+
+3. Install dependencies:
+
+   ```shell
+   pnpm install
+   ```
+
+4. Start the development server:
+
+   ```shell
+   pnpm dev
+   ```
+
+Open the local URL printed by Vite, typically `http://localhost:5173`.
 
 ## Package Manager
 
-This project uses pnpm.
+This project uses [pnpm](https://pnpm.io/), with the version pinned in `package.json`.
+
+Enable pnpm through Corepack:
 
 ```bash
 corepack enable
-corepack prepare pnpm@10.6.5 --activate
 ```
 
-If your machine cannot install global Corepack shims due to permission restrictions, use `corepack pnpm` directly.
+Note: If your machine cannot install Corepack shims, prefix pnpm commands with `corepack`, for example `corepack pnpm install`.
 
-## Install
+Alternatively, follow the other [recommended pnpm installation options](https://pnpm.io/installation).
 
-```bash
-pnpm install
-```
 
 ## Environment
 
