@@ -16,7 +16,7 @@
  * under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 import { OxygenTheme, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
@@ -38,6 +38,7 @@ beforeEach(() => {
 })
 
 afterEach(() => {
+  cleanup()
   vi.runOnlyPendingTimers()
   vi.useRealTimers()
 })

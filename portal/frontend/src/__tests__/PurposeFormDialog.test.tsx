@@ -3,10 +3,10 @@
  * Licensed under the Apache License, Version 2.0.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { createElement, type ComponentProps } from 'react'
 import { I18nextProvider } from 'react-i18next'
-import { describe, expect, it, vi } from 'vitest'
+import { afterEach, describe, expect, it, vi } from 'vitest'
 import { OxygenTheme, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
 import PurposeFormDialog from '../features/catalog/components/PurposeFormDialog'
 import i18n from '../i18n/i18n'
@@ -65,6 +65,10 @@ function renderDialog(overrides: Partial<ComponentProps<typeof PurposeFormDialog
     </I18nextProvider>,
   )
 }
+
+afterEach(() => {
+  cleanup()
+})
 
 describe('purpose form dialog', () => {
   it('uses the compact layout and creates an organization-wide purpose without a group ID', () => {
