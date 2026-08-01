@@ -33,6 +33,8 @@ import (
 	systemcontext "github.com/wso2/openfgc/portal/backend/internal/system/context"
 )
 
+var errInvalidConsentState = errors.New("invalid consent state")
+
 // Handler serves /me route groups.
 type Handler struct {
 	svc *Service
@@ -96,7 +98,7 @@ func (h *Handler) ConsentByID(w http.ResponseWriter, r *http.Request) {
 
 	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+url.PathEscape(consentID), func(q url.Values) {
 		q.Set("details", "true")
-		q.Del("includeStatusHistory")
+		q.Set("includeStatusHistory", "true")
 	}, nil)
 	if err != nil {
 		writeProxyError(w, err)
@@ -173,6 +175,68 @@ func (h *Handler) ConsentApprove(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
+		return
+	}
+	if err := h.svc.ForwardWithGroupID(w, r, http.MethodPut, "/api/v1/consents/"+url.PathEscape(consentID), nil, payload, trustedGroupID); err != nil {
+		writeProxyError(w, err)
+	}
+}
+
+// ConsentReject handles POST /me/consents/{consentId}/reject.
+func (h *Handler) ConsentReject(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		writeJSONError(w, http.StatusMethodNotAllowed, "METHOD_NOT_ALLOWED", "method not allowed")
+		return
+	}
+	userID, ok := h.resolveUserID(w, r)
+	if !ok {
+		return
+	}
+	consentID := r.PathValue("consentId")
+	if consentID == "" {
+		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent id not found")
+		return
+	}
+	if !isValidConsentID(consentID) {
+		writeJSONError(w, http.StatusBadRequest, "INVALID_CONSENT_ID", "invalid consent id")
+		return
+	}
+	body, err := h.readBoundedBody(r)
+	if err != nil {
+		writeBodyReadError(w, err)
+		return
+	}
+	if err := validateEmptyObjectPayload(body); err != nil {
+		writeJSONError(w, http.StatusBadRequest, "INVALID_PAYLOAD", "invalid request payload")
+		return
+	}
+	baseResp, err := h.svc.ForwardRaw(r, http.MethodGet, "/api/v1/consents/"+url.PathEscape(consentID), func(q url.Values) {
+		q.Set("details", "true")
+		q.Del("includeStatusHistory")
+	}, nil)
+	if err != nil {
+		writeProxyError(w, err)
+		return
+	}
+	if baseResp.StatusCode != http.StatusOK {
+		h.svc.WriteUpstreamResponse(w, baseResp)
+		return
+	}
+	if _, owned, ownershipErr := OwnedConsentGroupID(baseResp.Body, userID); ownershipErr != nil {
+		writeProxyError(w, ownershipErr)
+		return
+	} else if !owned {
+		writeJSONError(w, http.StatusNotFound, "NOT_FOUND", "consent not found")
+		return
+	}
+
+	payload, trustedGroupID, err := h.svc.BuildRejectionUpdatePayload(baseResp.Body, userID)
+	if err != nil {
+		if errors.Is(err, errInvalidConsentState) {
+			writeJSONError(w, http.StatusConflict, "INVALID_CONSENT_STATE", "only created consents can be rejected")
+			return
+		}
+		writeProxyError(w, err)
 		return
 	}
 	if err := h.svc.ForwardWithGroupID(w, r, http.MethodPut, "/api/v1/consents/"+url.PathEscape(consentID), nil, payload, trustedGroupID); err != nil {
@@ -260,6 +324,18 @@ func writeBodyReadError(w http.ResponseWriter, err error) {
 		return
 	}
 	writeJSONError(w, http.StatusBadRequest, "INVALID_REQUEST_BODY", "invalid request body")
+}
+
+func validateEmptyObjectPayload(body []byte) error {
+	if strings.TrimSpace(string(body)) == "" {
+		return nil
+	}
+
+	var payload map[string]json.RawMessage
+	if err := json.Unmarshal(body, &payload); err != nil || payload == nil || len(payload) > 0 {
+		return errors.New("expected an empty JSON object")
+	}
+	return nil
 }
 
 func (h *Handler) resolveUserID(w http.ResponseWriter, r *http.Request) (string, bool) {

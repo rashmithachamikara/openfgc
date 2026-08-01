@@ -26,7 +26,7 @@ import {
   Stack,
   Typography,
 } from '@wso2/oxygen-ui'
-import { AlertTriangle } from '@wso2/oxygen-ui-icons-react'
+import { Ban } from '@wso2/oxygen-ui-icons-react'
 import { useTranslation } from 'react-i18next'
 
 interface ConsentRevocationDialogProps {
@@ -111,7 +111,7 @@ function ConsentRevocationDialog({
                 flexShrink: 0,
               }}
             >
-              <AlertTriangle size={20} />
+              <Ban size={20} />
             </Box>
             <Typography variant="body2" color="text.secondary">
               {t(
@@ -134,7 +134,14 @@ function ConsentRevocationDialog({
           gap: 1.25,
         }}
       >
-        <Button fullWidth color="error" variant="contained" disabled={loading} onClick={onConfirm}>
+        <Button
+          fullWidth
+          color="error"
+          variant="contained"
+          startIcon={<Ban size={16} />}
+          disabled={loading}
+          onClick={onConfirm}
+        >
           {loading
             ? t('consentRegistry.modals.actions.processing', 'Processing...')
             : t('consentRegistry.modals.revocation.confirm', 'Revoke Consents')}

@@ -16,10 +16,10 @@
  * under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react'
+import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { I18nextProvider } from 'react-i18next'
 import { MemoryRouter, Route, Routes, useLocation } from 'react-router-dom'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import { AcrylicOrangeTheme, CssBaseline, OxygenUIThemeProvider } from '@wso2/oxygen-ui'
 import AppSidebar from '../components/layout/sidebar/AppSidebar'
 import i18n from '../i18n/i18n'
@@ -29,6 +29,10 @@ function LocationProbe(): React.JSX.Element {
 
   return <p>{`${location.pathname}${location.search}`}</p>
 }
+
+afterEach(() => {
+  cleanup()
+})
 
 describe('AppSidebar', () => {
   it('renders navigation items and navigates to dashboard and pending consents', () => {

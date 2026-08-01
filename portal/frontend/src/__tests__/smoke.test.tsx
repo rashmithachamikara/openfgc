@@ -16,9 +16,9 @@
  * under the License.
  */
 
-import { render, screen } from '@testing-library/react'
+import { cleanup, render, screen } from '@testing-library/react'
 import { I18nextProvider, useTranslation } from 'react-i18next'
-import { describe, expect, it } from 'vitest'
+import { afterEach, describe, expect, it } from 'vitest'
 import i18n from '../i18n/i18n'
 
 function I18nPlaceholder(): React.JSX.Element {
@@ -32,6 +32,10 @@ function I18nMissingKeyPlaceholder(): React.JSX.Element {
 
   return <h1>{t('app.missingTitle')}</h1>
 }
+
+afterEach(() => {
+  cleanup()
+})
 
 describe('app i18n setup', () => {
   it('renders translated heading text with i18n provider', () => {

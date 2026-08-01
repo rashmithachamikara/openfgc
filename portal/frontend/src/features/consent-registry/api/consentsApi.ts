@@ -31,7 +31,11 @@ export async function fetchMyConsents(
     method: 'GET',
     query: {
       consentStatuses: params.consentStatuses,
-      consentTypes: params.consentTypes,
+      purposeName: params.purposeName,
+      groupIds: params.groupIds,
+      elementName: params.elementName,
+      elementVersion: params.elementVersion,
+      sort: params.sort,
       fromTime: params.fromTime,
       toTime: params.toTime,
       limit: params.limit,
@@ -56,6 +60,16 @@ export async function approveMyConsent(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(selectedOptionalElements),
+  })
+}
+
+export async function rejectMyConsent(consentID: string): Promise<unknown> {
+  return apiRequest<unknown>(`/me/consents/${encodeURIComponent(consentID)}/reject`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({}),
   })
 }
 

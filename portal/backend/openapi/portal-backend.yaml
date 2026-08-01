@@ -129,6 +129,32 @@ paths:
           description: Comma-separated consent types.
           schema: { type: string }
         - in: query
+          name: purposeName
+          description: Purpose name contained by the consent.
+          schema: { type: string }
+        - in: query
+          name: groupIds
+          description: Comma-separated group IDs.
+          schema: { type: string }
+        - in: query
+          name: elementName
+          description: Element name contained by the consent.
+          schema: { type: string }
+        - in: query
+          name: elementVersion
+          description: >-
+            Element version contained by the consent. Requires elementName.
+          schema: { type: string }
+        - in: query
+          name: sort
+          description: >-
+            Up to three comma-separated sort items in `{field}:{direction}` or
+            `{field}` form. Supported fields are `createdTime`, `updatedTime`,
+            `validityTime`, `status`, `groupId`, and `consentType`; directions
+            are `asc` and `desc`, with `desc` used when omitted. Defaults to
+            `createdTime:desc` when the parameter is omitted.
+          schema: { type: string }
+        - in: query
           name: fromTime
           description: Inclusive lower bound for updated time, in Unix milliseconds.
           schema: { type: integer, format: int64 }
@@ -162,7 +188,7 @@ paths:
       description: >-
         Fetches one consent with `details=true` and returns its embedded purpose
         and element display names and descriptions unchanged. Status audit
-        history is not exposed by this `/me` route.
+        history is included by forcing `includeStatusHistory=true` upstream.
       parameters:
         - $ref: '#/components/parameters/ConsentID'
       responses:
@@ -211,6 +237,43 @@ paths:
               schema: { $ref: '#/components/schemas/ConsentDetail' }
         '400': { $ref: '#/components/responses/ProxyError' }
         '404': { $ref: '#/components/responses/ProxyError' }
+        '413': { $ref: '#/components/responses/ProxyError' }
+        '502': { $ref: '#/components/responses/ProxyError' }
+        '503': { $ref: '#/components/responses/ProxyError' }
+  /me/consents/{consentId}/reject:
+    post:
+      tags: [User]
+      summary: Reject a pending current-user consent
+      security:
+        - PortalOAuthDocumentation: [portal:consents:write:self]
+          AccessTokenPart2: []
+      description: >-
+        Fetches the current consent with `details=true`, verifies ownership and
+        that its status is `CREATED`, then builds a minimal
+        `PUT /api/v1/consents/{consentId}` update. Existing authorizations are
+        preserved and the trusted user's authorization status is changed to
+        `REJECTED`. Purpose and element approvals are not included in the
+        update. The consent's immutable `groupId` is sent as the trusted
+        upstream `group-id` header.
+      parameters:
+        - $ref: '#/components/parameters/ConsentID'
+      requestBody:
+        required: false
+        description: No request properties are currently supported.
+        content:
+          application/json:
+            schema:
+              type: object
+              additionalProperties: false
+      responses:
+        '200':
+          description: Consent server update response, returned unchanged.
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/ConsentDetail' }
+        '400': { $ref: '#/components/responses/ProxyError' }
+        '404': { $ref: '#/components/responses/ProxyError' }
+        '409': { $ref: '#/components/responses/ProxyError' }
         '413': { $ref: '#/components/responses/ProxyError' }
         '502': { $ref: '#/components/responses/ProxyError' }
         '503': { $ref: '#/components/responses/ProxyError' }
@@ -597,6 +660,19 @@ components:
         purposes:
           type: array
           items: { $ref: '#/components/schemas/ConsentPurpose' }
+        statusHistory:
+          type: array
+          items: { $ref: '#/components/schemas/ConsentStatusAuditItem' }
+    ConsentStatusAuditItem:
+      type: object
+      required: [statusAuditId, currentStatus, actionTime]
+      properties:
+        statusAuditId: { type: string }
+        previousStatus: { type: string }
+        currentStatus: { type: string }
+        actionTime: { type: integer, format: int64 }
+        actionBy: { type: string, nullable: true }
+        reason: { type: string, nullable: true }
     ConsentPurpose:
       type: object
       required: [purposeId, name, version, elements]

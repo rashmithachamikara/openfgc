@@ -27,22 +27,30 @@ import {
   Stack,
   Typography,
 } from '@wso2/oxygen-ui'
+import { Ban, CircleCheckBig } from '@wso2/oxygen-ui-icons-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
+import ConsentRejectionDialog from './components/ConsentRejectionDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
 import ConsentAuthorizationsSection from './components/details/ConsentAuthorizationsSection'
+import ConsentLifecycleSection from './components/details/ConsentLifecycleSection'
 import ConsentMetadataCard from './components/details/ConsentMetadataCard'
 import ConsentPurposesSection from './components/details/ConsentPurposesSection'
 import ConsentResourcesModal from './components/details/ConsentResourcesModal'
 import {
   useApproveConsentMutation,
   useConsentDetailQuery,
+  useRejectConsentMutation,
   useRevokeConsentMutation,
 } from './hooks/useConsentQueries'
-import { isConsentApprovableStatus, isConsentRevokableStatus } from './utils/statusChip'
+import {
+  isConsentApprovableStatus,
+  isConsentRejectableStatus,
+  isConsentRevokableStatus,
+} from './utils/statusChip'
 
 function formatResourcesForModal(resources: unknown): string {
   if (!resources) {
@@ -84,7 +92,7 @@ function ConsentDetailsLoading(): React.JSX.Element {
               <Skeleton variant="rounded" width={84} height={24} />
             </Stack>
           }
-          sx={{ pb: 2 }}
+          sx={{ pb: 1 }}
         />
         <Divider />
         <CardContent sx={{ pt: 3 }}>
@@ -107,7 +115,7 @@ function ConsentDetailsLoading(): React.JSX.Element {
 
       {['purpose', 'table', 'lifecycle'].map((section) => (
         <Card key={`details-${section}-skeleton`} sx={{ boxShadow: 1 }}>
-          <CardHeader title={<Skeleton variant="text" width={180} />} sx={{ pb: 0 }} />
+          <CardHeader title={<Skeleton variant="text" width={180} />} sx={{ pb: 1 }} />
           <Divider />
           <CardContent sx={{ p: 2 }}>
             {Array.from({ length: section === 'purpose' ? 2 : 4 }).map((_, index) => (
@@ -146,8 +154,10 @@ function ConsentDetailsPage(): React.JSX.Element {
   const navigate = useNavigate()
   const consentDetailQuery = useConsentDetailQuery(id)
   const approveMutation = useApproveConsentMutation()
+  const rejectMutation = useRejectConsentMutation()
   const revokeMutation = useRevokeConsentMutation()
   const [approvalDialogOpen, setApprovalDialogOpen] = useState<boolean>(false)
+  const [rejectionDialogOpen, setRejectionDialogOpen] = useState<boolean>(false)
   const [revocationDialogOpen, setRevocationDialogOpen] = useState<boolean>(false)
   const [resourcesModalOpen, setResourcesModalOpen] = useState<boolean>(false)
   const [selectedResourcesJson, setSelectedResourcesJson] = useState<string>('')
@@ -170,6 +180,7 @@ function ConsentDetailsPage(): React.JSX.Element {
 
   const detail = consentDetailQuery.data
   const canApprove = detail ? isConsentApprovableStatus(detail.status) : false
+  const canReject = detail ? isConsentRejectableStatus(detail.status) : false
   const canRevoke = detail ? isConsentRevokableStatus(detail.status) : false
 
   if (consentDetailQuery.isLoading) {
@@ -197,28 +208,25 @@ function ConsentDetailsPage(): React.JSX.Element {
       component="main"
       sx={{ p: { xs: 2, md: 4 }, display: 'flex', flexDirection: 'column', gap: 3 }}
     >
-      <Box sx={{ position: 'relative' }}>
-        <Stack spacing={1}>
+      <Stack
+        direction={{ xs: 'column', md: 'row' }}
+        justifyContent="space-between"
+        alignItems={{ md: 'flex-end' }}
+        spacing={2}
+      >
+        <Stack spacing={1} minWidth={0}>
           <HeaderBreadcrumbs />
-          <Typography variant="h4" sx={{ fontWeight: 700 }}>
+          <Typography variant="h4" fontWeight={700} sx={{ overflowWrap: 'anywhere' }}>
             {t('consentRegistry.details.title', 'Consent Details')}
           </Typography>
         </Stack>
-        <Stack
-          direction="row"
-          spacing={1.5}
-          sx={{
-            mt: { xs: 2, md: 0 },
-            position: { xs: 'static', md: 'absolute' },
-            right: { md: 0 },
-            bottom: { md: 0 },
-          }}
-        >
+        <Stack direction={{ xs: 'column', sm: 'row' }} alignItems={{ sm: 'center' }} spacing={1}>
           {canApprove ? (
             <Button
               variant="contained"
               color="warning"
               size="small"
+              startIcon={<CircleCheckBig size={16} />}
               disabled={approveMutation.isPending}
               onClick={() => {
                 setApprovalDialogOpen(true)
@@ -227,19 +235,36 @@ function ConsentDetailsPage(): React.JSX.Element {
               {t('consentRegistry.actions.approve')}
             </Button>
           ) : null}
-          <Button
-            variant="contained"
-            color="error"
-            size="small"
-            disabled={revokeMutation.isPending || !canRevoke}
-            onClick={() => {
-              setRevocationDialogOpen(true)
-            }}
-          >
-            {t('consentRegistry.actions.revoke')}
-          </Button>
+          {canReject ? (
+            <Button
+              variant="contained"
+              color="error"
+              size="small"
+              startIcon={<Ban size={16} />}
+              disabled={rejectMutation.isPending}
+              onClick={() => {
+                setRejectionDialogOpen(true)
+              }}
+            >
+              {t('consentRegistry.actions.reject')}
+            </Button>
+          ) : null}
+          {canRevoke ? (
+            <Button
+              variant="contained"
+              color="error"
+              size="small"
+              startIcon={<Ban size={16} />}
+              disabled={revokeMutation.isPending}
+              onClick={() => {
+                setRevocationDialogOpen(true)
+              }}
+            >
+              {t('consentRegistry.actions.revoke')}
+            </Button>
+          ) : null}
         </Stack>
-      </Box>
+      </Stack>
 
       <ConsentMetadataCard consentId={id} detail={detail} />
       <ConsentPurposesSection purposes={detail.purposes} />
@@ -250,6 +275,7 @@ function ConsentDetailsPage(): React.JSX.Element {
           setResourcesModalOpen(true)
         }}
       />
+      <ConsentLifecycleSection statusHistory={detail.statusHistory ?? []} />
 
       <ConsentResourcesModal
         open={resourcesModalOpen}
@@ -277,6 +303,23 @@ function ConsentDetailsPage(): React.JSX.Element {
               },
             },
           )
+        }}
+      />
+
+      <ConsentRejectionDialog
+        key={`rejection-${id}-${String(rejectionDialogOpen)}`}
+        open={rejectionDialogOpen}
+        consentId={id}
+        loading={rejectMutation.isPending}
+        onClose={() => {
+          setRejectionDialogOpen(false)
+        }}
+        onConfirm={() => {
+          rejectMutation.mutate(id, {
+            onSuccess: () => {
+              setRejectionDialogOpen(false)
+            },
+          })
         }}
       />
 

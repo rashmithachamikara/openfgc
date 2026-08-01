@@ -26,7 +26,11 @@ import ConsentRegistryFilters from './components/ConsentRegistryFilters'
 import ConsentRegistryTable from './components/ConsentRegistryTable'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
 import { CONSENT_REGISTRY_ROWS_PER_PAGE_OPTIONS } from './constants'
-import type { ConsentRegistryFilters as ConsentRegistryFiltersModel } from '../../types/consent'
+import type {
+  ConsentRegistryFilters as ConsentRegistryFiltersModel,
+  ConsentRegistrySortDirection,
+  ConsentRegistrySortField,
+} from '../../types/consent'
 import {
   useApproveConsentMutation,
   useConsentDetailQuery,
@@ -36,9 +40,10 @@ import {
 
 const DEFAULT_FILTERS: ConsentRegistryFiltersModel = {
   status: 'All',
+  purposeName: '',
+  groupIds: '',
   startDate: '',
   endDate: '',
-  consentType: '',
 }
 
 const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
@@ -52,6 +57,14 @@ const FILTER_STATUS_VALUES: ConsentRegistryFiltersModel['status'][] = [
 
 const DEFAULT_PAGE = 0
 const DEFAULT_ROWS_PER_PAGE = 10
+const DEFAULT_SORT_FIELD: ConsentRegistrySortField = 'updatedTime'
+const DEFAULT_SORT_DIRECTION: ConsentRegistrySortDirection = 'desc'
+const SORT_FIELDS: ConsentRegistrySortField[] = ['status', 'updatedTime', 'validityTime']
+
+interface ConsentRegistrySort {
+  field: ConsentRegistrySortField
+  direction: ConsentRegistrySortDirection
+}
 
 function isValidFilterStatus(value: string): value is ConsentRegistryFiltersModel['status'] {
   return FILTER_STATUS_VALUES.includes(value as ConsentRegistryFiltersModel['status'])
@@ -62,9 +75,10 @@ function getFiltersFromSearchParams(searchParams: URLSearchParams): ConsentRegis
 
   return {
     status: statusParam && isValidFilterStatus(statusParam) ? statusParam : DEFAULT_FILTERS.status,
+    purposeName: searchParams.get('purposeName') ?? DEFAULT_FILTERS.purposeName,
+    groupIds: searchParams.get('groupIds') ?? DEFAULT_FILTERS.groupIds,
     startDate: searchParams.get('startDate') ?? DEFAULT_FILTERS.startDate,
     endDate: searchParams.get('endDate') ?? DEFAULT_FILTERS.endDate,
-    consentType: searchParams.get('consentType') ?? DEFAULT_FILTERS.consentType,
   }
 }
 
@@ -90,15 +104,46 @@ function getRowsPerPageFromSearchParams(searchParams: URLSearchParams): number {
     : DEFAULT_ROWS_PER_PAGE
 }
 
+function getSortFromSearchParams(searchParams: URLSearchParams): ConsentRegistrySort {
+  const sortParam = searchParams.get('sort')
+
+  if (!sortParam || sortParam.includes(',')) {
+    return { field: DEFAULT_SORT_FIELD, direction: DEFAULT_SORT_DIRECTION }
+  }
+
+  const [field, direction = DEFAULT_SORT_DIRECTION, ...extraParts] = sortParam.split(':')
+  const validField = SORT_FIELDS.includes(field as ConsentRegistrySortField)
+  const validDirection = direction === 'asc' || direction === 'desc'
+
+  if (!validField || !validDirection || extraParts.length > 0) {
+    return { field: DEFAULT_SORT_FIELD, direction: DEFAULT_SORT_DIRECTION }
+  }
+
+  return {
+    field: field as ConsentRegistrySortField,
+    direction,
+  }
+}
+
 function toSearchParams(
   filters: ConsentRegistryFiltersModel,
   page = DEFAULT_PAGE,
   rowsPerPage = DEFAULT_ROWS_PER_PAGE,
+  sortField: ConsentRegistrySortField = DEFAULT_SORT_FIELD,
+  sortDirection: ConsentRegistrySortDirection = DEFAULT_SORT_DIRECTION,
 ): URLSearchParams {
   const params = new URLSearchParams()
 
   if (filters.status !== DEFAULT_FILTERS.status) {
     params.set('status', filters.status)
+  }
+
+  if (filters.purposeName.trim()) {
+    params.set('purposeName', filters.purposeName.trim())
+  }
+
+  if (filters.groupIds.trim()) {
+    params.set('groupIds', filters.groupIds.trim())
   }
 
   if (filters.startDate) {
@@ -109,16 +154,16 @@ function toSearchParams(
     params.set('endDate', filters.endDate)
   }
 
-  if (filters.consentType.trim()) {
-    params.set('consentType', filters.consentType.trim())
-  }
-
   if (page !== DEFAULT_PAGE) {
     params.set('page', String(page + 1))
   }
 
   if (rowsPerPage !== DEFAULT_ROWS_PER_PAGE) {
     params.set('rowsPerPage', String(rowsPerPage))
+  }
+
+  if (sortField !== DEFAULT_SORT_FIELD || sortDirection !== DEFAULT_SORT_DIRECTION) {
+    params.set('sort', `${sortField}:${sortDirection}`)
   }
 
   return params
@@ -136,7 +181,14 @@ function ConsentRegistryPage(): React.JSX.Element {
   const filters = useMemo(() => getFiltersFromSearchParams(searchParams), [searchParams])
   const page = useMemo(() => getPageFromSearchParams(searchParams), [searchParams])
   const rowsPerPage = useMemo(() => getRowsPerPageFromSearchParams(searchParams), [searchParams])
-  const consentListQuery = useConsentListQuery(filters, page, rowsPerPage)
+  const sort = useMemo(() => getSortFromSearchParams(searchParams), [searchParams])
+  const consentListQuery = useConsentListQuery(
+    filters,
+    page,
+    rowsPerPage,
+    sort.field,
+    sort.direction,
+  )
   const selectedApprovalConsentQuery = useConsentDetailQuery(selectedApprovalConsentID ?? undefined)
   const approveMutation = useApproveConsentMutation()
   const revokeMutation = useRevokeConsentMutation()
@@ -158,49 +210,67 @@ function ConsentRegistryPage(): React.JSX.Element {
         <ConsentRegistryFilters
           filters={filters}
           onFilterChange={(nextFilters) => {
-            setSearchParams(toSearchParams(nextFilters, DEFAULT_PAGE, rowsPerPage), {
-              replace: true,
-            })
+            setSearchParams(
+              toSearchParams(nextFilters, DEFAULT_PAGE, rowsPerPage, sort.field, sort.direction),
+              {
+                replace: true,
+              },
+            )
           }}
           onClear={() => {
-            setSearchParams({}, { replace: true })
+            setSearchParams(
+              toSearchParams(
+                DEFAULT_FILTERS,
+                DEFAULT_PAGE,
+                rowsPerPage,
+                sort.field,
+                sort.direction,
+              ),
+              { replace: true },
+            )
           }}
         />
 
-        {consentListQuery.isError ? (
-          <Typography color="error.main">{t('consentRegistry.messages.loadFailed')}</Typography>
-        ) : null}
-
-        {!consentListQuery.isError && (rows.length > 0 || isTableLoading) ? (
-          <ConsentRegistryTable
-            rows={rows}
-            totalCount={totalCount}
-            isLoading={isTableLoading}
-            page={page}
-            rowsPerPage={rowsPerPage}
-            onPageChange={(nextPage) => {
-              setSearchParams(toSearchParams(filters, nextPage, rowsPerPage), { replace: true })
-            }}
-            onRowsPerPageChange={(nextRowsPerPage) => {
-              setSearchParams(toSearchParams(filters, DEFAULT_PAGE, nextRowsPerPage), {
+        <ConsentRegistryTable
+          rows={rows}
+          totalCount={totalCount}
+          isLoading={isTableLoading}
+          isError={consentListQuery.isError}
+          page={page}
+          rowsPerPage={rowsPerPage}
+          sortField={sort.field}
+          sortDirection={sort.direction}
+          onPageChange={(nextPage) => {
+            setSearchParams(
+              toSearchParams(filters, nextPage, rowsPerPage, sort.field, sort.direction),
+              { replace: true },
+            )
+          }}
+          onRowsPerPageChange={(nextRowsPerPage) => {
+            setSearchParams(
+              toSearchParams(filters, DEFAULT_PAGE, nextRowsPerPage, sort.field, sort.direction),
+              {
                 replace: true,
-              })
-            }}
-            onApprove={(consentID) => {
-              setSelectedApprovalConsentID(consentID)
-              setApprovalDialogOpen(true)
-            }}
-            onRevoke={(consentID) => {
-              setSelectedRevocationConsentID(consentID)
-              setRevocationDialogOpen(true)
-            }}
-            isMutating={approveMutation.isPending || revokeMutation.isPending}
-          />
-        ) : null}
-
-        {!isTableLoading && !consentListQuery.isError && rows.length === 0 ? (
-          <Typography>{t('consentRegistry.messages.empty')}</Typography>
-        ) : null}
+              },
+            )
+          }}
+          onSortChange={(sortField, sortDirection) => {
+            setSearchParams(
+              toSearchParams(filters, DEFAULT_PAGE, rowsPerPage, sortField, sortDirection),
+              { replace: true },
+            )
+          }}
+          onRetry={() => consentListQuery.refetch()}
+          onApprove={(consentID) => {
+            setSelectedApprovalConsentID(consentID)
+            setApprovalDialogOpen(true)
+          }}
+          onRevoke={(consentID) => {
+            setSelectedRevocationConsentID(consentID)
+            setRevocationDialogOpen(true)
+          }}
+          isMutating={approveMutation.isPending || revokeMutation.isPending}
+        />
 
         {selectedApprovalConsentID ? (
           <ConsentApprovalDialog

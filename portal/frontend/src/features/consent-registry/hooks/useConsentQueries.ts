@@ -30,6 +30,7 @@ import {
   approveMyConsent,
   fetchMyConsentByID,
   fetchMyConsents,
+  rejectMyConsent,
   revokeMyConsent,
 } from '../api/consentsApi'
 import {
@@ -43,6 +44,8 @@ import type {
   ConsentListQueryParams,
   ConsentRecord,
   ConsentRegistryFilters,
+  ConsentRegistrySortDirection,
+  ConsentRegistrySortField,
 } from '../../../types/consent'
 import { isConsentAPIStatus } from '../../../types/consent'
 import {
@@ -65,6 +68,8 @@ function toListParams(
   filters: ConsentRegistryFilters,
   page: number,
   rowsPerPage: number,
+  sortField: ConsentRegistrySortField,
+  sortDirection: ConsentRegistrySortDirection,
 ): ConsentListQueryParams {
   const statusFilterMap: Record<Exclude<ConsentRegistryFilters['status'], 'All'>, string> = {
     Active: 'ACTIVE',
@@ -75,8 +80,10 @@ function toListParams(
   }
 
   return {
+    sort: `${sortField}:${sortDirection}`,
     consentStatuses: filters.status === 'All' ? undefined : statusFilterMap[filters.status],
-    consentTypes: filters.consentType.trim() || undefined,
+    purposeName: filters.purposeName.trim() || undefined,
+    groupIds: filters.groupIds.trim() || undefined,
     fromTime: toStartOfDayEpochMilliseconds(filters.startDate),
     toTime: toEndOfDayEpochMilliseconds(filters.endDate),
     limit: rowsPerPage,
@@ -108,8 +115,10 @@ function consentListQueryOptions(
   filters: ConsentRegistryFilters,
   page: number,
   rowsPerPage: number,
+  sortField: ConsentRegistrySortField,
+  sortDirection: ConsentRegistrySortDirection,
 ) {
-  const params = toListParams(filters, page, rowsPerPage)
+  const params = toListParams(filters, page, rowsPerPage, sortField, sortDirection)
 
   return queryOptions({
     queryKey: ['consents', params],
@@ -128,9 +137,13 @@ export function useConsentListQuery(
   filters: ConsentRegistryFilters,
   page: number,
   rowsPerPage: number,
+  sortField: ConsentRegistrySortField,
+  sortDirection: ConsentRegistrySortDirection,
 ): UseQueryResult<ConsentListResult> {
   const queryClient = useQueryClient()
-  const query = useQuery(consentListQueryOptions(filters, page, rowsPerPage))
+  const query = useQuery(
+    consentListQueryOptions(filters, page, rowsPerPage, sortField, sortDirection),
+  )
 
   useEffect(() => {
     const nextPage = page + 1
@@ -138,10 +151,21 @@ export function useConsentListQuery(
 
     if (!query.isPlaceholderData && hasNextPage) {
       queryClient
-        .prefetchQuery(consentListQueryOptions(filters, nextPage, rowsPerPage))
+        .prefetchQuery(
+          consentListQueryOptions(filters, nextPage, rowsPerPage, sortField, sortDirection),
+        )
         .catch(() => undefined)
     }
-  }, [filters, page, query.data?.total, query.isPlaceholderData, queryClient, rowsPerPage])
+  }, [
+    filters,
+    page,
+    query.data?.total,
+    query.isPlaceholderData,
+    queryClient,
+    rowsPerPage,
+    sortDirection,
+    sortField,
+  ])
 
   return query
 }
@@ -181,6 +205,18 @@ export function useRevokeConsentMutation(): UseMutationResult<unknown, Error, st
 
   return useMutation({
     mutationFn: async (consentID: string): Promise<unknown> => revokeMyConsent(consentID),
+    onSuccess: async (_data, consentID): Promise<void> => {
+      await queryClient.invalidateQueries({ queryKey: ['consents'] })
+      await queryClient.invalidateQueries({ queryKey: ['consent', consentID] })
+    },
+  })
+}
+
+export function useRejectConsentMutation(): UseMutationResult<unknown, Error, string> {
+  const queryClient = useQueryClient()
+
+  return useMutation({
+    mutationFn: async (consentID: string): Promise<unknown> => rejectMyConsent(consentID),
     onSuccess: async (_data, consentID): Promise<void> => {
       await queryClient.invalidateQueries({ queryKey: ['consents'] })
       await queryClient.invalidateQueries({ queryKey: ['consent', consentID] })

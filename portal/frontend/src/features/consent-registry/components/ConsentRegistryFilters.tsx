@@ -17,15 +17,24 @@
  */
 
 import {
+  AdapterDateFns,
   Box,
   Button,
+  DatePickers,
   FormControl,
+  IconButton,
   InputLabel,
   MenuItem,
+  Popover,
+  SearchBar,
   Select,
   Stack,
   TextField,
+  Tooltip,
+  Typography,
 } from '@wso2/oxygen-ui'
+import { ListFilter } from '@wso2/oxygen-ui-icons-react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type { ConsentRegistryFilters as ConsentRegistryFiltersModel } from '../../../types/consent'
 
@@ -35,43 +44,142 @@ interface ConsentRegistryFiltersProps {
   onClear: () => void
 }
 
+const MAIN_FILTER_HEIGHT = 40
+
+function parseDate(value: string): Date | null {
+  if (!value) return null
+
+  const [year, month, day] = value.split('-').map(Number)
+  const date = new Date(year, month - 1, day)
+
+  return date.getFullYear() === year && date.getMonth() === month - 1 && date.getDate() === day
+    ? date
+    : null
+}
+
+function formatDate(value: Date | null): string {
+  if (!value) return ''
+
+  const year = value.getFullYear()
+  const month = String(value.getMonth() + 1).padStart(2, '0')
+  const day = String(value.getDate()).padStart(2, '0')
+
+  return `${year}-${month}-${day}`
+}
+
 function ConsentRegistryFilters({
   filters,
   onFilterChange,
   onClear,
 }: ConsentRegistryFiltersProps): React.JSX.Element {
   const { t } = useTranslation('common')
+  const [draft, setDraft] = useState(filters)
+  const [filtersAnchor, setFiltersAnchor] = useState<HTMLElement | null>(null)
+  const filtersOpen = Boolean(filtersAnchor)
+  const advancedFilterCount = [filters.groupIds, filters.startDate, filters.endDate].filter(
+    Boolean,
+  ).length
+
+  useEffect(() => {
+    setDraft(filters)
+  }, [filters])
+
+  const applyPurposeSearch = (): void => {
+    onFilterChange({ ...filters, purposeName: draft.purposeName })
+  }
+
+  const cancelAdvancedChanges = (): void => {
+    setDraft(filters)
+    setFiltersAnchor(null)
+  }
 
   return (
-    <Box
-      component="section"
-      aria-label={t('consentRegistry.filters.sectionAriaLabel')}
-      sx={(theme) => ({
-        p: { xs: 1.5, sm: 2 },
-        borderRadius: 1,
-        ...theme.applyStyles('light', {
-          bgcolor: theme.palette.grey[50],
-        }),
-        ...theme.applyStyles('dark', {
-          bgcolor: 'rgba(255, 255, 255, 0.04)',
-        }),
-      })}
-    >
-      <Stack
-        direction={{ xs: 'column', lg: 'row' }}
-        spacing={{ xs: 1.5, lg: 2 }}
-        alignItems={{ lg: 'center' }}
-      >
-        <FormControl size="small" sx={{ width: { xs: '100%', lg: 'auto' }, minWidth: { lg: 180 } }}>
+    <Box component="section" aria-label={t('consentRegistry.filters.sectionAriaLabel')}>
+      <Stack direction={{ xs: 'column', sm: 'row' }} spacing={1}>
+        <Box sx={{ position: 'relative', flex: 1, height: MAIN_FILTER_HEIGHT }}>
+          <SearchBar
+            size="small"
+            fullWidth
+            value={draft.purposeName}
+            placeholder={t('consentRegistry.filters.purposeSearchPlaceholder')}
+            onChange={(event) => {
+              setDraft({ ...draft, purposeName: event.target.value })
+            }}
+            onKeyDown={(event) => {
+              if (event.key === 'Enter') {
+                applyPurposeSearch()
+              }
+            }}
+            sx={{ '& .MuiInputBase-root': { height: MAIN_FILTER_HEIGHT, pr: 6 } }}
+          />
+          <Box
+            sx={{
+              position: 'absolute',
+              top: '50%',
+              right: 4,
+              transform: 'translateY(-50%)',
+              pl: 0.5,
+              borderLeft: 1,
+              borderColor: 'divider',
+              display: 'flex',
+            }}
+          >
+            <Tooltip title={t('consentRegistry.filters.advanced')}>
+              <IconButton
+                size="small"
+                color={filtersOpen ? 'primary' : 'default'}
+                aria-label={t('consentRegistry.filters.advanced')}
+                aria-haspopup="dialog"
+                aria-expanded={filtersOpen}
+                onClick={(event) => setFiltersAnchor(event.currentTarget)}
+              >
+                <ListFilter size={17} />
+              </IconButton>
+            </Tooltip>
+            {advancedFilterCount > 0 ? (
+              <Box
+                component="span"
+                sx={{
+                  position: 'absolute',
+                  top: -3,
+                  right: -3,
+                  minWidth: 16,
+                  height: 16,
+                  px: 0.4,
+                  borderRadius: 8,
+                  bgcolor: 'primary.main',
+                  color: 'primary.contrastText',
+                  fontSize: '0.625rem',
+                  lineHeight: '16px',
+                  textAlign: 'center',
+                  pointerEvents: 'none',
+                }}
+              >
+                {advancedFilterCount}
+              </Box>
+            ) : null}
+          </Box>
+        </Box>
+
+        <FormControl
+          size="small"
+          sx={{
+            width: { xs: '100%', sm: 220 },
+            height: MAIN_FILTER_HEIGHT,
+            flexShrink: 0,
+          }}
+        >
           <InputLabel id="consent-status-label">{t('consentRegistry.filters.status')}</InputLabel>
           <Select
             labelId="consent-status-label"
             id="consent-status"
             value={filters.status}
             label={t('consentRegistry.filters.status')}
+            sx={{ height: MAIN_FILTER_HEIGHT }}
             onChange={(event) => {
               onFilterChange({
                 ...filters,
+                purposeName: draft.purposeName,
                 status: event.target.value as ConsentRegistryFiltersModel['status'],
               })
             }}
@@ -84,80 +192,104 @@ function ConsentRegistryFilters({
             <MenuItem value="Expired">{t('consentRegistry.status.expired')}</MenuItem>
           </Select>
         </FormControl>
-
-        <Stack
-          direction={{ xs: 'column', lg: 'row' }}
-          spacing={{ xs: 1.5, lg: 2 }}
-          sx={{ width: { xs: '100%', lg: 'auto' } }}
-        >
-          <TextField
-            label={t('consentRegistry.filters.startDate')}
-            type="date"
-            size="small"
-            value={filters.startDate}
-            onChange={(event) => {
-              onFilterChange({
-                ...filters,
-                startDate: event.target.value,
-              })
-            }}
-            slotProps={{
-              htmlInput: {
-                'aria-label': t('consentRegistry.filters.startDateAriaLabel'),
-              },
-              inputLabel: {
-                shrink: true,
-              },
-            }}
-            sx={{ width: { xs: '100%', lg: 'auto' }, minWidth: { lg: 160 } }}
-          />
-          <TextField
-            label={t('consentRegistry.filters.endDate')}
-            type="date"
-            size="small"
-            value={filters.endDate}
-            onChange={(event) => {
-              onFilterChange({
-                ...filters,
-                endDate: event.target.value,
-              })
-            }}
-            slotProps={{
-              htmlInput: {
-                'aria-label': t('consentRegistry.filters.endDateAriaLabel'),
-              },
-              inputLabel: {
-                shrink: true,
-              },
-            }}
-            sx={{ width: { xs: '100%', lg: 'auto' }, minWidth: { lg: 160 } }}
-          />
-        </Stack>
-
-        <TextField
-          label={t('consentRegistry.filters.consentType')}
-          size="small"
-          value={filters.consentType}
-          onChange={(event) => {
-            onFilterChange({
-              ...filters,
-              consentType: event.target.value,
-            })
-          }}
-          sx={{ width: { xs: '100%', lg: 'auto' }, flex: { lg: 1 }, minWidth: { lg: 180 } }}
-        />
-
-        <Button
-          variant="text"
-          onClick={onClear}
-          aria-label={t('consentRegistry.filters.clearAriaLabel')}
-          sx={{
-            width: { xs: '100%', lg: 'auto' },
-          }}
-        >
-          {t('consentRegistry.filters.clear')}
-        </Button>
       </Stack>
+
+      <Popover
+        open={filtersOpen}
+        anchorEl={filtersAnchor}
+        onClose={cancelAdvancedChanges}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+        transformOrigin={{ vertical: 'top', horizontal: 'right' }}
+        slotProps={{
+          paper: {
+            sx: {
+              width: { xs: 'calc(100vw - 32px)', sm: 680 },
+              maxWidth: 'calc(100vw - 32px)',
+              mt: 1,
+              p: 2.5,
+            },
+          },
+        }}
+      >
+        <Stack spacing={2.5}>
+          <Stack sx={{ pb: 1.5, borderBottom: 1, borderColor: 'divider' }}>
+            <Typography variant="subtitle2" fontWeight={600}>
+              {t('consentRegistry.filters.advanced')}
+            </Typography>
+          </Stack>
+
+          <TextField
+            size="small"
+            fullWidth
+            label={t('consentRegistry.filters.groupIds')}
+            value={draft.groupIds}
+            onChange={(event) => setDraft({ ...draft, groupIds: event.target.value })}
+          />
+
+          <DatePickers.LocalizationProvider dateAdapter={AdapterDateFns}>
+            <Stack direction={{ xs: 'column', sm: 'row' }} spacing={2}>
+              <DatePickers.DatePicker
+                label={t('consentRegistry.filters.startDate')}
+                value={parseDate(draft.startDate)}
+                onChange={(value) => setDraft({ ...draft, startDate: formatDate(value) })}
+                slotProps={{
+                  textField: {
+                    size: 'small',
+                    fullWidth: true,
+                    inputProps: {
+                      'aria-label': t('consentRegistry.filters.startDateAriaLabel'),
+                    },
+                  },
+                }}
+              />
+              <DatePickers.DatePicker
+                label={t('consentRegistry.filters.endDate')}
+                value={parseDate(draft.endDate)}
+                onChange={(value) => setDraft({ ...draft, endDate: formatDate(value) })}
+                slotProps={{
+                  textField: {
+                    size: 'small',
+                    fullWidth: true,
+                    inputProps: {
+                      'aria-label': t('consentRegistry.filters.endDateAriaLabel'),
+                    },
+                  },
+                }}
+              />
+            </Stack>
+          </DatePickers.LocalizationProvider>
+
+          <Stack
+            direction="row"
+            spacing={1}
+            justifyContent="space-between"
+            sx={{ pt: 2, borderTop: 1, borderColor: 'divider' }}
+          >
+            <Button
+              variant="text"
+              aria-label={t('consentRegistry.filters.clearAriaLabel')}
+              onClick={() => {
+                setFiltersAnchor(null)
+                onClear()
+              }}
+            >
+              {t('consentRegistry.filters.clear')}
+            </Button>
+            <Stack direction="row" spacing={1}>
+              <Button onClick={cancelAdvancedChanges}>{t('consentRegistry.filters.cancel')}</Button>
+              <Button
+                variant="contained"
+                onClick={() => {
+                  onFilterChange(draft)
+                  setFiltersAnchor(null)
+                }}
+              >
+                {t('consentRegistry.filters.apply')}
+              </Button>
+            </Stack>
+          </Stack>
+        </Stack>
+      </Popover>
     </Box>
   )
 }
