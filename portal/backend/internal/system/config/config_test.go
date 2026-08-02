@@ -56,6 +56,28 @@ func TestLoadFromEnv(t *testing.T) {
 	}
 }
 
+func TestOrgIDOverrideFromEnv(t *testing.T) {
+	t.Setenv("BFF_AUTH__ORG_ID_OVERRIDE", "ORG-001")
+
+	cfg, err := Load()
+	if err != nil {
+		t.Fatalf("expected config to load, got error: %v", err)
+	}
+	if cfg.Auth.OrgIDOverride != "ORG-001" {
+		t.Fatalf("unexpected organization override: %q", cfg.Auth.OrgIDOverride)
+	}
+}
+
+func TestOrgIDClaimCanBeEmptyWhenOverrideIsConfigured(t *testing.T) {
+	cfg := validAuthValidationConfig("development")
+	cfg.Auth.OrgIDClaim = ""
+	cfg.Auth.OrgIDOverride = "ORG-001"
+
+	if err := validateAuth(cfg); err != nil {
+		t.Fatalf("expected organization override to replace claim requirement: %v", err)
+	}
+}
+
 func TestInvalidCORSOriginRejected(t *testing.T) {
 	tests := []struct {
 		name    string

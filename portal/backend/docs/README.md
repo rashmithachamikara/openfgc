@@ -138,6 +138,8 @@ Configuration is grouped into:
 
 Production startup requires authentication, HTTPS authentication URLs, and secure cookies. Placeholder identity cannot run in production and cannot be enabled together with OIDC authentication. In permitted local environments, placeholder mode supplies the configured user and organization without an identity provider. `BFF_PROXY__PLACEHOLDER_SCOPES` is a space-separated list of canonical portal scopes granted to that principal. Unknown or duplicate scopes are rejected, and an empty list creates an authenticated principal without portal permissions. Placeholder identity and scope values must be empty when placeholder mode is disabled.
 
+For authenticated deployments, the organization normally comes from the access-token claim named by `BFF_AUTH__ORG_ID_CLAIM`. Set `BFF_AUTH__ORG_ID_OVERRIDE` to force a fixed organization ID instead; a non-empty override takes precedence and the token does not need the organization claim. Leave the override empty to keep claim-based resolution.
+
 ### Local topology
 
 | Service | Typical local address |

@@ -60,6 +60,7 @@ type AuthConfig struct {
 	RefreshTimeout                time.Duration `koanf:"refresh_timeout"`
 	ScopeClaim                    string        `koanf:"scope_claim"`
 	OrgIDClaim                    string        `koanf:"org_id_claim"`
+	OrgIDOverride                 string        `koanf:"org_id_override"`
 	RequireAccessTokenType        bool          `koanf:"require_access_token_type"`
 	AccessTokenTypeClaim          string        `koanf:"access_token_type_claim"`
 	AccessTokenTypeValue          string        `koanf:"access_token_type_value"`
@@ -242,6 +243,9 @@ func setDefaults(k *koanf.Koanf) error {
 	if err := k.Set("auth.org_id_claim", "org_id"); err != nil {
 		return err
 	}
+	if err := k.Set("auth.org_id_override", ""); err != nil {
+		return err
+	}
 	if err := k.Set("auth.require_access_token_type", false); err != nil {
 		return err
 	}
@@ -419,7 +423,9 @@ func validateAuth(cfg Config) error {
 		"auth.post_logout_redirect_uri": cfg.Auth.PostLogoutRedirectURI,
 		"auth.resource_audience":        cfg.Auth.ResourceAudience,
 		"auth.scope_claim":              cfg.Auth.ScopeClaim,
-		"auth.org_id_claim":             cfg.Auth.OrgIDClaim,
+	}
+	if strings.TrimSpace(cfg.Auth.OrgIDOverride) == "" {
+		required["auth.org_id_claim"] = cfg.Auth.OrgIDClaim
 	}
 	for name, value := range required {
 		if strings.TrimSpace(value) == "" {

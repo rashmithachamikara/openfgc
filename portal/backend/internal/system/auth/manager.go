@@ -221,7 +221,10 @@ func (m *Manager) validateAccessToken(ctx context.Context, raw string) (systemco
 		return systemcontext.Principal{}, time.Time{}, errInvalidCredentials
 	}
 	subject := strings.TrimSpace(verified.Subject)
-	orgID, err := stringClaim(claims, m.cfg.OrgIDClaim)
+	orgID := strings.TrimSpace(m.cfg.OrgIDOverride)
+	if orgID == "" {
+		orgID, err = stringClaim(claims, m.cfg.OrgIDClaim)
+	}
 	if err != nil || subject == "" || orgID == "" {
 		return systemcontext.Principal{}, time.Time{}, errInvalidCredentials
 	}
