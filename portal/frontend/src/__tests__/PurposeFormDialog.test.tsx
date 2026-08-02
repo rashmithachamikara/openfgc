@@ -62,6 +62,7 @@ function renderDialog(overrides: Partial<ComponentProps<typeof PurposeFormDialog
   const props: ComponentProps<typeof PurposeFormDialog> = {
     open: true,
     initialValue: undefined,
+    organizationId: 'test-org',
     loading: false,
     error: undefined,
     onClose: vi.fn(),

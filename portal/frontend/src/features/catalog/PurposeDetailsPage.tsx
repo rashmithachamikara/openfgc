@@ -71,8 +71,6 @@ import {
   usePurposeVersionsQuery,
 } from './hooks/useCatalogQueries'
 
-const ORG_ID = String(import.meta.env.VITE_ORG_ID ?? '').trim()
-
 interface DetailField {
   icon: React.ReactNode
   label: string
@@ -131,7 +129,7 @@ function PurposeDetailsPage(): React.JSX.Element {
   const [selectedVersion, setSelectedVersion] = useState<string>()
   const [versionDialogOpen, setVersionDialogOpen] = useState(false)
   const [deleteVersion, setDeleteVersion] = useState<string>()
-  const { hasScope } = useAuthorization()
+  const { currentUser, hasScope } = useAuthorization()
   const canWritePurposes = hasScope(PORTAL_SCOPES.PURPOSES_WRITE)
 
   const detail = detailQuery.data
@@ -186,7 +184,7 @@ function PurposeDetailsPage(): React.JSX.Element {
     )
   }
 
-  const organizationWide = Boolean(ORG_ID) && detail.groupId === ORG_ID
+  const organizationWide = detail.groupId === currentUser.organizationId
   const propertyEntries = Object.entries(displayedVersion.properties ?? {})
 
   return (
@@ -583,6 +581,7 @@ function PurposeDetailsPage(): React.JSX.Element {
         key={`purpose-version-${String(versionDialogOpen)}`}
         open={versionDialogOpen}
         initialValue={detail}
+        organizationId={currentUser.organizationId}
         loading={createVersionMutation.isPending}
         error={createVersionMutation.error?.message}
         onClose={() => {
