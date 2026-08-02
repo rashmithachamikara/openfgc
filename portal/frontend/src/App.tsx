@@ -26,6 +26,7 @@ import ElementDetailsPage from './features/catalog/ElementDetailsPage'
 import ElementListPage from './features/catalog/ElementListPage'
 import PurposeDetailsPage from './features/catalog/PurposeDetailsPage'
 import PurposeListPage from './features/catalog/PurposeListPage'
+import AdminConsentRegistryPage from './features/admin-consents/AdminConsentRegistryPage'
 import ConsentDetailsPage from './features/consent-registry/ConsentDetailsPage'
 import ConsentRegistryPage from './features/consent-registry/ConsentRegistryPage'
 import DashboardPage from './features/dashboard/DashboardPage'
@@ -180,6 +181,22 @@ function App(): React.JSX.Element {
             element={
               <AuthorizedRoute scope={PORTAL_SCOPES.ELEMENTS_READ}>
                 <ElementDetailsPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/administration/consents"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.CONSENTS_READ_ANY}>
+                <AdminConsentRegistryPage />
+              </AuthorizedRoute>
+            }
+          />
+          <Route
+            path="/administration/consents/:id"
+            element={
+              <AuthorizedRoute scope={PORTAL_SCOPES.CONSENTS_READ_ANY}>
+                <ConsentDetailsPage variant="admin" />
               </AuthorizedRoute>
             }
           />

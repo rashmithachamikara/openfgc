@@ -43,6 +43,8 @@ const commonEn = {
     catalog: 'Definitions',
     purposes: 'Purposes',
     elements: 'Elements',
+    administration: 'Administration',
+    adminConsents: 'Consents',
   },
   layout: {
     home: 'Home',
@@ -76,6 +78,19 @@ const commonEn = {
     typeBreakdownSubtitle: 'All of your consents grouped by type',
     noTypes: 'No consent types are available yet.',
     viewPending: 'View all pending consents',
+  },
+  adminConsents: {
+    title: 'Consents',
+    filters: {
+      sectionAriaLabel: 'Administrative consent filters',
+      consentIdSearchPlaceholder: 'Search by consent ID',
+      removeConsentIdForAdvanced: 'Remove the Consent ID filter to use advanced filters.',
+      removeConsentIdForStatus: 'Remove the Consent ID filter to use the status filter.',
+      userIds: 'User IDs',
+      groupIds: 'Group IDs',
+      commaSeparatedUsers: 'Separate multiple user IDs with commas',
+      active: 'Active filters',
+    },
   },
   consentRegistry: {
     title: 'All Consents',

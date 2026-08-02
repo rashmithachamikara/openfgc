@@ -17,7 +17,7 @@
  */
 
 import { Sidebar } from '@wso2/oxygen-ui'
-import { Blocks, Clock3, House, ShieldCheck, Target } from '@wso2/oxygen-ui-icons-react'
+import { Blocks, Clock3, House, ShieldCheck, ShieldPlus, Target } from '@wso2/oxygen-ui-icons-react'
 import { useTranslation } from 'react-i18next'
 import { useLocation, useNavigate } from 'react-router-dom'
 import useAuthorization from '../../../features/auth/useAuthorization'
@@ -79,7 +79,21 @@ const CATALOG_ITEMS: SidebarItem[] = [
   },
 ]
 
+const ADMINISTRATION_ITEMS: SidebarItem[] = [
+  {
+    id: 'administration-consents',
+    labelKey: 'sidebar.adminConsents',
+    path: '/administration/consents',
+    icon: <ShieldPlus size={18} />,
+    requiredScope: PORTAL_SCOPES.CONSENTS_READ_ANY,
+  },
+]
+
 function mapPathToMenuId(pathname: string, search: string): string {
+  if (pathname.startsWith('/administration/consents')) {
+    return 'administration-consents'
+  }
+
   if (pathname.startsWith('/dashboard')) {
     return 'dashboard'
   }
@@ -114,7 +128,8 @@ function AppSidebar({ collapsed }: AppSidebarProps): React.JSX.Element {
   const dashboardItems = DASHBOARD_ITEMS.filter((item) => hasScope(item.requiredScope))
   const consentItems = CONSENT_ITEMS.filter((item) => hasScope(item.requiredScope))
   const catalogItems = CATALOG_ITEMS.filter((item) => hasScope(item.requiredScope))
-  const visibleItems = [...dashboardItems, ...consentItems, ...catalogItems]
+  const administrationItems = ADMINISTRATION_ITEMS.filter((item) => hasScope(item.requiredScope))
+  const visibleItems = [...dashboardItems, ...consentItems, ...catalogItems, ...administrationItems]
 
   const activeItem = mapPathToMenuId(location.pathname, location.search)
 
@@ -147,6 +162,18 @@ function AppSidebar({ collapsed }: AppSidebarProps): React.JSX.Element {
           <Sidebar.Category>
             <Sidebar.CategoryLabel>{t('sidebar.consent')}</Sidebar.CategoryLabel>
             {consentItems.map((item) => (
+              <Sidebar.Item key={item.id} id={item.id}>
+                <Sidebar.ItemIcon>{item.icon}</Sidebar.ItemIcon>
+                <Sidebar.ItemLabel>{t(item.labelKey)}</Sidebar.ItemLabel>
+              </Sidebar.Item>
+            ))}
+          </Sidebar.Category>
+        ) : null}
+
+        {administrationItems.length > 0 ? (
+          <Sidebar.Category>
+            <Sidebar.CategoryLabel>{t('sidebar.administration')}</Sidebar.CategoryLabel>
+            {administrationItems.map((item) => (
               <Sidebar.Item key={item.id} id={item.id}>
                 <Sidebar.ItemIcon>{item.icon}</Sidebar.ItemIcon>
                 <Sidebar.ItemLabel>{t(item.labelKey)}</Sidebar.ItemLabel>

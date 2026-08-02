@@ -45,6 +45,7 @@ describe('frontend authorization', () => {
       '/purposes',
     )
     expect(firstAuthorizedPath([PORTAL_SCOPES.CONSENTS_READ_SELF])).toBe('/dashboard')
+    expect(firstAuthorizedPath([PORTAL_SCOPES.CONSENTS_READ_ANY])).toBe('/administration/consents')
     expect(firstAuthorizedPath([])).toBeUndefined()
   })
 
