@@ -128,6 +128,8 @@ Common error codes:
 - `BFF_PROXY__PLACEHOLDER_MODE_ENABLED=true` is blocked when `BFF_ENV=production`
 - `BFF_PROXY__PLACEHOLDER_USER_ID` must be empty if placeholder mode is disabled
 - `BFF_PROXY__PLACEHOLDER_ORG_ID` must be empty if placeholder mode is disabled
+- `BFF_PROXY__PLACEHOLDER_SCOPES` is a space-separated list of portal scope. Must be empty if placeholder mode is disabled
+- Empty placeholder scopes are allowed and produce an authenticated principal with no portal permissions
 
 ## AI Instructions
 

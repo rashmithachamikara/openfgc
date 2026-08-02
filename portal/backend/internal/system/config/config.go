@@ -113,6 +113,7 @@ type ProxyConfig struct {
 	PlaceholderModeEnabled bool     `koanf:"placeholder_mode_enabled"`
 	PlaceholderUserID      string   `koanf:"placeholder_user_id"`
 	PlaceholderOrgID       string   `koanf:"placeholder_org_id"`
+	PlaceholderScopes      []string `koanf:"placeholder_scopes"`
 	AllowedPassthrough     []string `koanf:"allowed_passthrough_methods"`
 }
 
@@ -166,6 +167,9 @@ func Load() (*Config, error) {
 	}
 	if rawScopes := os.Getenv("BFF_AUTH__SCOPES"); rawScopes != "" {
 		cfg.Auth.Scopes = strings.Fields(rawScopes)
+	}
+	if rawScopes := os.Getenv("BFF_PROXY__PLACEHOLDER_SCOPES"); rawScopes != "" {
+		cfg.Proxy.PlaceholderScopes = strings.Fields(rawScopes)
 	}
 	if rawAlgorithms := os.Getenv("BFF_AUTH__ALLOWED_SIGNING_ALGORITHMS"); rawAlgorithms != "" {
 		cfg.Auth.AllowedSigningAlgorithms = ParseCSV(rawAlgorithms)
@@ -310,6 +314,9 @@ func setDefaults(k *koanf.Koanf) error {
 	if err := k.Set("proxy.placeholder_org_id", ""); err != nil {
 		return err
 	}
+	if err := k.Set("proxy.placeholder_scopes", []string{}); err != nil {
+		return err
+	}
 	if err := k.Set("proxy.allowed_passthrough_methods", []string{"GET", "POST", "PUT", "DELETE"}); err != nil {
 		return err
 	}
@@ -386,6 +393,9 @@ func validate(cfg Config) error {
 	}
 	if !cfg.Proxy.PlaceholderModeEnabled && cfg.Proxy.PlaceholderOrgID != "" {
 		return fmt.Errorf("proxy.placeholder_org_id must be empty when placeholder mode is disabled")
+	}
+	if !cfg.Proxy.PlaceholderModeEnabled && len(cfg.Proxy.PlaceholderScopes) != 0 {
+		return fmt.Errorf("proxy.placeholder_scopes must be empty when placeholder mode is disabled")
 	}
 	if len(cfg.Proxy.AllowedPassthrough) == 0 {
 		return fmt.Errorf("proxy.allowed_passthrough_methods must not be empty")
