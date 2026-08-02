@@ -151,3 +151,9 @@ function Example(): React.JSX.Element {
 ## CI
 
 GitHub Actions CI runs pnpm-based install, lint, and build checks on every push and pull request on portal/frontend directory.
+
+## AI Instructions
+
+This repository uses AGENTS.md files to keep AI-generated changes aligned with project and organization standards.
+
+- Frontend standards: `portal/frontend/AGENTS.md`
