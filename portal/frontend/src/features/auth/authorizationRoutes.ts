@@ -16,18 +16,16 @@
  * under the License.
  */
 
-import { Chip } from '@wso2/oxygen-ui'
-import type { ElementType } from '../../../types/catalog'
-import { ELEMENT_TYPE_PRESENTATION } from '../utils/elementTypePresentation'
+import { PORTAL_SCOPES, type PortalScope } from '../../utils/portalScopes'
 
-interface ElementTypeChipProps {
-  type: ElementType
+const AUTHORIZED_DESTINATIONS: ReadonlyArray<{ path: string; scope: PortalScope }> = [
+  { path: '/dashboard', scope: PORTAL_SCOPES.CONSENTS_READ_SELF },
+  { path: '/consents', scope: PORTAL_SCOPES.CONSENTS_READ_SELF },
+  { path: '/purposes', scope: PORTAL_SCOPES.PURPOSES_READ },
+  { path: '/elements', scope: PORTAL_SCOPES.ELEMENTS_READ },
+]
+
+export default function firstAuthorizedPath(scopes: readonly PortalScope[]): string | undefined {
+  const granted = new Set(scopes)
+  return AUTHORIZED_DESTINATIONS.find(({ scope }) => granted.has(scope))?.path
 }
-
-function ElementTypeChip({ type }: ElementTypeChipProps): React.JSX.Element {
-  const { Icon, label } = ELEMENT_TYPE_PRESENTATION[type]
-
-  return <Chip size="small" sx={{ px: 0.5 }} icon={<Icon size={14} />} label={label} />
-}
-
-export default ElementTypeChip

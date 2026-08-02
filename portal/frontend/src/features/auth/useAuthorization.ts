@@ -16,18 +16,13 @@
  * under the License.
  */
 
-import { Chip } from '@wso2/oxygen-ui'
-import type { ElementType } from '../../../types/catalog'
-import { ELEMENT_TYPE_PRESENTATION } from '../utils/elementTypePresentation'
+import { useContext } from 'react'
+import AuthorizationContext, { type AuthorizationContextValue } from './authorizationContext'
 
-interface ElementTypeChipProps {
-  type: ElementType
+export default function useAuthorization(): AuthorizationContextValue {
+  const value = useContext(AuthorizationContext)
+  if (!value) {
+    throw new Error('useAuthorization must be used within AuthorizationProvider')
+  }
+  return value
 }
-
-function ElementTypeChip({ type }: ElementTypeChipProps): React.JSX.Element {
-  const { Icon, label } = ELEMENT_TYPE_PRESENTATION[type]
-
-  return <Chip size="small" sx={{ px: 0.5 }} icon={<Icon size={14} />} label={label} />
-}
-
-export default ElementTypeChip

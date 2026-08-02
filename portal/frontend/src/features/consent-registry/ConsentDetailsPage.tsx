@@ -32,6 +32,7 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import useAuthorization from '../auth/useAuthorization'
 import ConsentApprovalDialog from './components/ConsentApprovalDialog'
 import ConsentRejectionDialog from './components/ConsentRejectionDialog'
 import ConsentRevocationDialog from './components/ConsentRevocationDialog'
@@ -51,6 +52,7 @@ import {
   isConsentRejectableStatus,
   isConsentRevokableStatus,
 } from './utils/statusChip'
+import { PORTAL_SCOPES } from '../../utils/portalScopes'
 
 function formatResourcesForModal(resources: unknown): string {
   if (!resources) {
@@ -161,6 +163,8 @@ function ConsentDetailsPage(): React.JSX.Element {
   const [revocationDialogOpen, setRevocationDialogOpen] = useState<boolean>(false)
   const [resourcesModalOpen, setResourcesModalOpen] = useState<boolean>(false)
   const [selectedResourcesJson, setSelectedResourcesJson] = useState<string>('')
+  const { hasScope } = useAuthorization()
+  const canWriteSelf = hasScope(PORTAL_SCOPES.CONSENTS_WRITE_SELF)
 
   if (!id) {
     return (
@@ -179,9 +183,9 @@ function ConsentDetailsPage(): React.JSX.Element {
   }
 
   const detail = consentDetailQuery.data
-  const canApprove = detail ? isConsentApprovableStatus(detail.status) : false
-  const canReject = detail ? isConsentRejectableStatus(detail.status) : false
-  const canRevoke = detail ? isConsentRevokableStatus(detail.status) : false
+  const canApprove = detail ? canWriteSelf && isConsentApprovableStatus(detail.status) : false
+  const canReject = detail ? canWriteSelf && isConsentRejectableStatus(detail.status) : false
+  const canRevoke = detail ? canWriteSelf && isConsentRevokableStatus(detail.status) : false
 
   if (consentDetailQuery.isLoading) {
     return <ConsentDetailsLoading />

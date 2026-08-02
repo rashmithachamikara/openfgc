@@ -16,18 +16,10 @@
  * under the License.
  */
 
-import { Chip } from '@wso2/oxygen-ui'
-import type { ElementType } from '../../../types/catalog'
-import { ELEMENT_TYPE_PRESENTATION } from '../utils/elementTypePresentation'
+import type { PortalScope } from '../utils/portalScopes'
 
-interface ElementTypeChipProps {
-  type: ElementType
+export interface CurrentUser {
+  userId: string
+  organizationId: string
+  scopes: PortalScope[]
 }
-
-function ElementTypeChip({ type }: ElementTypeChipProps): React.JSX.Element {
-  const { Icon, label } = ELEMENT_TYPE_PRESENTATION[type]
-
-  return <Chip size="small" sx={{ px: 0.5 }} icon={<Icon size={14} />} label={label} />
-}
-
-export default ElementTypeChip

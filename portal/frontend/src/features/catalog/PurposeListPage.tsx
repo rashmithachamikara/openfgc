@@ -45,8 +45,10 @@ import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
 import HeaderBreadcrumbs from '../../components/layout/main-layout/HeaderBreadcrumbs'
+import useAuthorization from '../auth/useAuthorization'
 import type { ElementSummary, PurposeFilters } from '../../types/catalog'
 import { formatEpochTimestamp } from '../../utils/dateTime'
+import { PORTAL_SCOPES } from '../../utils/portalScopes'
 import ElementVersionSelect from './components/ElementVersionSelect'
 import PurposeFormDialog from './components/PurposeFormDialog'
 import {
@@ -379,6 +381,8 @@ function PurposeListPage(): React.JSX.Element {
   const rowsPerPage = ROW_OPTIONS.includes(parsedRows) ? parsedRows : 10
   const query = usePurposesQuery(filters, page, rowsPerPage)
   const createMutation = useCreatePurposeMutation()
+  const { hasScope } = useAuthorization()
+  const canWritePurposes = hasScope(PORTAL_SCOPES.PURPOSES_WRITE)
 
   const updateParams = (
     nextFilters: PurposeListFilters,
@@ -438,13 +442,15 @@ function PurposeListPage(): React.JSX.Element {
               {t('catalog.purposes.subtitle')}
             </Typography>
           </Stack>
-          <Button
-            variant="contained"
-            startIcon={<Plus size={18} />}
-            onClick={() => setCreateOpen(true)}
-          >
-            {t('catalog.purposes.add')}
-          </Button>
+          {canWritePurposes ? (
+            <Button
+              variant="contained"
+              startIcon={<Plus size={18} />}
+              onClick={() => setCreateOpen(true)}
+            >
+              {t('catalog.purposes.add')}
+            </Button>
+          ) : null}
         </Stack>
 
         <PurposeFiltersPanel

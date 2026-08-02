@@ -16,18 +16,17 @@
  * under the License.
  */
 
-import { Chip } from '@wso2/oxygen-ui'
-import type { ElementType } from '../../../types/catalog'
-import { ELEMENT_TYPE_PRESENTATION } from '../utils/elementTypePresentation'
+import { createContext } from 'react'
+import type { CurrentUser } from '../../types/auth'
+import type { PortalScope } from '../../utils/portalScopes'
 
-interface ElementTypeChipProps {
-  type: ElementType
+export interface AuthorizationContextValue {
+  currentUser: CurrentUser
+  hasScope: (scope: PortalScope) => boolean
+  hasAnyScope: (scopes: readonly PortalScope[]) => boolean
+  hasAllScopes: (scopes: readonly PortalScope[]) => boolean
 }
 
-function ElementTypeChip({ type }: ElementTypeChipProps): React.JSX.Element {
-  const { Icon, label } = ELEMENT_TYPE_PRESENTATION[type]
+const AuthorizationContext = createContext<AuthorizationContextValue | undefined>(undefined)
 
-  return <Chip size="small" sx={{ px: 0.5 }} icon={<Icon size={14} />} label={label} />
-}
-
-export default ElementTypeChip
+export default AuthorizationContext

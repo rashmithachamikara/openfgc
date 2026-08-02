@@ -20,6 +20,13 @@ const commonEn = {
   app: {
     title: 'Consent Portal',
   },
+  authorization: {
+    loading: 'Loading your session',
+    loadFailed: 'Unable to load your session.',
+    tryAgain: 'Try again',
+    noAccessTitle: 'No portal access',
+    noAccessDescription: 'Your account does not have permission to access any portal pages.',
+  },
   copyableText: {
     copy: 'Copy',
     copied: 'Copied',

@@ -16,18 +16,26 @@
  * under the License.
  */
 
-import { Chip } from '@wso2/oxygen-ui'
-import type { ElementType } from '../../../types/catalog'
-import { ELEMENT_TYPE_PRESENTATION } from '../utils/elementTypePresentation'
+import type { ReactNode } from 'react'
+import { AuthorizationProvider } from '../features/auth/AuthorizationProvider'
+import type { PortalScope } from '../utils/portalScopes'
 
-interface ElementTypeChipProps {
-  type: ElementType
+interface TestAuthorizationProviderProps {
+  children: ReactNode
+  scopes: PortalScope[]
 }
 
-function ElementTypeChip({ type }: ElementTypeChipProps): React.JSX.Element {
-  const { Icon, label } = ELEMENT_TYPE_PRESENTATION[type]
-
-  return <Chip size="small" sx={{ px: 0.5 }} icon={<Icon size={14} />} label={label} />
+function TestAuthorizationProvider({
+  children,
+  scopes,
+}: TestAuthorizationProviderProps): React.JSX.Element {
+  return (
+    <AuthorizationProvider
+      currentUser={{ userId: 'test-user', organizationId: 'test-org', scopes }}
+    >
+      {children}
+    </AuthorizationProvider>
+  )
 }
 
-export default ElementTypeChip
+export default TestAuthorizationProvider

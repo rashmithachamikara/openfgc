@@ -16,18 +16,17 @@
  * under the License.
  */
 
-import { Chip } from '@wso2/oxygen-ui'
-import type { ElementType } from '../../../types/catalog'
-import { ELEMENT_TYPE_PRESENTATION } from '../utils/elementTypePresentation'
+import type { PortalScope } from '../../utils/portalScopes'
+import useAuthorization from './useAuthorization'
 
-interface ElementTypeChipProps {
-  type: ElementType
+interface ScopeGuardProps {
+  scope: PortalScope
+  children: React.JSX.Element
 }
 
-function ElementTypeChip({ type }: ElementTypeChipProps): React.JSX.Element {
-  const { Icon, label } = ELEMENT_TYPE_PRESENTATION[type]
-
-  return <Chip size="small" sx={{ px: 0.5 }} icon={<Icon size={14} />} label={label} />
+function ScopeGuard({ scope, children }: ScopeGuardProps): React.JSX.Element | null {
+  const { hasScope } = useAuthorization()
+  return hasScope(scope) ? children : null
 }
 
-export default ElementTypeChip
+export default ScopeGuard

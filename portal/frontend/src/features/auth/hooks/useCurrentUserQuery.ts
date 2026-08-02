@@ -16,18 +16,17 @@
  * under the License.
  */
 
-import { Chip } from '@wso2/oxygen-ui'
-import type { ElementType } from '../../../types/catalog'
-import { ELEMENT_TYPE_PRESENTATION } from '../utils/elementTypePresentation'
+import { type UseQueryResult, useQuery } from '@tanstack/react-query'
+import type { CurrentUser } from '../../../types/auth'
+import { fetchCurrentUser } from '../api/currentUserApi'
 
-interface ElementTypeChipProps {
-  type: ElementType
+export const CURRENT_USER_QUERY_KEY = ['current-user'] as const
+
+export default function useCurrentUserQuery(enabled: boolean): UseQueryResult<CurrentUser> {
+  return useQuery({
+    queryKey: CURRENT_USER_QUERY_KEY,
+    queryFn: fetchCurrentUser,
+    enabled,
+    retry: false,
+  })
 }
-
-function ElementTypeChip({ type }: ElementTypeChipProps): React.JSX.Element {
-  const { Icon, label } = ELEMENT_TYPE_PRESENTATION[type]
-
-  return <Chip size="small" sx={{ px: 0.5 }} icon={<Icon size={14} />} label={label} />
-}
-
-export default ElementTypeChip
