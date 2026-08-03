@@ -537,3 +537,15 @@ func TestBuildConsentSearchOrderBy_InvalidValuesFallbackSafely(t *testing.T) {
 
 	require.Equal(t, "CONSENT.CREATED_TIME DESC, CONSENT.CONSENT_ID ASC", orderBy)
 }
+
+func TestBuildExpiredConsentsQuery_PostgresUsesDollarPlaceholders(t *testing.T) {
+	q := buildExpiredConsentsQuery(2)
+	require.Equal(t,
+		"SELECT "+consentColumns+" FROM CONSENT WHERE EXPIRATION_TIME < $1 AND CURRENT_STATUS IN ($2,$3)",
+		q.PostgresQuery,
+	)
+	require.Equal(t,
+		"SELECT "+consentColumns+" FROM CONSENT WHERE EXPIRATION_TIME < ? AND CURRENT_STATUS IN (?,?)",
+		q.Query,
+	)
+}
